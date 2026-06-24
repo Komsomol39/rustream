@@ -1,9 +1,10 @@
-=== ТЕСТ ЗЕРКАЛ ===
-https://rutracker.org → 403 (len=5555)
-https://rutracker.net → 200 (len=96042)
-  ✅ РАБОТАЕТ: https://rutracker.net
-  Форма/контент найдены
+=== 1. АВТОРИЗАЦИЯ ===
+Status: 200 | logged_in=True
 
-Авторизация на https://rutracker.net...
-Login POST: 200 -> https://rutracker.net/forum/index.php
-✅ Авторизация успешна!
+=== 2. ПОИСК ===
+Запрос: Inception 2010
+  HTTP: 200 | url: https://rutracker.net/forum/tracker.php?nm=Inception%202010
+  Строк найдено: 50
+Запрос: Интерстеллар
+  HTTP: 200 | url: https://rutracker.net/forum/tracker.php?nm=%D0%98%D0%BD%D1%82%D0%B5%D1%80%D1%81%D1%82%D0%B5%D0%BB%D0%BB%D0%B0%D1%80
+  Строк найдено: 48
