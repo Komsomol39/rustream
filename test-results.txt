@@ -13,3 +13,10 @@ POST to: https://rutracker.net/forum/login.php
   profile element: None
   logged check: ✅ залогинен
   Фрагмент после логина (1500-2000): 
+
+=== 3. ПОИСК 'sting' ===
+  200 → https://rutracker.net/forum/tracker.php?nm=sting
+  tbl=✅ rows=50
+  [6s] (Rock, Pop) [LP] [DSD256] Sting 'The Bridge [Deluxe Edition]' - 2 | 7.13 GB ↓
+  [20s] (Rock, Hard Rock) [LP] [1/5,64 MHz] Scorpions - Love At First Sti | 3.26 GB ↓
+  [1s] VA - Reggae Showdown Vol. 2: Reggae Power in 5.1 - Giants of Stin | 4.18 GB ↓
