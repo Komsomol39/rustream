@@ -1,10 +1,13 @@
 === 1. АВТОРИЗАЦИЯ ===
-Status: 200 | logged_in=True
+✅ OK: logged_in=True
 
 === 2. ПОИСК ===
-Запрос: Inception 2010
-  HTTP: 200 | url: https://rutracker.net/forum/tracker.php?nm=Inception%202010
-  Строк найдено: 50
-Запрос: Интерстеллар
-  HTTP: 200 | url: https://rutracker.net/forum/tracker.php?nm=%D0%98%D0%BD%D1%82%D0%B5%D1%80%D1%81%D1%82%D0%B5%D0%BB%D0%BB%D0%B0%D1%80
-  Строк найдено: 48
+Результатов: 50
+
+=== ИТОГ ===
+Зеркало:      rutracker.net
+Авторизация:  ✅ OK
+Поиск:        ✅ OK (50 результатов)
+Magnet:       ❓ не проверен
+
+✅ Парсер готов к интеграции в Android
