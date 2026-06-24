@@ -1,2 +1,5 @@
 === ЛОГИН ===
   200 logged=False cookies=['bb_ssl', 'bb_session']
+
+=== ПОИСК — варианты URL ===
+  200 | tbl=❌ | rows=0 | https://rutracker.net/forum/tracker.php?nm=sting
