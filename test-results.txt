@@ -1,10 +1,7 @@
-=== ЛОГИН ===
-  200 logged=False cookies=['bb_ssl', 'bb_session']
-
-=== ПОИСК — варианты URL ===
-  200 | tbl=❌ | rows=0 | https://rutracker.net/forum/tracker.php?nm=sting
-  200 | tbl=❌ | rows=0 | acker.net/forum/tracker.php?nm=sting&o=1&s=0&tm=-1
-  200 | tbl=❌ | rows=0 | acker.net/forum/tracker.php?search_id=all&nm=sting
-
-=== RUTOR ===
-https://rutor.info: 200
+=== 1. ФОРМА ЛОГИНА ===
+GET index: 200
+Form action: login.php
+  <input name='login_username' type='text' value=''>
+  <input name='login_password' type='password' value=''>
+  <input name='None' type='checkbox' value=''>
+  <input name='login' type='submit' value='вход'>
