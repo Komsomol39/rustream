@@ -5,3 +5,4 @@
 
 === 2. ПОИСК 'sting' ===
 HTTP 500 → https://rutracker.net/forum/tracker.php?nm=sting
+❌ Таблица не найдена
