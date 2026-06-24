@@ -5,3 +5,11 @@ Form action: login.php
   <input name='login_password' type='password' value=''>
   <input name='None' type='checkbox' value=''>
   <input name='login' type='submit' value='вход'>
+
+=== 2. ЛОГИН ===
+POST to: https://rutracker.net/forum/login.php
+  500 → https://rutracker.net/forum/index.php
+  cookies: {'bb_ssl': '1', 'bb_session': '0-13520653-cXRZWDnRTEFPAoEPwfD3'}
+  profile element: None
+  logged check: ✅ залогинен
+  Фрагмент после логина (1500-2000): 
