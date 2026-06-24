@@ -1,13 +1,38 @@
-=== 1. АВТОРИЗАЦИЯ ===
-✅ OK: logged_in=True
+✅ Таблица tor-tbl найдена
+Строк в tbody: 50
 
-=== 2. ПОИСК ===
-Результатов: 50
+--- Первая строка HTML (первые 800 символов) ---
+<tr class="tCenter hl-tr" data-topic_id="6870057" id="trs-tr-6870057">
+<td class="row1 t-ico" id="6870057">
+<img alt="N" class="icon1" src="https://static.rutracker.cc/templates/v1/images/icon_minipost_new.gif"/>
+</td>
+<td class="row1 t-ico" title="проверено"><span class="tor-icon tor-approved">√</span></td>
+<td class="row1 f-name-col">
+<div class="f-name"><a class="gen f ts-text" href="tracker.php?f=1893">Электронная музыка (Hi-Res stereo)</a></div>
+</td>
+<td class="row4 med tLeft t-title-col tt">
+<div class="wbr t-title">
+<a class="med tLink tt-text ts-text hl-tags bold" data-topic_id="6870057" href="viewtopic.php?t=6870057">[TR24][OF][LDR] Interstellar Messenger - A Sombre Serenity (Cosmicleaf Records) - 2026 (Ambient, Chillout, Downtempo, Mantra)</a>
+</div>
+<div class="t-tags" id="tg-6
+---
 
-=== ИТОГ ===
-Зеркало:      rutracker.net
-Авторизация:  ✅ OK
-Поиск:        ✅ OK (50 результатов)
-Magnet:       ❓ не проверен
+--- Поиск заголовка ---
+  ❌ selector='td.t-title a.tLink'
+  ✅ selector='a.tLink' → '[TR24][OF][LDR] Interstellar Messenger - A Sombre Serenity (' href=viewtopic.php?t=6870057
+  ❌ selector='td.t-title a'
+  ✅ selector='.t-title a' → '[TR24][OF][LDR] Interstellar Messenger - A Sombre Serenity (' href=viewtopic.php?t=6870057
+  ✅ selector='a[href*=viewtopic]' → '[TR24][OF][LDR] Interstellar Messenger - A Sombre Serenity (' href=viewtopic.php?t=6870057
 
-✅ Парсер готов к интеграции в Android
+Все ссылки в строке (4):
+  <a class='['gen', 'f', 'ts-text']' href='tracker.php?f=1893'>Электронная музыка (Hi-Res stereo)</a>
+  <a class='['med', 'tLink', 'tt-text', 'ts-text', 'hl-tags', 'bold']' href='viewtopic.php?t=6870057'>[TR24][OF][LDR] Interstellar Messenger -</a>
+  <a class='['med', 'ts-text']' href='tracker.php?pid=50781098'>rd10000</a>
+  <a class='['small', 'tr-dl', 'dl-stub']' href='dl.php?t=6870057'>593.8 MB ↓</a>
+
+TD классы: [['row1', 't-ico'], ['row1', 't-ico'], ['row1', 'f-name-col'], ['row4', 'med', 'tLeft', 't-title-col', 'tt'], ['row1', 'u-name-col'], ['row4', 'small', 'nowrap', 'tor-size'], ['row4', 'nowrap'], ['row4', 'leechmed', 'bold'], ['row4', 'small', 'number-format'], ['row4', 'small', 'nowrap']]
+
+=== ТЕСТ MAGNET (известная тема) ===
+Открываем: https://rutracker.net/forum/viewtopic.php?t=6661913
+Magnet: ❌ нет
+DL:     ❌ нет
