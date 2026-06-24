@@ -3,3 +3,4 @@
 
 === ПОИСК — варианты URL ===
   200 | tbl=❌ | rows=0 | https://rutracker.net/forum/tracker.php?nm=sting
+  200 | tbl=❌ | rows=0 | acker.net/forum/tracker.php?nm=sting&o=1&s=0&tm=-1
