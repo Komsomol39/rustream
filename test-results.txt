@@ -1,9 +1,9 @@
+=== ТЕСТ ЗЕРКАЛ ===
+https://rutracker.org → 403 (len=5555)
+https://rutracker.net → 200 (len=96042)
+  ✅ РАБОТАЕТ: https://rutracker.net
+  Форма/контент найдены
 
-=== ТЕСТ 1: Авторизация ===
-Главная: 403
-FAIL: не удалось открыть главную (403)
-
-Пропускаем тесты поиска — нет авторизации
-
-=== ИТОГ ===
-LOGIN: FAIL
+Авторизация на https://rutracker.net...
+Login POST: 200 -> https://rutracker.net/forum/index.php
+✅ Авторизация успешна!
