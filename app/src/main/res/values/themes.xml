@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.RuStream" parent="android:Theme.Material.NoTitleBar" />
+</resources>
