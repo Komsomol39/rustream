@@ -15,66 +15,86 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
-    val darkTheme by viewModel.darkTheme.collectAsState()
-    val downloadPath by viewModel.downloadPath.collectAsState()
-    val ruTrackerLogin by viewModel.ruTrackerLogin.collectAsState()
+    val darkTheme        by viewModel.darkTheme.collectAsState()
+    val downloadPath     by viewModel.downloadPath.collectAsState()
+    val ruTrackerLogin   by viewModel.ruTrackerLogin.collectAsState()
     val ruTrackerPassword by viewModel.ruTrackerPassword.collectAsState()
+    val ruTorEnabled     by viewModel.ruTorEnabled.collectAsState()
+    val ruTrackerEnabled by viewModel.ruTrackerEnabled.collectAsState()
 
-    var loginField by remember(ruTrackerLogin) { mutableStateOf(ruTrackerLogin) }
+    var loginField    by remember(ruTrackerLogin)    { mutableStateOf(ruTrackerLogin) }
     var passwordField by remember(ruTrackerPassword) { mutableStateOf(ruTrackerPassword) }
-    var pathField by remember(downloadPath) { mutableStateOf(downloadPath) }
+    var pathField     by remember(downloadPath)      { mutableStateOf(downloadPath) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Настройки", style = MaterialTheme.typography.headlineSmall)
 
-        // Theme
+        // Тема
         Card(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text("Тёмная тема", style = MaterialTheme.typography.bodyLarge)
-                    Text("Текущая: ${if (darkTheme) "Тёмная" else "Светлая"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+                Text("Тёмная тема", style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = darkTheme, onCheckedChange = viewModel::setDarkTheme)
             }
         }
 
-        // Download path
+        // Источники поиска
         Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Папка загрузок", style = MaterialTheme.typography.titleMedium)
-                OutlinedTextField(
-                    value = pathField,
-                    onValueChange = { pathField = it },
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Источники поиска", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Путь") },
-                    singleLine = true
-                )
-                Button(
-                    onClick = { viewModel.setDownloadPath(pathField) },
-                    modifier = Modifier.align(Alignment.End)
-                ) { Text("Сохранить") }
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("RuTor", style = MaterialTheme.typography.bodyLarge)
+                        Text("Без авторизации", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = ruTorEnabled, onCheckedChange = viewModel::setRuTorEnabled)
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("RuTracker", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            if (ruTrackerLogin.isNotBlank()) "Аккаунт: $ruTrackerLogin"
+                            else "Требуется аккаунт",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (ruTrackerLogin.isNotBlank())
+                                MaterialTheme.colorScheme.tertiary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = ruTrackerEnabled,
+                        onCheckedChange = viewModel::setRuTrackerEnabled,
+                        enabled = ruTrackerLogin.isNotBlank()
+                    )
+                }
             }
         }
 
-        // RuTracker (для будущего использования)
+        // Аккаунт RuTracker
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("RuTracker (скоро)", style = MaterialTheme.typography.titleMedium)
-                Text("Для поиска на RuTracker потребуется аккаунт",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Аккаунт RuTracker", style = MaterialTheme.typography.titleMedium)
                 OutlinedTextField(
                     value = loginField,
                     onValueChange = { loginField = it },
@@ -101,7 +121,24 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             }
         }
 
-        // About
+        // Папка загрузок
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Папка загрузок", style = MaterialTheme.typography.titleMedium)
+                OutlinedTextField(
+                    value = pathField,
+                    onValueChange = { pathField = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Путь") },
+                    singleLine = true
+                )
+                Button(
+                    onClick = { viewModel.setDownloadPath(pathField) },
+                    modifier = Modifier.align(Alignment.End)
+                ) { Text("Сохранить") }
+            }
+        }
+
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("О приложении", style = MaterialTheme.typography.titleMedium)
