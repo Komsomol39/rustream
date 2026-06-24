@@ -1,38 +1,69 @@
-✅ Таблица tor-tbl найдена
-Строк в tbody: 50
+=== 1. ЛОГИН ===
+FATAL: HTTPSConnectionPool(host='rutracker.net', port=443): Read timed out. (read timeout=15)
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 537, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 1448, in getresponse
+    response.begin()
+  File "/usr/lib/python3.12/http/client.py", line 336, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/http/client.py", line 297, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/socket.py", line 707, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ssl.py", line 1252, in recv_into
+    return self.read(nbytes, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/ssl.py", line 1104, in read
+    return self._sslobj.read(len, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
 
---- Первая строка HTML (первые 800 символов) ---
-<tr class="tCenter hl-tr" data-topic_id="6870057" id="trs-tr-6870057">
-<td class="row1 t-ico" id="6870057">
-<img alt="N" class="icon1" src="https://static.rutracker.cc/templates/v1/images/icon_minipost_new.gif"/>
-</td>
-<td class="row1 t-ico" title="проверено"><span class="tor-icon tor-approved">√</span></td>
-<td class="row1 f-name-col">
-<div class="f-name"><a class="gen f ts-text" href="tracker.php?f=1893">Электронная музыка (Hi-Res stereo)</a></div>
-</td>
-<td class="row4 med tLeft t-title-col tt">
-<div class="wbr t-title">
-<a class="med tLink tt-text ts-text hl-tags bold" data-topic_id="6870057" href="viewtopic.php?t=6870057">[TR24][OF][LDR] Interstellar Messenger - A Sombre Serenity (Cosmicleaf Records) - 2026 (Ambient, Chillout, Downtempo, Mantra)</a>
-</div>
-<div class="t-tags" id="tg-6
----
+The above exception was the direct cause of the following exception:
 
---- Поиск заголовка ---
-  ❌ selector='td.t-title a.tLink'
-  ✅ selector='a.tLink' → '[TR24][OF][LDR] Interstellar Messenger - A Sombre Serenity (' href=viewtopic.php?t=6870057
-  ❌ selector='td.t-title a'
-  ✅ selector='.t-title a' → '[TR24][OF][LDR] Interstellar Messenger - A Sombre Serenity (' href=viewtopic.php?t=6870057
-  ✅ selector='a[href*=viewtopic]' → '[TR24][OF][LDR] Interstellar Messenger - A Sombre Serenity (' href=viewtopic.php?t=6870057
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 845, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/util/retry.py", line 472, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 791, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 539, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 371, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='rutracker.net', port=443): Read timed out. (read timeout=15)
 
-Все ссылки в строке (4):
-  <a class='['gen', 'f', 'ts-text']' href='tracker.php?f=1893'>Электронная музыка (Hi-Res stereo)</a>
-  <a class='['med', 'tLink', 'tt-text', 'ts-text', 'hl-tags', 'bold']' href='viewtopic.php?t=6870057'>[TR24][OF][LDR] Interstellar Messenger -</a>
-  <a class='['med', 'ts-text']' href='tracker.php?pid=50781098'>rd10000</a>
-  <a class='['small', 'tr-dl', 'dl-stub']' href='dl.php?t=6870057'>593.8 MB ↓</a>
+During handling of the above exception, another exception occurred:
 
-TD классы: [['row1', 't-ico'], ['row1', 't-ico'], ['row1', 'f-name-col'], ['row4', 'med', 'tLeft', 't-title-col', 'tt'], ['row1', 'u-name-col'], ['row4', 'small', 'nowrap', 'tor-size'], ['row4', 'nowrap'], ['row4', 'leechmed', 'bold'], ['row4', 'small', 'number-format'], ['row4', 'small', 'nowrap']]
-
-=== ТЕСТ MAGNET (известная тема) ===
-Открываем: https://rutracker.net/forum/viewtopic.php?t=6661913
-Magnet: ❌ нет
-DL:     ❌ нет
+Traceback (most recent call last):
+  File "/home/runner/work/rustream/rustream/scripts/test_rutracker.py", line 26, in <module>
+    r = s.get(f"{BASE}/index.php", timeout=15)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/sessions.py", line 602, in get
+    return self.request("GET", url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='rutracker.net', port=443): Read timed out. (read timeout=15)
