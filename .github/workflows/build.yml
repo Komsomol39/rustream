@@ -24,8 +24,14 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build Debug APK
-        id: build
-        run: ./gradlew assembleDebug 2>&1 | tee build-log.txt; echo "EXIT_CODE=${PIPESTATUS[0]}" >> $GITHUB_ENV
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RuStream-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
       - name: Save build result
         if: always()
@@ -34,21 +40,7 @@ jobs:
             echo "BUILD SUCCESSFUL" > build-errors.txt
           else
             echo "BUILD FAILED" > build-errors.txt
-            tail -100 build-log.txt | grep -E "error:|Error:|FAILED|Exception" >> build-errors.txt || true
-            echo "--- FULL LOG TAIL ---" >> build-errors.txt
-            tail -50 build-log.txt >> build-errors.txt
           fi
-
-      - name: Upload APK
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: RuStream-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
-
-      - name: Commit build result
-        if: always()
-        run: |
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions"
           git add build-errors.txt || true
