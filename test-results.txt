@@ -1,8 +1,2 @@
-=== 1. ПОИСК ЗЕРКАЛА + ЛОГИН ===
-Пробуем https://rutracker.net...
-  200 | logged=True | cookies=['bb_ssl', 'bb_session']
-  ✅ https://rutracker.net работает!
-
-=== 2. ПОИСК 'sting' ===
-HTTP 500 → https://rutracker.net/forum/tracker.php?nm=sting
-❌ Таблица не найдена
+=== ЛОГИН ===
+  200 logged=False cookies=['bb_ssl', 'bb_session']
