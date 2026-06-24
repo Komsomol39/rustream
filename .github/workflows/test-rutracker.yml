@@ -3,6 +3,9 @@ name: Test RuTracker
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,12 +19,5 @@ jobs:
         env:
           RUTRACKER_LOGIN: ${{ secrets.RUTRACKER_LOGIN }}
           RUTRACKER_PASSWORD: ${{ secrets.RUTRACKER_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/test_rutracker.py || true
-
-      - name: Upload results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: test-results.txt
-          retention-days: 1
