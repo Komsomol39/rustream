@@ -1,0 +1,33 @@
+name: Test RuTracker
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run RuTracker test
+        env:
+          RUTRACKER_LOGIN: ${{ secrets.RUTRACKER_LOGIN }}
+          RUTRACKER_PASSWORD: ${{ secrets.RUTRACKER_PASSWORD }}
+        run: python3 scripts/test_rutracker.py
+
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add test-results.txt
+          git diff --staged --quiet || git commit -m "test results [skip ci]"
+          git push
