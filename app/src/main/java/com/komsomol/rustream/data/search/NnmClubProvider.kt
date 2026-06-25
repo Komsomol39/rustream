@@ -75,8 +75,11 @@ class NnmClubProvider @Inject constructor(
                 // Размер — ищем ячейку с размером (обычно 6-я или 7-я)
                 val tds     = row.select("td")
                 val sizeEl  = tds.firstOrNull { td ->
-                    val t = td.text().trim()
-                    t.contains(Regex("\d+\.?\d*\s*(ГБ|МБ|КБ|GB|MB|KB|тб|TB)", RegexOption.IGNORE_CASE))
+                    val t = td.text().trim().lowercase()
+                    (t.contains("гб") || t.contains("мб") || t.contains("кб") ||
+                     t.contains("gb") || t.contains("mb") || t.contains("kb") ||
+                     t.contains("тб") || t.contains("tb")) &&
+                    t.any { it.isDigit() }
                 }
 
                 // Сиды и личи
