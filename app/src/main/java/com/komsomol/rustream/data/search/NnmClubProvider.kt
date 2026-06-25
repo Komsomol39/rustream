@@ -35,7 +35,6 @@ class NnmClubProvider @Inject constructor(
             if (!cookieStore.isLoggedIn()) return@withContext emptyList()
             try { doSearch(query, category) } catch (e: Exception) {
                 Log.e(TAG, "Failed: ${e.message}")
-                cookieStore.saveDebugHtml("ERROR: ${e.message}")
                 emptyList()
             }
         }
@@ -53,81 +52,70 @@ class NnmClubProvider @Inject constructor(
         val html  = String(bytes, Charset.forName("windows-1251"))
         val doc   = Jsoup.parse(html)
 
-        // Ищем все ссылки на viewtopic — это и есть торренты
-        val topicLinks = doc.select("a[href*='viewtopic.php']")
-        // Ищем все ссылки на скачивание
-        val dlLinks    = doc.select("a[href*='download.php']")
-        // Ищем любые ссылки с классом
-        val anyTopicTitle = doc.select("a.topictitle")
-        val anyTLink      = doc.select("a.tLink")
-
-        // Ищем слово "seedmed" в HTML
-        val seedIdx = html.indexOf("seedmed")
-        val torIdx  = html.indexOf("viewtopic")
-
-        val debug = buildString {
-            appendLine("loggedIn=${html.contains("Выход")} len=${html.length}")
-            appendLine("viewtopic links: ${topicLinks.size}")
-            appendLine("download links:  ${dlLinks.size}")
-            appendLine("a.topictitle:    ${anyTopicTitle.size}")
-            appendLine("a.tLink:         ${anyTLink.size}")
-            appendLine("seedmed at:      $seedIdx")
-            appendLine("viewtopic at:    $torIdx")
-            if (torIdx > 0) {
-                appendLine("Context around viewtopic:")
-                appendLine(html.substring(maxOf(0, torIdx - 100), minOf(html.length, torIdx + 400)))
-            }
-            if (topicLinks.isNotEmpty()) {
-                appendLine("First viewtopic link:")
-                appendLine(topicLinks.first().outerHtml().take(200))
-                // Попробуем найти TR родителя
-                val parentTr = topicLinks.first().parents().firstOrNull { it.tagName() == "tr" }
-                if (parentTr != null) appendLine("Parent TR: ${parentTr.outerHtml().take(400)}")
-            }
-        }
-        Log.d(TAG, debug)
-        cookieStore.saveDebugHtml(debug)
-
-        // Парсим результаты через viewtopic ссылки
+        // Строки результатов — ищем по download.php ссылкам
+        // Структура TR: td[0]=checkbox, td[1]=cat, td[2]=title(a.topictitle), 
+        //               td[3]=author, td[4]=DL, td[5]=size, td[6]=seeds, td[7]=leech
         val results = mutableListOf<SearchResult>()
-        topicLinks.distinctBy { it.attr("href") }.take(50).forEach { link ->
+
+        doc.select("a[href*='download.php']").forEach { dlEl ->
             try {
-                val href    = link.attr("href")
-                val topicId = href.substringAfter("t=").substringBefore("&").substringBefore("#")
-                val title   = link.text().trim()
+                val row = dlEl.findParentRow() ?: return@forEach
+                val tds = row.select("td")
+                if (tds.size < 7) return@forEach
+
+                val titleEl = tds[2].selectFirst("a.topictitle, a.genmed") ?: return@forEach
+                val title   = titleEl.text().trim()
                 if (title.isBlank()) return@forEach
 
-                val row = link.parents().firstOrNull { it.tagName() == "tr" } ?: return@forEach
-                val tds     = row.select("td")
-                val sizeEl  = tds.firstOrNull { td ->
-                    val t = td.text().trim().lowercase()
-                    (t.contains("гб")||t.contains("мб")||t.contains("кб")||
-                     t.contains("gb")||t.contains("mb")||t.contains("kb")||
-                     t.contains("тб")||t.contains("tb")) && t.any { it.isDigit() }
-                }
-                val seedsEl = row.selectFirst("span.seedmed, b.seedmed, td.seedmed, [class*=seed]")
-                val leechEl = row.selectFirst("span.leechmed, b.leechmed, [class*=leech]")
-                val dlEl    = row.selectFirst("a[href*='download.php']")
-                val catEl   = row.selectFirst("a[href*='viewforum']")
+                val href    = titleEl.attr("href")
+                val topicId = href.substringAfter("t=").substringBefore("&").substringBefore("#")
+                val cat     = tds[1].text().trim()
+
+                // Размер: td[5] содержит "BYTES READABLE" например "1042668893 994 MB"
+                // Берём число после пробела с единицей
+                val sizeText = tds[5].text().trim()
+                val sizeBytes = parseSizeFromRaw(sizeText)
+
+                val seeds  = tds[6].text().trim().toIntOrNull() ?: 0
+                val leeches = if (tds.size > 7) tds[7].text().trim().toIntOrNull() ?: 0 else 0
+
+                val dlHref = dlEl.attr("href")
+                val torrentUrl = if (dlHref.startsWith("http")) dlHref else "$BASE/$dlHref"
 
                 results.add(SearchResult(
                     title      = title,
                     source     = SearchSource.NNM,
-                    category   = CategoryDetector.detect(title, catEl?.text() ?: "", category),
-                    sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
-                    seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
-                    leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
+                    category   = CategoryDetector.detect(title, cat, category),
+                    sizeBytes  = sizeBytes,
+                    seeders    = seeds,
+                    leechers   = leeches,
                     magnetUri  = null,
-                    torrentUrl = dlEl?.let { h ->
-                        val h2 = h.attr("href")
-                        if (h2.startsWith("http")) h2 else "$BASE/$h2"
-                    },
-                    detailUrl  = if (topicId.isNotEmpty()) "$BASE/viewtopic.php?t=$topicId" else "$BASE/$href",
+                    torrentUrl = torrentUrl,
+                    detailUrl  = if (topicId.isNotEmpty()) "$BASE/viewtopic.php?t=$topicId" else href,
                 ))
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Row parse error: ${e.message}")
+            }
         }
-        Log.d(TAG, "Results: ${results.size}")
-        return results
+
+        Log.d(TAG, "NNM results: ${results.size}")
+        cookieStore.saveDebugHtml("OK: ${results.size} results for last query")
+        return results.take(50)
+    }
+
+    // Находим ближайший TR-родитель
+    private fun org.jsoup.nodes.Element.findParentRow(): org.jsoup.nodes.Element? =
+        parents().firstOrNull { it.tagName() == "tr" }
+
+    // Размер в td[5]: "1042668893 994 MB" или "1866283991 1.74 GB"
+    // Первое число — байты напрямую!
+    private fun parseSizeFromRaw(text: String): Long {
+        val parts = text.trim().split(" ")
+        // Первый токен — байты
+        val bytes = parts.firstOrNull()?.toLongOrNull()
+        if (bytes != null && bytes > 0) return bytes
+        // Fallback — парсим читаемый формат
+        return parseSize(text)
     }
 
     private fun parseSize(text: String): Long {
