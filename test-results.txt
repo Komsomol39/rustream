@@ -10,3 +10,6 @@ https://rutor.im: ERROR HTTPSConnectionPool(host='rutor.im', port=443): Max retr
   [200] https://rutor.info/search/0/0/0/sting: rows=0
   [200] https://rutor.info/search/0/0/100/sting: rows=0
   [200] https://rutor.info/index.php?s=sting: rows=0
+  [200] rch/0/0/0/%D0%BF%D0%B8%D0%BB%D0%BE%D1%82: rows=0
+  [200] h/0/0/100/%D0%BF%D0%B8%D0%BB%D0%BE%D1%82: rows=0
+  [200] dex.php?s=%D0%BF%D0%B8%D0%BB%D0%BE%D1%82: rows=0
