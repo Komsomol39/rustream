@@ -20,25 +20,19 @@ class SettingsRepository @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     companion object {
-        val KEY_DARK_THEME          = booleanPreferencesKey("dark_theme")
-        val KEY_DOWNLOAD_PATH       = stringPreferencesKey("download_path")
-        val KEY_RUTRACKER_LOGIN     = stringPreferencesKey("rutracker_login")
-        val KEY_RUTRACKER_PASSWORD  = stringPreferencesKey("rutracker_password")
-        val KEY_RUTOR_ENABLED       = booleanPreferencesKey("rutor_enabled")
-        val KEY_RUTRACKER_ENABLED   = booleanPreferencesKey("rutracker_enabled")
+        val KEY_DARK_THEME        = booleanPreferencesKey("dark_theme")
+        val KEY_DOWNLOAD_PATH     = stringPreferencesKey("download_path")
+        val KEY_RUTOR_ENABLED     = booleanPreferencesKey("rutor_enabled")
+        val KEY_RUTRACKER_ENABLED = booleanPreferencesKey("rutracker_enabled")
     }
 
-    val darkTheme: Flow<Boolean>         = context.dataStore.data.map { it[KEY_DARK_THEME] ?: true }
-    val downloadPath: Flow<String>       = context.dataStore.data.map { it[KEY_DOWNLOAD_PATH] ?: "/sdcard/RuStream" }
-    val ruTrackerLogin: Flow<String>     = context.dataStore.data.map { it[KEY_RUTRACKER_LOGIN] ?: "" }
-    val ruTrackerPassword: Flow<String>  = context.dataStore.data.map { it[KEY_RUTRACKER_PASSWORD] ?: "" }
-    val ruTorEnabled: Flow<Boolean>      = context.dataStore.data.map { it[KEY_RUTOR_ENABLED] ?: true }
-    val ruTrackerEnabled: Flow<Boolean>  = context.dataStore.data.map { it[KEY_RUTRACKER_ENABLED] ?: false }
+    val darkTheme: Flow<Boolean>        = context.dataStore.data.map { it[KEY_DARK_THEME] ?: true }
+    val downloadPath: Flow<String>      = context.dataStore.data.map { it[KEY_DOWNLOAD_PATH] ?: "/sdcard/RuStream" }
+    val ruTorEnabled: Flow<Boolean>     = context.dataStore.data.map { it[KEY_RUTOR_ENABLED] ?: true }
+    val ruTrackerEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_RUTRACKER_ENABLED] ?: false }
 
-    suspend fun setDarkTheme(v: Boolean)         = context.dataStore.edit { it[KEY_DARK_THEME] = v }
-    suspend fun setDownloadPath(v: String)        = context.dataStore.edit { it[KEY_DOWNLOAD_PATH] = v }
-    suspend fun setRuTrackerLogin(v: String)      = context.dataStore.edit { it[KEY_RUTRACKER_LOGIN] = v }
-    suspend fun setRuTrackerPassword(v: String)   = context.dataStore.edit { it[KEY_RUTRACKER_PASSWORD] = v }
-    suspend fun setRuTorEnabled(v: Boolean)       = context.dataStore.edit { it[KEY_RUTOR_ENABLED] = v }
-    suspend fun setRuTrackerEnabled(v: Boolean)   = context.dataStore.edit { it[KEY_RUTRACKER_ENABLED] = v }
+    suspend fun setDarkTheme(v: Boolean)        = context.dataStore.edit { it[KEY_DARK_THEME] = v }
+    suspend fun setDownloadPath(v: String)       = context.dataStore.edit { it[KEY_DOWNLOAD_PATH] = v }
+    suspend fun setRuTorEnabled(v: Boolean)      = context.dataStore.edit { it[KEY_RUTOR_ENABLED] = v }
+    suspend fun setRuTrackerEnabled(v: Boolean)  = context.dataStore.edit { it[KEY_RUTRACKER_ENABLED] = v }
 }
