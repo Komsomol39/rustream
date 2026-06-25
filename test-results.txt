@@ -1,21 +1,4 @@
-=== KINOZAL детальный парсинг ===
-Строк: 5
-  TD классы: [['bt'], ['nam'], ['s'], ['s'], ['sl_s'], ['sl_p'], ['s'], ['sl']]
-  title: Sting - Live At The Olympia Paris / 2017 / БП / BDRip (720p)
-  size=3 seeds=4 id=2027257
-  TD классы: [['bt'], ['nam'], ['s'], ['s'], ['sl_s'], ['sl_p'], ['s'], ['sl']]
-  title: Друзья Ника Хезарда / Gli amici di Nick Hezard (Nick the Sting) /
-  size=1 seeds=0 id=2060982
-  TD классы: [['bt'], ['nam'], ['s'], ['s'], ['sl_s'], ['sl_p'], ['s'], ['sl']]
-  title: Подкол / Stikk (Sting) / 2007 / ЛО / DVDRip
-  size=0 seeds=0 id=2121965
-
-=== NNM-CLUB RSS парсинг ===
-NNM ERROR: not well-formed (invalid token): line 32, column 24
-Traceback (most recent call last):
-  File "/home/runner/work/rustream/rustream/scripts/test_rutracker.py", line 62, in <module>
-    root = ET.fromstring(xml_text.encode("utf-8"))
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3.12/xml/etree/ElementTree.py", line 1335, in XML
-    parser.feed(text)
-xml.etree.ElementTree.ParseError: not well-formed (invalid token): line 32, column 24
+HTTP 200, len=67154
+Первые 300 символов: <?xml version="1.0" encoding="windows-1251" ?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"
+xmlns:annotate="http://purl.org/rss/1.0/modules/annotate/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:yandex="http://news.yandex.ru" xmlns:turbo="http://turbo.yandex.ru"
