@@ -2,6 +2,7 @@ package com.komsomol.rustream.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.komsomol.rustream.data.search.NnmCookieStore
 import com.komsomol.rustream.data.search.RuTrackerCookieStore
 import com.komsomol.rustream.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,17 +17,21 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val repo: SettingsRepository,
-    private val cookieStore: RuTrackerCookieStore
+    private val rtCookies: RuTrackerCookieStore,
+    private val nnmCookies: NnmCookieStore
 ) : ViewModel() {
 
     val darkTheme        = repo.darkTheme.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val ruTorEnabled     = repo.ruTorEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val ruTrackerEnabled = repo.ruTrackerEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val kinozalEnabled   = repo.kinozalEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
-    val nnmEnabled       = repo.nnmEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val nnmEnabled       = repo.nnmEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    private val _ruTrackerLoggedIn = MutableStateFlow(cookieStore.isLoggedIn())
-    val ruTrackerLoggedIn: StateFlow<Boolean> = _ruTrackerLoggedIn.asStateFlow()
+    private val _rtLoggedIn  = MutableStateFlow(rtCookies.isLoggedIn())
+    val ruTrackerLoggedIn: StateFlow<Boolean> = _rtLoggedIn.asStateFlow()
+
+    private val _nnmLoggedIn = MutableStateFlow(nnmCookies.isLoggedIn())
+    val nnmLoggedIn: StateFlow<Boolean> = _nnmLoggedIn.asStateFlow()
 
     fun setDarkTheme(v: Boolean)        = viewModelScope.launch { repo.setDarkTheme(v) }
     fun setRuTorEnabled(v: Boolean)     = viewModelScope.launch { repo.setRuTorEnabled(v) }
@@ -34,10 +39,15 @@ class SettingsViewModel @Inject constructor(
     fun setKinozalEnabled(v: Boolean)   = viewModelScope.launch { repo.setKinozalEnabled(v) }
     fun setNnmEnabled(v: Boolean)       = viewModelScope.launch { repo.setNnmEnabled(v) }
 
-    fun onRuTrackerLoginSuccess() { _ruTrackerLoggedIn.value = cookieStore.isLoggedIn() }
+    fun onRuTrackerLoginSuccess() { _rtLoggedIn.value = rtCookies.isLoggedIn() }
+    fun onNnmLoginSuccess()       { _nnmLoggedIn.value = nnmCookies.isLoggedIn() }
+
     fun logoutRuTracker() {
-        cookieStore.clearCookies()
-        _ruTrackerLoggedIn.value = false
+        rtCookies.clearCookies(); _rtLoggedIn.value = false
         viewModelScope.launch { repo.setRuTrackerEnabled(false) }
+    }
+    fun logoutNnm() {
+        nnmCookies.clearCookies(); _nnmLoggedIn.value = false
+        viewModelScope.launch { repo.setNnmEnabled(false) }
     }
 }
