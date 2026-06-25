@@ -23,3 +23,9 @@ status=200
     Sting - Live At The Olympia Paris / 2017 / БП / BDRip (720p) → /details.php?id=2027257
     Andj → /userdetails.php?id=20922841
     Друзья Ника Хезарда / Gli amici di Nick Hezard (Nick the Sti → /details.php?id=2060982
+
+=== NNM-Club RSS ===
+status=200 len=64987
+content: <?xml version="1.0" encoding="windows-1251" ?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"
+xmlns:annotate="http://purl.org/rss/1.0/modules/annotate/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:yandex="http://news.yandex.ru" xmlns:turbo="http://turbo.yandex.ru"
