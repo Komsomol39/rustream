@@ -57,10 +57,14 @@ class RuTrackerProvider @Inject constructor(
                     val leechEl = row.selectFirst("td.leechmed b")
                     val dlEl    = row.selectFirst("a.tr-dl")
 
+                    val detectedCat = CategoryDetector.detect(
+                        titleEl.text(), catEl?.text() ?: "", category
+                    )
+
                     results.add(SearchResult(
                         title      = titleEl.text().trim(),
                         source     = SearchSource.RUTRACKER,
-                        category   = detectCategory(titleEl.text(), catEl?.text() ?: "", category),
+                        category   = detectedCat,
                         sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
                         seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
                         leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
@@ -71,19 +75,7 @@ class RuTrackerProvider @Inject constructor(
                 } catch (_: Exception) {}
             }
             results
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    private fun detectCategory(title: String, cat: String, requested: ContentCategory): ContentCategory {
-        if (requested != ContentCategory.ALL) return requested
-        val text = (title + " " + cat).lowercase()
-        return when {
-            text.contains(Regex("кино|фильм|сериал|movie|film|series|hdtv|bdrip|mkv|avi|mp4|blu-ray|bluray")) -> ContentCategory.VIDEO
-            text.contains(Regex("музык|music|mp3|flac|альбом|album|lossless|hi-res|soundtrack|rock|pop|jazz")) -> ContentCategory.MUSIC
-            else -> ContentCategory.ALL
-        }
+        } catch (_: Exception) { emptyList() }
     }
 
     private fun parseSize(text: String): Long {
