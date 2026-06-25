@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-import requests, os, urllib.parse, traceback, json, base64
+import requests, urllib.parse, traceback, json, base64
 import urllib.request as ur
 from bs4 import BeautifulSoup
 
-LOGIN    = os.environ.get("RUTRACKER_LOGIN","")
-PASSWORD = os.environ.get("RUTRACKER_PASSWORD","")
-GH_TOKEN = os.environ.get("GITHUB_TOKEN","")
-REPO     = "Komsomol39/rustream"
-BASE     = "https://rutracker.net/forum"
+GH_TOKEN = __import__("os").environ.get("GITHUB_TOKEN","")
+REPO = "Komsomol39/rustream"
 
 results = []
 def log(msg): print(msg); results.append(str(msg))
@@ -29,51 +26,68 @@ def push():
     except Exception as e: print(f"push err: {e}")
 
 try:
-    s = requests.Session()
-    s.headers.update({
-        "User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36",
-        "Accept-Language":"ru-RU,ru;q=0.9",
-        "Accept":"text/html,application/xhtml+xml,*/*;q=0.8",
-    })
+    MIRRORS = ["https://rutor.info", "https://rutor.is", "https://rutor.im"]
+    QUERIES = ["паша техник", "sting", "пилот"]
+    UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"
 
-    # Логин
-    log("=== ЛОГИН ===")
-    s.get(f"{BASE}/index.php", timeout=20)
-    r = s.post(f"{BASE}/login.php", data={
-        "login_username": LOGIN,
-        "login_password": PASSWORD,
-        "login": "вход",
-    }, timeout=25, headers={"Referer": f"{BASE}/index.php"})
-    log(f"POST: {r.status_code} cookies={list(s.cookies.keys())}")
-    
-    # Проверка сессии
-    bb_session = s.cookies.get("bb_session","")
-    logged = bool(bb_session) and not bb_session.startswith("0-0-")
-    log(f"bb_session={bb_session[:30]}... logged={logged}")
+    s = requests.Session()
+    s.headers.update({"User-Agent": UA})
+
+    log("=== ДОСТУПНОСТЬ ЗЕРКАЛ ===")
+    working = None
+    for mirror in MIRRORS:
+        try:
+            r = s.get(mirror, timeout=10)
+            log(f"{mirror}: {r.status_code} (len={len(r.text)})")
+            if r.status_code == 200 and working is None:
+                working = mirror
+        except Exception as e:
+            log(f"{mirror}: ERROR {e}")
     push()
 
-    # Тест трёх запросов
-    for query in ["пилот", "sting", "Interstellar"]:
-        log(f"\n=== ПОИСК: '{query}' ===")
+    if not working:
+        log("Ни одно зеркало не работает"); push(); exit()
+
+    log(f"\n=== ТЕСТ ПОИСКА на {working} ===")
+    for query in QUERIES:
         enc = urllib.parse.quote(query)
-        r2 = s.get(f"{BASE}/tracker.php?nm={enc}", timeout=25,
-            headers={"Referer": f"{BASE}/index.php"})
-        log(f"HTTP {r2.status_code}")
-        soup = BeautifulSoup(r2.text, "html.parser")
-        rows = soup.select("table#tor-tbl tbody tr.tCenter")
-        log(f"Результатов: {len(rows)}")
-        for row in rows[:3]:
-            title_el = row.select_one("a.tLink")
-            seeds_el = row.select_one("b.seedmed")
-            size_el  = row.select_one("td.tor-size")
-            log(f"  [{seeds_el.text.strip() if seeds_el else '?'}s] "
-                f"{title_el.text.strip()[:65] if title_el else '?'} | "
-                f"{size_el.text.strip() if size_el else '?'}")
+        # Пробуем разные URL форматы
+        urls = [
+            f"{working}/search/0/0/0/{enc}",
+            f"{working}/search/0/0/100/{enc}",  # сортировка по сидам
+            f"{working}/index.php?s={enc}",
+        ]
+        for search_url in urls:
+            try:
+                r2 = s.get(search_url, timeout=12)
+                soup = BeautifulSoup(r2.text, "html.parser")
+                tbl = soup.find("table", id="index")
+                rows = tbl.select("tr")[1:] if tbl else []
+                log(f"  [{r2.status_code}] {search_url[-40:]}: rows={len(rows)}")
+                if rows:
+                    for row in rows[:3]:
+                        cells = row.select("td")
+                        if len(cells) < 4: continue
+                        links = cells[1].select("a")
+                        title = links[-1].text.strip()[:60] if links else "?"
+                        magnet = cells[1].select_one("a[href^='magnet:']")
+                        seeds = cells[4].select_one("span") if len(cells) > 4 else None
+                        size = cells[3].text.strip() if len(cells) > 3 else "?"
+                        log(f"    [{seeds.text.strip() if seeds else '?'}s] {title} | {size} | magnet={'✅' if magnet else '❌'}")
+                    break  # нашли рабочий URL
+            except Exception as e:
+                log(f"  ERROR: {e}")
         push()
 
-    log("\n=== ИТОГ ===")
-    log(f"Авторизация: {'✅' if logged else '❌'}")
+    log("\n=== HTML СТРУКТУРА ПЕРВОЙ СТРОКИ ===")
+    r3 = s.get(f"{working}/search/0/0/0/{urllib.parse.quote('sting')}", timeout=12)
+    soup3 = BeautifulSoup(r3.text, "html.parser")
+    tbl3 = soup3.find("table", id="index")
+    if tbl3:
+        rows3 = tbl3.select("tr")
+        if len(rows3) > 1:
+            log(str(rows3[1])[:600])
+    push()
 
 except Exception as e:
-    log(f"FATAL: {e}"); log(traceback.format_exc())
-push()
+    log(f"FATAL: {e}"); log(traceback.format_exc()); push()
