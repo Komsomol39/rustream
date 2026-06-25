@@ -11,3 +11,8 @@ Form id=loginFrm action=login.php
   <input name=redirect type=hidden value=>
   <input name=code type=hidden value=5c66ad20f4d30d1b>
   <input name=login type=submit value=Вход>
+
+=== 2. ЛОГИН ===
+POST: 200 → https://nnmclub.to/forum/login.php
+Cookies: {}
+logged=False, profile=<a class="mainmenu" href="profile.php?mode=register">Регистрация</a>
