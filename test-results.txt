@@ -11,3 +11,6 @@ rows=3
 === 1337x ===
 status=403
 rows=0
+
+=== RuTor прямой IP доступ ===
+status=200 table=❌ rows=0
