@@ -5,7 +5,6 @@ import com.komsomol.rustream.domain.model.SearchResult
 import com.komsomol.rustream.domain.model.SearchSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
@@ -14,74 +13,25 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class RuTrackerProvider @Inject constructor() {
-
-    private val cookieJar = SimpleCookieJar()
-
+class RuTrackerProvider @Inject constructor(
+    private val cookieStore: RuTrackerCookieStore
+) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
-        .cookieJar(cookieJar)
+        .cookieJar(cookieStore)
         .build()
 
     private val BASE = "https://rutracker.net/forum"
-    private val HOST = "rutracker.net"
 
-    private var loggedIn = false
-    private var login = ""
-    private var password = ""
-
-    fun setCredentials(login: String, password: String) {
-        if (this.login != login || this.password != password) {
-            this.login = login
-            this.password = password
-            loggedIn = false
-        }
-    }
+    fun isLoggedIn(): Boolean = cookieStore.isLoggedIn()
 
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
         withContext(Dispatchers.IO) {
-            if (login.isBlank() || password.isBlank()) return@withContext emptyList()
-            if (!loggedIn) {
-                loggedIn = doLogin()
-            }
-            if (!loggedIn) return@withContext emptyList()
+            if (!cookieStore.isLoggedIn()) return@withContext emptyList()
             doSearch(query, category)
         }
-
-    private fun doLogin(): Boolean {
-        return try {
-            // Шаг 1: GET главной — получаем начальные куки
-            val getReq = Request.Builder()
-                .url("$BASE/index.php")
-                .header("User-Agent", UA)
-                .header("Accept-Language", "ru-RU,ru;q=0.9")
-                .build()
-            client.newCall(getReq).execute().use { /* установка куки */ }
-
-            // Шаг 2: POST логин
-            val body = FormBody.Builder()
-                .add("login_username", login)
-                .add("login_password", password)
-                .add("login", "вход")
-                .build()
-            val loginReq = Request.Builder()
-                .url("$BASE/login.php")
-                .post(body)
-                .header("User-Agent", UA)
-                .header("Referer", "$BASE/index.php")
-                .header("Accept-Language", "ru-RU,ru;q=0.9")
-                .build()
-            client.newCall(loginReq).execute().use { /* куки сохраняются в cookieJar */ }
-
-            // Шаг 3: проверяем bb_session — валидная сессия содержит userId > 0
-            val ok = cookieJar.hasSessionCookie(HOST)
-            ok
-        } catch (e: Exception) {
-            false
-        }
-    }
 
     private fun doSearch(query: String, category: ContentCategory): List<SearchResult> {
         return try {
@@ -121,7 +71,7 @@ class RuTrackerProvider @Inject constructor() {
                 } catch (_: Exception) {}
             }
             results
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }
