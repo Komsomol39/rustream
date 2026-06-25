@@ -5,7 +5,6 @@ import com.komsomol.rustream.domain.model.SearchResult
 import com.komsomol.rustream.domain.model.SearchSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.Cookie
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -18,14 +17,17 @@ import javax.inject.Singleton
 class RuTrackerProvider @Inject constructor() {
 
     private val cookieJar = SimpleCookieJar()
+
     private val client = OkHttpClient.Builder()
-        .connectTimeout(25, TimeUnit.SECONDS)
-        .readTimeout(25, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
         .cookieJar(cookieJar)
         .build()
 
     private val BASE = "https://rutracker.net/forum"
+    private val HOST = "rutracker.net"
+
     private var loggedIn = false
     private var login = ""
     private var password = ""
@@ -43,84 +45,85 @@ class RuTrackerProvider @Inject constructor() {
             if (login.isBlank() || password.isBlank()) return@withContext emptyList()
             if (!loggedIn) {
                 loggedIn = doLogin()
-                if (!loggedIn) return@withContext emptyList()
             }
+            if (!loggedIn) return@withContext emptyList()
             doSearch(query, category)
         }
 
     private fun doLogin(): Boolean {
         return try {
-            // Сначала получаем страницу чтобы установить начальные куки
+            // Шаг 1: GET главной — получаем начальные куки
             val getReq = Request.Builder()
                 .url("$BASE/index.php")
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
+                .header("User-Agent", UA)
+                .header("Accept-Language", "ru-RU,ru;q=0.9")
                 .build()
-            client.newCall(getReq).execute().use { }
+            client.newCall(getReq).execute().use { /* установка куки */ }
 
-            // Логин POST
+            // Шаг 2: POST логин
             val body = FormBody.Builder()
                 .add("login_username", login)
                 .add("login_password", password)
                 .add("login", "вход")
                 .build()
-            val req = Request.Builder()
+            val loginReq = Request.Builder()
                 .url("$BASE/login.php")
                 .post(body)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
+                .header("User-Agent", UA)
                 .header("Referer", "$BASE/index.php")
                 .header("Accept-Language", "ru-RU,ru;q=0.9")
                 .build()
-            client.newCall(req).execute().use { response ->
-                // RuTracker возвращает 500 при успешном логине — проверяем по кукам
-                val cookies = cookieJar.loadForRequest(
-                    okhttp3.HttpUrl.Builder()
-                        .scheme("https").host("rutracker.net").build()
-                )
-                val hasSession = cookies.any { it.name == "bb_session" && !it.value.startsWith("0-0-") }
-                hasSession
-            }
+            client.newCall(loginReq).execute().use { /* куки сохраняются в cookieJar */ }
+
+            // Шаг 3: проверяем bb_session — валидная сессия содержит userId > 0
+            val ok = cookieJar.hasSessionCookie(HOST)
+            ok
         } catch (e: Exception) {
             false
         }
     }
 
     private fun doSearch(query: String, category: ContentCategory): List<SearchResult> {
-        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-        val req = Request.Builder()
-            .url("$BASE/tracker.php?nm=$encoded")
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36")
-            .header("Referer", "$BASE/index.php")
-            .header("Accept-Language", "ru-RU,ru;q=0.9")
-            .build()
+        return try {
+            val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+            val req = Request.Builder()
+                .url("$BASE/tracker.php?nm=$encoded")
+                .header("User-Agent", UA)
+                .header("Referer", "$BASE/index.php")
+                .header("Accept-Language", "ru-RU,ru;q=0.9")
+                .build()
 
-        val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
-        val doc = Jsoup.parse(html)
-        val results = mutableListOf<SearchResult>()
+            val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
+            val doc = Jsoup.parse(html)
+            val results = mutableListOf<SearchResult>()
 
-        doc.select("table#tor-tbl tbody tr.tCenter").take(50).forEach { row ->
-            try {
-                val topicId = row.attr("data-topic_id").takeIf { it.isNotEmpty() } ?: return@forEach
-                val titleEl = row.selectFirst("a.tLink") ?: return@forEach
-                val catEl   = row.selectFirst("td.f-name-col a")
-                val sizeEl  = row.selectFirst("td.tor-size")
-                val seedsEl = row.selectFirst("b.seedmed")
-                val leechEl = row.selectFirst("td.leechmed b")
-                val dlEl    = row.selectFirst("a.tr-dl")
+            doc.select("table#tor-tbl tbody tr.tCenter").take(50).forEach { row ->
+                try {
+                    val topicId = row.attr("data-topic_id").takeIf { it.isNotEmpty() } ?: return@forEach
+                    val titleEl = row.selectFirst("a.tLink") ?: return@forEach
+                    val catEl   = row.selectFirst("td.f-name-col a")
+                    val sizeEl  = row.selectFirst("td.tor-size")
+                    val seedsEl = row.selectFirst("b.seedmed")
+                    val leechEl = row.selectFirst("td.leechmed b")
+                    val dlEl    = row.selectFirst("a.tr-dl")
 
-                results.add(SearchResult(
-                    title      = titleEl.text().trim(),
-                    source     = SearchSource.RUTRACKER,
-                    category   = detectCategory(titleEl.text(), catEl?.text() ?: "", category),
-                    sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
-                    seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
-                    leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
-                    magnetUri  = null,
-                    torrentUrl = dlEl?.let { "$BASE/${it.attr("href")}" },
-                    detailUrl  = "$BASE/viewtopic.php?t=$topicId",
-                ))
-            } catch (_: Exception) {}
+                    results.add(SearchResult(
+                        title      = titleEl.text().trim(),
+                        source     = SearchSource.RUTRACKER,
+                        category   = detectCategory(titleEl.text(), catEl?.text() ?: "", category),
+                        sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
+                        seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
+                        leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
+                        magnetUri  = null,
+                        torrentUrl = dlEl?.let { "$BASE/${it.attr("href")}" },
+                        detailUrl  = "$BASE/viewtopic.php?t=$topicId",
+                    ))
+                } catch (_: Exception) {}
+            }
+            results
+        } catch (e: Exception) {
+            emptyList()
         }
-        return results
     }
 
     private fun detectCategory(title: String, cat: String, requested: ContentCategory): ContentCategory {
@@ -142,5 +145,9 @@ class RuTrackerProvider @Inject constructor() {
             lower.contains("kb") || lower.contains("кб") -> (num * 1024).toLong()
             else -> 0L
         }
+    }
+
+    companion object {
+        private const val UA = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36"
     }
 }
