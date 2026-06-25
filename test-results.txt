@@ -5,3 +5,26 @@ Form action: login.php
   <input name='login_password' type='password' value=''>
   <input name='None' type='checkbox' value=''>
   <input name='login' type='submit' value='вход'>
+
+=== 2. ЛОГИН ===
+POST to: https://rutracker.net/forum/login.php
+  200 → https://rutracker.net/forum/index.php
+  cookies: {'bb_ssl': '1', 'bb_session': '0-13520653-cXRZWDnRTEFPAoEPwfD3'}
+  profile element: <a class="truncated-text" href="https://rutracker.net/forum/profile.php?mode=viewprofile&amp;u=13520653" id="logged-in-username">_Komsomol</a>
+  logged check: ✅ залогинен
+  Фрагмент после логина (1500-2000): 6294de5d.all.min.css" rel="stylesheet">
+<script src="https://static.rutracker.cc/templates/v1/min/4e695e8ea9cf5a1dcc7aed231b887c51.lib.min.js"></script>
+<script src="https://static.rutracker.cc/templates/v1/min/3b60ab3546ba966484df4c3099b918ab.bb.min.js"></script>
+
+
+
+<style>
+.invisible-el {
+	/* @include element-invisible(); */
+	clip: rect(1px, 1px, 1px, 1px);
+	height: 1px;
+	overflow: hidden;
+	position: absolute !important;
+	width: 1px;
+}
+.hidden, .menu-sub, #ajax-loading, #ajax-error, var.ajax-p
