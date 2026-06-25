@@ -33,11 +33,11 @@ class NnmClubProvider @Inject constructor(
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
         withContext(Dispatchers.IO) {
             if (!cookieStore.isLoggedIn()) {
-                Log.d(TAG, "Not logged in, skipping search")
+                Log.w(TAG, "Not logged in")
                 return@withContext emptyList()
             }
             try { doSearch(query, category) } catch (e: Exception) {
-                Log.e(TAG, "Search error", e)
+                Log.e(TAG, "Search failed", e)
                 emptyList()
             }
         }
@@ -48,49 +48,54 @@ class NnmClubProvider @Inject constructor(
             .url("$BASE/tracker.php?nm=$enc")
             .header("User-Agent", UA)
             .header("Referer", "$BASE/index.php")
+            .header("Accept", "text/html,application/xhtml+xml,*/*;q=0.8")
+            .header("Accept-Language", "ru-RU,ru;q=0.9")
             .build()
 
-        val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
-        val html = String(bytes, Charset.forName("windows-1251"))
+        val resp = client.newCall(req).execute()
+        val bytes = resp.use { it.body?.bytes() ?: ByteArray(0) }
+        val html  = String(bytes, Charset.forName("windows-1251"))
 
-        Log.d(TAG, "Search HTML length: ${html.length}, logged=${html.contains("Выход")}")
+        val isLoggedIn = html.contains("Выход") || html.contains("logout")
+        Log.d(TAG, "Response len=${html.length}, loggedIn=$isLoggedIn, url=${resp.request.url}")
 
-        val doc = Jsoup.parse(html)
+        // Диагностика: логируем первые 2000 символов
+        Log.d(TAG, "HTML start: ${html.take(500)}")
+
+        val doc  = Jsoup.parse(html)
         val results = mutableListOf<SearchResult>()
 
-        // NNM-Club: строки с классами prow1 и prow2
+        // Пробуем все возможные селекторы строк
         val rows = doc.select("tr.prow1, tr.prow2")
-        Log.d(TAG, "Found rows: ${rows.size}")
+        Log.d(TAG, "Rows prow1/prow2: ${rows.size}")
+
+        if (rows.isEmpty()) {
+            // Логируем все классы tr на странице для диагностики
+            val trClasses = doc.select("tr").map { it.className() }.filter { it.isNotBlank() }.distinct()
+            Log.d(TAG, "All TR classes: $trClasses")
+
+            // Логируем все table id/class
+            val tables = doc.select("table").map { "${it.id()}/${it.className()}" }
+            Log.d(TAG, "Tables: $tables")
+        }
 
         rows.take(50).forEach { row ->
             try {
-                // Ссылка на тему
                 val titleEl = row.selectFirst("a.topictitle") ?: return@forEach
                 val href    = titleEl.attr("href")
                 val topicId = href.substringAfter("t=").substringBefore("&").substringBefore("#")
-
-                // Категория форума
                 val catEl   = row.selectFirst("a.forumtitle")
-
-                // Размер — ищем ячейку с размером (обычно 6-я или 7-я)
                 val tds     = row.select("td")
                 val sizeEl  = tds.firstOrNull { td ->
                     val t = td.text().trim().lowercase()
                     (t.contains("гб") || t.contains("мб") || t.contains("кб") ||
                      t.contains("gb") || t.contains("mb") || t.contains("kb") ||
-                     t.contains("тб") || t.contains("tb")) &&
-                    t.any { it.isDigit() }
+                     t.contains("тб") || t.contains("tb")) && t.any { it.isDigit() }
                 }
-
-                // Сиды и личи
                 val seedsEl = row.selectFirst("span.seedmed, b.seedmed")
                 val leechEl = row.selectFirst("span.leechmed, b.leechmed")
-
-                // Ссылка на скачивание
                 val dlEl    = row.selectFirst("a[href*='download.php']")
                     ?: row.selectFirst("a[href*='dl.php']")
-
-                Log.d(TAG, "Row: title=${titleEl.text().take(40)} size=${sizeEl?.text()} seeds=${seedsEl?.text()} dl=${dlEl?.attr("href")}")
 
                 results.add(SearchResult(
                     title      = titleEl.text().trim(),
@@ -101,17 +106,16 @@ class NnmClubProvider @Inject constructor(
                     leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
                     magnetUri  = null,
                     torrentUrl = dlEl?.let {
-                        val dlHref = it.attr("href")
-                        if (dlHref.startsWith("http")) dlHref else "$BASE/$dlHref"
+                        val h = it.attr("href")
+                        if (h.startsWith("http")) h else "$BASE/$h"
                     },
                     detailUrl  = if (topicId.isNotEmpty()) "$BASE/viewtopic.php?t=$topicId" else "$BASE/$href",
                 ))
             } catch (e: Exception) {
-                Log.e(TAG, "Row parse error", e)
+                Log.e(TAG, "Row error", e)
             }
         }
-
-        Log.d(TAG, "Total results: ${results.size}")
+        Log.d(TAG, "Results: ${results.size}")
         return results
     }
 
