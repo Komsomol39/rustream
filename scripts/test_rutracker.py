@@ -28,52 +28,48 @@ def push():
 s = requests.Session()
 s.headers.update({"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"})
 
-# TPB — попробуем разные эндпоинты
-log("=== TPB / apibay ===")
-for url in [
-    "https://apibay.org/q.php?q=sting&cat=0",
-    "https://thepiratebay.org/api/v2/search/sting",
-    "https://piratebay.live/apibay/q.php?q=sting",
-]:
-    try:
-        r = s.get(url, timeout=8)
-        log(f"  {url[-40:]}: {r.status_code} len={len(r.text)} content={r.text[:100]}")
-    except Exception as e:
-        log(f"  {url[-40:]}: ERROR {e}")
-push()
-
-# Kinozal — разберём HTML структуру
-log("\n=== Kinozal HTML структура ===")
+# Kinozal детальный разбор строки
+log("=== KINOZAL детальный парсинг ===")
 try:
-    r = s.get("https://kinozal.tv/browse.php?s=sting&g=0&c=0&v=0&d=0&w=0&t=0&f=0", timeout=10)
-    log(f"status={r.status_code}")
+    r = s.get("https://kinozal.tv/browse.php?s=sting&g=0&c=0&v=0&d=0&w=0&t=0&f=0", timeout=12)
     soup = BeautifulSoup(r.text, "html.parser")
-    
-    # Все таблицы
-    for t in soup.find_all("table")[:5]:
-        log(f"  table id={t.get('id')} class={t.get('class')}")
-    
-    # Найти строки с результатами
-    rows = soup.select("tr.bg")[:3]
-    log(f"  tr.bg rows: {len(rows)}")
-    if rows:
-        log(f"  Первая строка: {str(rows[0])[:400]}")
-    
-    # Ищем любые ссылки на торренты
-    links = soup.select("a[href*='details']") or soup.select("a[href*='torrent']")
-    log(f"  detail links: {len(links)}")
-    for a in links[:3]:
-        log(f"    {a.text.strip()[:60]} → {a.get('href','')[:60]}")
+    rows = soup.select("tr.first.bg, tr.bg")[:5]
+    log(f"Строк: {len(rows)}")
+    for row in rows[:3]:
+        tds = row.find_all("td")
+        log(f"  TD классы: {[td.get('class') for td in tds]}")
+        # Ищем ссылку на детали
+        detail_a = row.select_one("td.nam a") or row.select_one("a[href*=details]")
+        size_td  = row.select_one("td.s")
+        seeds_td = row.select_one("td.sl_s")
+        leech_td = row.select_one("td.sl_p")
+        topic_id = detail_a["href"].split("id=")[-1] if detail_a and "id=" in detail_a.get("href","") else "?"
+        log(f"  title: {detail_a.text.strip()[:65] if detail_a else '?'}")
+        log(f"  size={size_td.text.strip() if size_td else '?'} seeds={seeds_td.text.strip() if seeds_td else '?'} id={topic_id}")
+    push()
 except Exception as e:
-    log(f"ERROR: {e}")
-push()
+    log(f"Kinozal ERROR: {e}"); log(traceback.format_exc()); push()
 
-# NNM-Club RSS (без авторизации)
-log("\n=== NNM-Club RSS ===")
+# NNM-Club RSS детальный разбор
+log("\n=== NNM-CLUB RSS парсинг ===")
 try:
-    r = s.get("https://nnmclub.to/forum/rss.php?nm=sting", timeout=10)
-    log(f"status={r.status_code} len={len(r.text)}")
-    log(f"content: {r.text[:300]}")
+    r2 = s.get("https://nnmclub.to/forum/rss.php?nm=sting", timeout=12)
+    # RSS в windows-1251
+    content_bytes = r2.content
+    xml_text = content_bytes.decode("windows-1251", errors="replace")
+    
+    from xml.etree import ElementTree as ET
+    root = ET.fromstring(xml_text.encode("utf-8"))
+    ns = {"dc": "http://purl.org/dc/elements/1.1/"}
+    
+    items = root.findall(".//item")
+    log(f"Items в RSS: {len(items)}")
+    for item in items[:5]:
+        title   = item.findtext("title","?")
+        link    = item.findtext("link","?")
+        size_el = item.find("enclosure")
+        size    = int(size_el.get("length",0))//1024//1024 if size_el is not None else 0
+        log(f"  {title[:65]} | {size}MB | {link[-30:]}")
+    push()
 except Exception as e:
-    log(f"ERROR: {e}")
-push()
+    log(f"NNM ERROR: {e}"); log(traceback.format_exc()); push()
