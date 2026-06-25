@@ -28,25 +28,30 @@ class RuTrackerProvider @Inject constructor(
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
         withContext(Dispatchers.IO) {
             if (!cookieStore.isLoggedIn()) return@withContext emptyList()
-
-            // Пробуем сначала сохранённое зеркало, потом остальные
-            val activeMirror = cookieStore.getActiveMirror()
-            val mirrors = listOf(activeMirror) +
-                RuTrackerMirrors.ALL.filter { it != activeMirror }
-
+            val mirrors = listOf(cookieStore.getActiveMirror()) +
+                RuTrackerMirrors.ALL.filter { it != cookieStore.getActiveMirror() }
             for (mirror in mirrors) {
                 try {
                     val results = doSearch(query, category, "$mirror/forum")
                     if (results.isNotEmpty()) return@withContext results
-                } catch (_: Exception) { /* пробуем следующее */ }
+                } catch (_: Exception) {}
             }
             emptyList()
         }
 
     private fun doSearch(query: String, category: ContentCategory, base: String): List<SearchResult> {
         val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+
+        // RuTracker категории: f=музыка=468,463,464 / видео=2,7,4,33,209
+        // Используем поиск по разделам через параметр f[]
+        val catParam = when (category) {
+            ContentCategory.MUSIC -> "&f[]=468&f[]=463&f[]=464&f[]=466&f[]=467"
+            ContentCategory.VIDEO -> "&f[]=2&f[]=7&f[]=4&f[]=33&f[]=209&f[]=312"
+            ContentCategory.ALL   -> ""
+        }
+
         val req = Request.Builder()
-            .url("$base/tracker.php?nm=$encoded")
+            .url("$base/tracker.php?nm=$encoded$catParam")
             .header("User-Agent", UA)
             .header("Referer", "$base/index.php")
             .header("Accept-Language", "ru-RU,ru;q=0.9")
@@ -66,10 +71,14 @@ class RuTrackerProvider @Inject constructor(
                 val leechEl = row.selectFirst("td.leechmed b")
                 val dlEl    = row.selectFirst("a.tr-dl")
 
+                val detectedCat = CategoryDetector.detect(titleEl.text(), catEl?.text() ?: "", category)
+                // При фильтрации по категории пропускаем несовпадающее
+                if (category != ContentCategory.ALL && detectedCat != category) return@forEach
+
                 results.add(SearchResult(
                     title      = titleEl.text().trim(),
                     source     = SearchSource.RUTRACKER,
-                    category   = CategoryDetector.detect(titleEl.text(), catEl?.text() ?: "", category),
+                    category   = detectedCat,
                     sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
                     seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
                     leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
