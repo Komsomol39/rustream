@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-"""Разбираем структуру NNM RSS — что есть в торрент-элементах vs новостях"""
-import requests, json, base64, traceback
+import requests, json, base64, urllib.parse, traceback
 import urllib.request as ur
-from xml.etree import ElementTree as ET
 
 GH_TOKEN = __import__("os").environ.get("GITHUB_TOKEN","")
 REPO = "Komsomol39/rustream"
@@ -24,68 +22,44 @@ def push():
         headers={"Authorization":f"token {GH_TOKEN}","Content-Type":"application/json"})
     try:
         with ur.urlopen(req2): pass
-    except: pass
+    except Exception as e: print(f"push err: {e}")
 
 try:
+    import xml.etree.ElementTree as ET
     s = requests.Session()
     s.headers.update({"User-Agent":"Mozilla/5.0"})
 
-    # 1. Смотрим что есть в элементах RSS для "Паша Техник"
-    log("=== RSS элементы для 'паша техник' ===")
-    import urllib.parse
-    r = s.get(f"https://nnmclub.to/forum/rss.php?nm={urllib.parse.quote('паша техник')}", timeout=15)
-    root = ET.fromstring(r.content.decode("windows-1251", errors="replace").encode("utf-8"))
-    
+    q = urllib.parse.quote("паша техник")
+    r = s.get(f"https://nnmclub.to/forum/rss.php?nm={q}", timeout=15)
+    log(f"HTTP {r.status_code}, len={len(r.content)}")
+
+    # Декодируем windows-1251
+    text = r.content.decode("windows-1251", errors="replace")
+    log(f"Первые 300 символов: {text[:300]}")
+    push()
+
+    # Парсим XmlPullParser-style через ET, но передаём bytes
+    root = ET.fromstring(r.content)  # ET сам определит кодировку из XML header
     items = root.findall(".//item")
-    log(f"Всего items: {len(items)}")
-    
-    has_enclosure = 0
-    no_enclosure = 0
+    log(f"\nItems: {len(items)}")
+
+    has_enc = 0
+    no_enc = 0
     for item in items:
-        title = item.findtext("title","")
-        link  = item.findtext("link","")
+        title = item.findtext("title","?")
         enc   = item.find("enclosure")
         cat   = item.findtext("category","")
-        desc  = item.findtext("description","")[:80] if item.findtext("description") else ""
-        
         if enc is not None:
-            has_enclosure += 1
+            has_enc += 1
             size = int(enc.get("length",0))//1024//1024
-            log(f"  [TORRENT] {title[:60]} | cat={cat} | {size}MB")
+            log(f"  [TOR] {title[:65]} | {size}MB | cat={cat}")
         else:
-            no_enclosure += 1
-            if no_enclosure <= 5:
-                log(f"  [NEWS]    {title[:60]} | cat={cat}")
-    
-    log(f"\nИтого: {has_enclosure} торрентов, {no_enclosure} новостей/прочего")
-    push()
+            no_enc += 1
+            if no_enc <= 3:
+                log(f"  [NEWS] {title[:65]} | cat={cat}")
 
-    # 2. Проверим RSS с параметром категории
-    log("\n=== RSS с фильтром категорий ===")
-    # NNM поддерживает параметр c= для категорий
-    # Попробуем разные варианты фильтрации
-    test_urls = [
-        f"https://nnmclub.to/forum/rss.php?nm={urllib.parse.quote('паша техник')}&c=1",   # музыка?
-        f"https://nnmclub.to/forum/rss.php?nm={urllib.parse.quote('паша техник')}&f=1",   # с файлом?
-        f"https://nnmclub.to/forum/rss.php?nm={urllib.parse.quote('паша техник')}&dl=1",  # downloads?
-    ]
-    for url in test_urls:
-        try:
-            r2 = s.get(url, timeout=10)
-            root2 = ET.fromstring(r2.content.decode("windows-1251", errors="replace").encode("utf-8"))
-            items2 = root2.findall(".//item")
-            with_enc = sum(1 for i in items2 if i.find("enclosure") is not None)
-            log(f"  {url[-30:]}: {len(items2)} items, {with_enc} с enclosure")
-        except Exception as e:
-            log(f"  ERROR: {e}")
-    push()
-
-    # 3. Смотрим все теги внутри торрент-элемента
-    log("\n=== Полная структура торрент-элемента ===")
-    tor_item = next((i for i in items if i.find("enclosure") is not None), None)
-    if tor_item:
-        for child in tor_item:
-            log(f"  <{child.tag}> = {child.text[:80] if child.text else ''} attrib={child.attrib}")
+    log(f"\nТоррентов: {has_enc}, Новостей/прочего: {no_enc}")
+    log("\nФильтр: оставлять только items с <enclosure> — это торренты")
     push()
 
 except Exception as e:
