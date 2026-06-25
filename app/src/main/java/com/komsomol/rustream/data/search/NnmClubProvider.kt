@@ -7,93 +7,83 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
-import java.io.ByteArrayInputStream
+import org.jsoup.Jsoup
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class NnmClubProvider @Inject constructor() {
-
+class NnmClubProvider @Inject constructor(
+    private val cookieStore: NnmCookieStore
+) {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
         .followRedirects(true)
+        .cookieJar(cookieStore)
         .build()
+
+    private val BASE = "https://nnmclub.to/forum"
+
+    fun isLoggedIn(): Boolean = cookieStore.isLoggedIn()
 
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
         withContext(Dispatchers.IO) {
+            if (!cookieStore.isLoggedIn()) return@withContext emptyList()
             try { doSearch(query, category) } catch (_: Exception) { emptyList() }
         }
 
     private fun doSearch(query: String, category: ContentCategory): List<SearchResult> {
         val enc = java.net.URLEncoder.encode(query, "UTF-8")
         val req = Request.Builder()
-            .url("https://nnmclub.to/forum/rss.php?nm=$enc")
+            .url("$BASE/tracker.php?nm=$enc")
             .header("User-Agent", UA)
+            .header("Referer", "$BASE/index.php")
             .build()
 
         val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
-        if (bytes.isEmpty()) return emptyList()
-        return parseRss(bytes, category)
+        val html = bytes.toString(Charsets.forName("windows-1251"))
+        val doc = Jsoup.parse(html)
+        val results = mutableListOf<SearchResult>()
+
+        // NNM таблица похожа на RuTracker — tr с классами prow1/prow2
+        doc.select("table.forumline tr.prow1, table.forumline tr.prow2").take(50).forEach { row ->
+            try {
+                val titleEl = row.selectFirst("a.topictitle, td.torTopic a") ?: return@forEach
+                val href    = titleEl.attr("href") // viewtopic.php?t=XXXXX
+                val topicId = href.substringAfter("t=").substringBefore("&")
+                val catEl   = row.selectFirst("td.forumName a, td.forumname a")
+                val sizeEl  = row.selectFirst("td.torSize, td:nth-child(6)")
+                val seedsEl = row.selectFirst("span.seedmed, b.seedmed, td.seedmed")
+                val leechEl = row.selectFirst("span.leechmed, b.leechmed, td.leechmed")
+                val dlEl    = row.selectFirst("a[href*=download]")
+
+                results.add(SearchResult(
+                    title      = titleEl.text().trim(),
+                    source     = SearchSource.NNM,
+                    category   = CategoryDetector.detect(titleEl.text(), catEl?.text() ?: "", category),
+                    sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
+                    seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
+                    leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
+                    magnetUri  = null,
+                    torrentUrl = dlEl?.let { "$BASE/${it.attr("href").trimStart('/')}" },
+                    detailUrl  = if (topicId.isNotEmpty()) "$BASE/viewtopic.php?t=$topicId" else href,
+                ))
+            } catch (_: Exception) {}
+        }
+        return results
     }
 
-    private fun parseRss(bytes: ByteArray, category: ContentCategory): List<SearchResult> {
-        val results = mutableListOf<SearchResult>()
-        try {
-            val factory = XmlPullParserFactory.newInstance()
-            val parser = factory.newPullParser()
-            parser.setInput(ByteArrayInputStream(bytes), "windows-1251")
-
-            var inItem = false
-            var title = ""; var link = ""; var sizeBytes = 0L; var pubDate = ""
-            var hasEnclosure = false  // флаг — это торрент, а не новость
-
-            var event = parser.eventType
-            while (event != XmlPullParser.END_DOCUMENT) {
-                when (event) {
-                    XmlPullParser.START_TAG -> when (parser.name) {
-                        "item" -> {
-                            inItem = true
-                            title = ""; link = ""; sizeBytes = 0L; pubDate = ""
-                            hasEnclosure = false
-                        }
-                        "title"     -> if (inItem) title = parser.nextText()
-                        "link"      -> if (inItem) link = parser.nextText()
-                        "pubDate"   -> if (inItem) pubDate = parser.nextText()
-                        "enclosure" -> if (inItem) {
-                            // enclosure есть только у торрентов, у новостей его нет
-                            hasEnclosure = true
-                            sizeBytes = parser.getAttributeValue(null, "length")?.toLongOrNull() ?: 0L
-                        }
-                    }
-                    XmlPullParser.END_TAG -> if (parser.name == "item" && inItem && title.isNotBlank()) {
-                        inItem = false
-                        // Пропускаем новости и прочее — только торренты (с enclosure)
-                        if (hasEnclosure) {
-                            val topicId = link.substringAfter("t=").substringBefore("&")
-                            results.add(SearchResult(
-                                title      = title.trim(),
-                                source     = SearchSource.NNM,
-                                category   = CategoryDetector.detect(title, "", category),
-                                sizeBytes  = sizeBytes,
-                                seeders    = 0,
-                                leechers   = 0,
-                                magnetUri  = null,
-                                torrentUrl = if (topicId.isNotEmpty())
-                                    "https://nnmclub.to/forum/download.php?id=$topicId" else null,
-                                detailUrl  = link,
-                                uploadDate = pubDate.take(16)
-                            ))
-                        }
-                    }
-                }
-                event = parser.next()
-            }
-        } catch (_: Exception) {}
-        return results.take(50)
+    private fun parseSize(text: String): Long {
+        val lower = text.lowercase().replace(",", ".").trim()
+        val num = lower.replace(Regex("[^0-9.]"), "").toDoubleOrNull() ?: return 0L
+        return when {
+            lower.contains("тб") || lower.contains("tb") -> (num * 1_099_511_627_776).toLong()
+            lower.contains("гб") || lower.contains("gb") -> (num * 1_073_741_824).toLong()
+            lower.contains("мб") || lower.contains("mb") -> (num * 1_048_576).toLong()
+            lower.contains("кб") || lower.contains("kb") -> (num * 1024).toLong()
+            else -> 0L
+        }
     }
 
     companion object {
