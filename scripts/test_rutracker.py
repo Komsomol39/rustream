@@ -28,49 +28,38 @@ def push():
 try:
     s = requests.Session()
     s.headers.update({"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"})
-    
-    url = "https://rutor.info/search/0/0/0/sting"
-    r = s.get(url, timeout=12)
-    soup = BeautifulSoup(r.text, "html.parser")
-    
-    log(f"URL: {r.url} status={r.status_code}")
-    
-    # Все таблицы
-    tables = soup.find_all("table")
-    log(f"Таблиц на странице: {len(tables)}")
-    for t in tables:
-        rows = t.find_all("tr")
-        log(f"  table id={t.get('id')} class={t.get('class')} rows={len(rows)}")
-    push()
 
-    # Попробуем найти результаты по-другому
-    log("\n=== ПОИСК РЕЗУЛЬТАТОВ ===")
-    # Строки с ссылками на детали
-    detail_links = soup.select("a[href*='/torrent/']")
-    log(f"Ссылки /torrent/: {len(detail_links)}")
-    for a in detail_links[:3]:
-        log(f"  {a.text.strip()[:60]} → {a['href']}")
-    push()
-
-    # Magnet ссылки
-    magnets = soup.select("a[href^='magnet:']")
-    log(f"Magnet ссылок: {len(magnets)}")
-    for m in magnets[:2]:
-        log(f"  {m['href'][:80]}")
-    push()
-
-    # Полный HTML фрагмент где есть результаты (ищем по тексту sting)
-    log("\n=== HTML вокруг первого результата ===")
-    # Найдём первый элемент содержащий Sting
-    for tag in soup.find_all(string=lambda t: t and "sting" in t.lower() and len(t) > 10):
-        parent = tag.parent
-        log(f"tag={parent.name} class={parent.get('class')} text={str(tag)[:80]}")
-        # Покажем строку таблицы
-        tr = parent.find_parent("tr")
-        if tr:
-            log(f"TR: {str(tr)[:400]}")
-            break
-    push()
+    # Тест rutor.is — реальный сайт
+    mirrors = ["https://rutor.is", "https://rutorka.org", "https://2rutor.org"]
+    
+    for mirror in mirrors:
+        log(f"\n=== {mirror} ===")
+        try:
+            r = s.get(f"{mirror}/search/0/0/0/{urllib.parse.quote('sting')}", timeout=12)
+            log(f"  status={r.status_code} len={len(r.text)}")
+            soup = BeautifulSoup(r.text, "html.parser")
+            
+            tables = soup.find_all("table")
+            log(f"  Таблиц: {len(tables)}, ids: {[t.get('id') for t in tables]}")
+            
+            # Ищем таблицу с результатами
+            tbl = soup.find("table", id="index")
+            if tbl:
+                rows = tbl.find_all("tr")[1:]
+                log(f"  ✅ table#index rows={len(rows)}")
+                if rows:
+                    # Показываем HTML первой строки
+                    log(f"  Первая строка: {str(rows[0])[:500]}")
+            else:
+                # Ищем ссылки на торренты
+                links = soup.select("a[href*='/torrent/']")
+                real = [a for a in links if a.text.strip() and len(a.text.strip()) > 10]
+                log(f"  Ссылок /torrent/: {len(real)}")
+                for a in real[:3]:
+                    log(f"    {a.text.strip()[:60]}")
+        except Exception as e:
+            log(f"  ERROR: {e}")
+        push()
 
 except Exception as e:
     log(f"FATAL: {e}"); log(traceback.format_exc()); push()
