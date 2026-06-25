@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -25,72 +26,49 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(8.dp))
-
         OutlinedTextField(
-            value = query,
-            onValueChange = viewModel::onQueryChange,
+            value = query, onValueChange = viewModel::onQueryChange,
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Поиск торрентов...") },
-            trailingIcon = {
-                IconButton(onClick = viewModel::search) {
-                    Icon(Icons.Default.Search, contentDescription = "Поиск")
-                }
-            },
+            trailingIcon = { IconButton(onClick = viewModel::search) {
+                Icon(Icons.Default.Search, "Поиск") } },
             singleLine = true
         )
-
         Spacer(Modifier.height(8.dp))
-
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ContentCategory.values().forEach { cat ->
-                FilterChip(
-                    selected = category == cat,
+                FilterChip(selected = category == cat,
                     onClick = { viewModel.onCategoryChange(cat) },
-                    label = { Text(cat.displayName) }
-                )
+                    label = { Text(cat.displayName) })
             }
         }
-
         Spacer(Modifier.height(8.dp))
 
         when (val state = uiState) {
-            is SearchUiState.Idle -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Введите запрос для поиска",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            is SearchUiState.Loading -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        CircularProgressIndicator()
-                        Text("Поиск...", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-            is SearchUiState.Error -> {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(state.message, color = MaterialTheme.colorScheme.error)
-                }
-            }
+            is SearchUiState.Idle -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Text("Введите запрос для поиска",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            is SearchUiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CircularProgressIndicator()
+                    Text("Поиск...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } }
+            is SearchUiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Text(state.message, color = MaterialTheme.colorScheme.error) }
             is SearchUiState.Success -> {
-                // Группируем по источнику для статистики
                 val bySource = state.results.groupBy { it.source }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     bySource.forEach { (src, list) ->
-                        SuggestionChip(
-                            onClick = {},
-                            label = { Text("${src.displayName}: ${list.size}") }
-                        )
+                        SuggestionChip(onClick = {},
+                            label = { Text("${src.displayName}: ${list.size}",
+                                style = MaterialTheme.typography.labelSmall) })
                     }
                 }
                 Spacer(Modifier.height(4.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(state.results) { result ->
-                        SearchResultCard(result)
-                    }
+                    items(state.results) { SearchResultCard(it) }
                 }
             }
         }
@@ -100,53 +78,38 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
 @Composable
 fun SearchResultCard(result: SearchResult) {
     val sourceColor = when (result.source) {
-        SearchSource.RUTOR     -> MaterialTheme.colorScheme.primary
-        SearchSource.RUTRACKER -> MaterialTheme.colorScheme.tertiary
+        SearchSource.RUTOR     -> Color(0xFF6750A4)
+        SearchSource.RUTRACKER -> Color(0xFF00897B)
+        SearchSource.KINOZAL   -> Color(0xFFE65100)
+        SearchSource.NNM       -> Color(0xFF1565C0)
     }
-
     Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = result.title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+        Column(Modifier.padding(12.dp)) {
+            Text(result.title, style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Бейдж источника
-                Surface(
-                    color = sourceColor.copy(alpha = 0.15f),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = result.source.displayName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = sourceColor,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Surface(color = sourceColor.copy(alpha = 0.15f),
+                    shape = MaterialTheme.shapes.small) {
+                    Text(result.source.displayName,
+                        style = MaterialTheme.typography.labelSmall, color = sourceColor,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                 }
-                Text(
-                    text = formatSize(result.sizeBytes),
+                Text(formatSize(result.sizeBytes),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(2.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("▲ ${result.seeders}", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.tertiary)
-                Text("▼ ${result.leechers}", style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.error)
-                if (result.uploadDate.isNotEmpty()) {
+                if (result.seeders > 0)
+                    Text("▲ ${result.seeders}", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.tertiary)
+                if (result.leechers > 0)
+                    Text("▼ ${result.leechers}", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error)
+                if (result.uploadDate.isNotEmpty())
                     Text(result.uploadDate, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
             }
         }
     }
