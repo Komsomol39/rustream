@@ -38,9 +38,9 @@ class NnmClubProvider @Inject constructor() {
         val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
         if (bytes.isEmpty()) return emptyList()
 
-        // RSS в windows-1251 — декодируем и заменяем encoding в заголовке
+        // RSS в windows-1251 — декодируем и патчим заголовок
         val xml = bytes.toString(Charsets.ISO_8859_1)
-            .replace("encoding="windows-1251"", "encoding="UTF-8"")
+            .replace("""encoding="windows-1251"""", """encoding="UTF-8"""")
 
         return parseRss(xml, category)
     }
@@ -53,18 +53,18 @@ class NnmClubProvider @Inject constructor() {
             parser.setInput(StringReader(xml))
 
             var inItem = false
-            var title = ""; var link = ""; var sizeBytesVal = 0L; var pubDate = ""
+            var title = ""; var link = ""; var sizeBytes = 0L; var pubDate = ""
 
             var event = parser.eventType
             while (event != XmlPullParser.END_DOCUMENT) {
                 when (event) {
                     XmlPullParser.START_TAG -> when (parser.name) {
-                        "item"      -> { inItem = true; title = ""; link = ""; sizeBytesVal = 0L; pubDate = "" }
+                        "item"      -> { inItem = true; title = ""; link = ""; sizeBytes = 0L; pubDate = "" }
                         "title"     -> if (inItem) title = parser.nextText()
                         "link"      -> if (inItem) link = parser.nextText()
                         "pubDate"   -> if (inItem) pubDate = parser.nextText()
                         "enclosure" -> if (inItem) {
-                            sizeBytesVal = parser.getAttributeValue(null, "length")?.toLongOrNull() ?: 0L
+                            sizeBytes = parser.getAttributeValue(null, "length")?.toLongOrNull() ?: 0L
                         }
                     }
                     XmlPullParser.END_TAG -> if (parser.name == "item" && inItem && title.isNotBlank()) {
@@ -74,7 +74,7 @@ class NnmClubProvider @Inject constructor() {
                             title      = title.trim(),
                             source     = SearchSource.NNM,
                             category   = CategoryDetector.detect(title, "", category),
-                            sizeBytes  = sizeBytesVal,
+                            sizeBytes  = sizeBytes,
                             seeders    = 0,
                             leechers   = 0,
                             magnetUri  = null,
