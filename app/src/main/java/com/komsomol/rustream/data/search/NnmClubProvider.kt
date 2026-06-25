@@ -117,7 +117,7 @@ class NnmClubProvider @Inject constructor(
 
     private fun parseSize(text: String): Long {
         val lower = text.lowercase().replace(",", ".").trim()
-        val num = Regex("([\d.]+)").find(lower)?.value?.toDoubleOrNull() ?: return 0L
+        val num = Regex("([0-9.]+)").find(lower)?.value?.toDoubleOrNull() ?: return 0L
         return when {
             lower.contains("тб") || lower.contains("tb") -> (num * 1_099_511_627_776).toLong()
             lower.contains("гб") || lower.contains("gb") -> (num * 1_073_741_824).toLong()
