@@ -42,7 +42,7 @@ class NnmClubProvider @Inject constructor(
             .build()
 
         val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
-        val html = bytes.toString(Charsets.forName("windows-1251"))
+        val html = bytes.toString(java.nio.charset.Charset.forName("windows-1251"))
         val doc = Jsoup.parse(html)
         val results = mutableListOf<SearchResult>()
 
