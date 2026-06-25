@@ -25,41 +25,64 @@ def push():
         with ur.urlopen(req2): pass
     except: pass
 
+s = requests.Session()
+s.headers.update({"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+
+# 1. TPB API (apibay.org) — JSON, работает глобально
+log("=== TPB API (apibay.org) ===")
 try:
-    s = requests.Session()
-    s.headers.update({"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"})
-
-    # Тест rutor.is — реальный сайт
-    mirrors = ["https://rutor.is", "https://rutorka.org", "https://2rutor.org"]
-    
-    for mirror in mirrors:
-        log(f"\n=== {mirror} ===")
-        try:
-            r = s.get(f"{mirror}/search/0/0/0/{urllib.parse.quote('sting')}", timeout=12)
-            log(f"  status={r.status_code} len={len(r.text)}")
-            soup = BeautifulSoup(r.text, "html.parser")
-            
-            tables = soup.find_all("table")
-            log(f"  Таблиц: {len(tables)}, ids: {[t.get('id') for t in tables]}")
-            
-            # Ищем таблицу с результатами
-            tbl = soup.find("table", id="index")
-            if tbl:
-                rows = tbl.find_all("tr")[1:]
-                log(f"  ✅ table#index rows={len(rows)}")
-                if rows:
-                    # Показываем HTML первой строки
-                    log(f"  Первая строка: {str(rows[0])[:500]}")
-            else:
-                # Ищем ссылки на торренты
-                links = soup.select("a[href*='/torrent/']")
-                real = [a for a in links if a.text.strip() and len(a.text.strip()) > 10]
-                log(f"  Ссылок /torrent/: {len(real)}")
-                for a in real[:3]:
-                    log(f"    {a.text.strip()[:60]}")
-        except Exception as e:
-            log(f"  ERROR: {e}")
-        push()
-
+    r = s.get("https://apibay.org/q.php?q=sting&cat=0", timeout=10)
+    data = r.json()
+    log(f"status={r.status_code} results={len(data)}")
+    for item in data[:3]:
+        log(f"  [{item.get('seeders','?')}s] {item.get('name','?')[:60]} | {int(item.get('size',0))//1024//1024}MB")
+        log(f"    magnet=magnet:?xt=urn:btih:{item.get('info_hash','')}&dn={urllib.parse.quote(item.get('name',''))}")
 except Exception as e:
-    log(f"FATAL: {e}"); log(traceback.format_exc()); push()
+    log(f"ERROR: {e}")
+push()
+
+# 2. Kinozal — российский трекер, без авторизации
+log("\n=== Kinozal (без авторизации) ===")
+try:
+    r = s.get("https://kinozal.tv/browse.php?s=sting&g=0&c=0&v=0&d=0&w=0&t=0&f=0", timeout=10)
+    log(f"status={r.status_code}")
+    soup = BeautifulSoup(r.text, "html.parser")
+    rows = soup.select("table.t_peer tr.bg")[: 3]
+    log(f"rows={len(rows)}")
+    for row in rows:
+        title = row.select_one("a.nam")
+        log(f"  {title.text.strip()[:60] if title else '?'}")
+except Exception as e:
+    log(f"ERROR: {e}")
+push()
+
+# 3. 1337x  
+log("\n=== 1337x ===")
+try:
+    r = s.get("https://1337x.to/search/sting/1/", timeout=10)
+    log(f"status={r.status_code}")
+    soup = BeautifulSoup(r.text, "html.parser")
+    rows = soup.select("table.table-list tbody tr")[:3]
+    log(f"rows={len(rows)}")
+    for row in rows:
+        title = row.select_one("td.name a:last-child")
+        seeds = row.select_one("td.seeds")
+        log(f"  [{seeds.text.strip() if seeds else '?'}s] {title.text.strip()[:60] if title else '?'}")
+except Exception as e:
+    log(f"ERROR: {e}")
+push()
+
+# 4. Rutor — проверим реальный ответ с российского IP через другой подход
+log("\n=== RuTor прямой IP доступ ===")
+try:
+    # Попробуем обойти блокировку через direct IP
+    r = s.get("https://rutor.info/search/0/0/0/sting",
+        timeout=10,
+        headers={"X-Forwarded-For": "77.88.8.8"})  # Яндекс DNS IP
+    soup = BeautifulSoup(r.text, "html.parser")
+    tbl = soup.find("table", id="index")
+    rows = tbl.select("tr")[1:] if tbl else []
+    log(f"status={r.status_code} table={'✅' if tbl else '❌'} rows={len(rows)}")
+except Exception as e:
+    log(f"ERROR: {e}")
+push()
