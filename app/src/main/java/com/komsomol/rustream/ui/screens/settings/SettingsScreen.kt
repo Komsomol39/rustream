@@ -21,36 +21,30 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
-    val context = LocalContext.current
+    val context          = LocalContext.current
     val darkTheme        by viewModel.darkTheme.collectAsState()
     val ruTorEnabled     by viewModel.ruTorEnabled.collectAsState()
     val ruTrackerEnabled by viewModel.ruTrackerEnabled.collectAsState()
     val ruTrackerLoggedIn by viewModel.ruTrackerLoggedIn.collectAsState()
+    val kinozalEnabled   by viewModel.kinozalEnabled.collectAsState()
+    val nnmEnabled       by viewModel.nnmEnabled.collectAsState()
 
     val loginLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            viewModel.onRuTrackerLoginSuccess()
-        }
+        if (result.resultCode == Activity.RESULT_OK) viewModel.onRuTrackerLoginSuccess()
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Настройки", style = MaterialTheme.typography.headlineSmall)
 
         // Тема
         Card(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(Modifier.fillMaxWidth().padding(16.dp),
+                Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text("Тёмная тема", style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = darkTheme, onCheckedChange = viewModel::setDarkTheme)
             }
@@ -58,42 +52,25 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
         // Источники поиска
         Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Источники поиска", style = MaterialTheme.typography.titleMedium)
 
-                // RuTor
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("RuTor", style = MaterialTheme.typography.bodyLarge)
-                        Text("Без авторизации",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Switch(checked = ruTorEnabled, onCheckedChange = viewModel::setRuTorEnabled)
-                }
-
+                SourceRow("Kinozal", "Без авторизации", kinozalEnabled, viewModel::setKinozalEnabled)
+                HorizontalDivider()
+                SourceRow("NNM-Club", "Без авторизации (RSS)", nnmEnabled, viewModel::setNnmEnabled)
+                HorizontalDivider()
+                SourceRow("RuTor", "Может не работать в РФ", ruTorEnabled, viewModel::setRuTorEnabled)
                 HorizontalDivider()
 
-                // RuTracker
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                // RuTracker со статусом авторизации
+                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                     Column {
                         Text("RuTracker", style = MaterialTheme.typography.bodyLarge)
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             if (ruTrackerLoggedIn) {
                                 Icon(Icons.Default.CheckCircle, null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.tertiary)
+                                    Modifier.size(14.dp), MaterialTheme.colorScheme.tertiary)
                                 Text("Авторизован",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.tertiary)
@@ -104,66 +81,45 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                             }
                         }
                     }
-                    Switch(
-                        checked = ruTrackerEnabled,
-                        onCheckedChange = viewModel::setRuTrackerEnabled,
-                        enabled = ruTrackerLoggedIn
-                    )
+                    Switch(checked = ruTrackerEnabled, onCheckedChange = viewModel::setRuTrackerEnabled,
+                        enabled = ruTrackerLoggedIn)
                 }
             }
         }
 
-        // RuTracker авторизация через WebView
+        // RuTracker авторизация
         Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("Авторизация RuTracker", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    "Открывает настоящий браузер на rutracker.net. Войдите в свой аккаунт — куки сохранятся автоматически.",
+                Text("Открывает браузер — войдите в аккаунт, куки сохранятся автоматически.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (ruTrackerLoggedIn) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = {
-                                val intent = Intent(context, RuTrackerLoginActivity::class.java)
-                                loginLauncher.launch(intent)
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Login, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Обновить сессию")
+                        Button(onClick = {
+                            loginLauncher.launch(Intent(context, RuTrackerLoginActivity::class.java))
+                        }, Modifier.weight(1f)) {
+                            Icon(Icons.Default.Login, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp)); Text("Обновить сессию")
                         }
-                        OutlinedButton(
-                            onClick = viewModel::logoutRuTracker,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Logout, null, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp))
-                            Text("Выйти")
+                        OutlinedButton(onClick = viewModel::logoutRuTracker, Modifier.weight(1f)) {
+                            Icon(Icons.Default.Logout, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(6.dp)); Text("Выйти")
                         }
                     }
                 } else {
-                    Button(
-                        onClick = {
-                            val intent = Intent(context, RuTrackerLoginActivity::class.java)
-                            loginLauncher.launch(intent)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Login, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Войти в RuTracker")
+                    Button(onClick = {
+                        loginLauncher.launch(Intent(context, RuTrackerLoginActivity::class.java))
+                    }, Modifier.fillMaxWidth()) {
+                        Icon(Icons.Default.Login, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp)); Text("Войти в RuTracker")
                     }
                 }
             }
         }
 
-        // О приложении
         Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(Modifier.padding(16.dp)) {
                 Text("О приложении", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text("RuStream v1.0", style = MaterialTheme.typography.bodyMedium)
@@ -172,5 +128,20 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
+    }
+}
+
+@Composable
+private fun SourceRow(
+    name: String, subtitle: String,
+    enabled: Boolean, onToggle: (Boolean) -> Unit
+) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Column {
+            Text(name, style = MaterialTheme.typography.bodyLarge)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = enabled, onCheckedChange = onToggle)
     }
 }
