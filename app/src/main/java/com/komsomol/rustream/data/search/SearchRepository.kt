@@ -24,19 +24,31 @@ class SearchRepository @Inject constructor(
         val nnmEnabled       = settings.nnmEnabled.first()
 
         val d1 = if (ruTorEnabled)
-            async { runCatching { ruTorProvider.search(query, category) }.getOrElse { emptyList() } } else null
+            async { runCatching { ruTorProvider.search(query, category) }.getOrElse { emptyList() } }
+        else null
         val d2 = if (ruTrackerEnabled && ruTrackerProvider.isLoggedIn())
-            async { runCatching { ruTrackerProvider.search(query, category) }.getOrElse { emptyList() } } else null
+            async { runCatching { ruTrackerProvider.search(query, category) }.getOrElse { emptyList() } }
+        else null
         val d3 = if (kinozalEnabled)
-            async { runCatching { kinozalProvider.search(query, category) }.getOrElse { emptyList() } } else null
+            async { runCatching { kinozalProvider.search(query, category) }.getOrElse { emptyList() } }
+        else null
         val d4 = if (nnmEnabled)
-            async { runCatching { nnmProvider.search(query, category) }.getOrElse { emptyList() } } else null
+            async { runCatching { nnmProvider.search(query, category) }.getOrElse { emptyList() } }
+        else null
 
-        val results = mutableListOf<SearchResult>()
-        d1?.let { results.addAll(it.await()) }
-        d2?.let { results.addAll(it.await()) }
-        d3?.let { results.addAll(it.await()) }
-        d4?.let { results.addAll(it.await()) }
-        results.sortedByDescending { it.seeders }
+        val raw = mutableListOf<SearchResult>()
+        d1?.let { raw.addAll(it.await()) }
+        d2?.let { raw.addAll(it.await()) }
+        d3?.let { raw.addAll(it.await()) }
+        d4?.let { raw.addAll(it.await()) }
+
+        // Фильтрация по категории — если запрошена конкретная, убираем несовпадающие
+        val filtered = when (category) {
+            ContentCategory.ALL   -> raw
+            ContentCategory.MUSIC -> raw.filter { it.category == ContentCategory.MUSIC }
+            ContentCategory.VIDEO -> raw.filter { it.category == ContentCategory.VIDEO }
+        }
+
+        filtered.sortedByDescending { it.seeders }
     }
 }
