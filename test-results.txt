@@ -1,6 +1,10 @@
-=== ЛОГИН С CSRF ===
-CSRF code: 5c66ad20f4d30d1b...
-Cookies after GET: {}
-POST: 200 → https://nnmclub.to/forum/login.php
-Cookies: {}
-logged=False
+=== ПОИСК БЕЗ АВТОРИЗАЦИИ ===
+status=200
+Строк prow1/prow2/hl-tr: 1
+
+Первая строка:
+<tr class="prow1">
+<td align="center"><img alt="1" height="9" src="https://nnmstatic.win/forum/templates/smartBlue/images/icon_minipost.gif" title="1" width="12"/></td>
+<td align="center"><a class="gen" href="tracker.php?f=340&amp;nm=РїР°С€Р° С‚РµС…РЅРёРє">Rap, Hip-hop отечественный</a></td>
+<td class="genmed" title=""><a class="genmed topictitle" href="viewtopic.php?t=1511209"><b>Паша Техник - 264.1 (2021) [MP3|320 Kbps] &lt;Rap, Hip-Hop&gt;</b></a> <span class="gensmall" title="Платиновая раздача"><img src="https://nnmstatic.win/forum/images/platinum.gif"/> </span></td>
+<td align="center"><a
