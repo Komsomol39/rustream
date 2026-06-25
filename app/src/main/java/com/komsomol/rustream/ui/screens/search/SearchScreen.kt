@@ -20,12 +20,14 @@ import com.komsomol.rustream.domain.model.SearchSource
 
 @Composable
 fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
-    val uiState  by viewModel.uiState.collectAsState()
-    val query    by viewModel.query.collectAsState()
-    val category by viewModel.category.collectAsState()
+    val uiState       by viewModel.uiState.collectAsState()
+    val query         by viewModel.query.collectAsState()
+    val category      by viewModel.category.collectAsState()
+    val sourceStatuses by viewModel.sourceStatuses.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(8.dp))
+
         OutlinedTextField(
             value = query, onValueChange = viewModel::onQueryChange,
             modifier = Modifier.fillMaxWidth(),
@@ -35,6 +37,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
             singleLine = true
         )
         Spacer(Modifier.height(8.dp))
+
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ContentCategory.values().forEach { cat ->
                 FilterChip(selected = category == cat,
@@ -42,21 +45,50 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                     label = { Text(cat.displayName) })
             }
         }
+
+        // Статус источников — показываем только активные
+        val activeStatuses = sourceStatuses.filter { it.enabled }
+        if (activeStatuses.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                activeStatuses.forEach { src ->
+                    val color = if (src.ready)
+                        MaterialTheme.colorScheme.tertiary
+                    else
+                        MaterialTheme.colorScheme.error
+                    Surface(
+                        color = color.copy(alpha = 0.12f),
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            text = if (src.ready) src.name else "${src.name} ⚠",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = color,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(Modifier.height(8.dp))
 
         when (val state = uiState) {
             is SearchUiState.Idle -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Text("Введите запрос для поиска",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             is SearchUiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator()
                     Text("Поиск...", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } }
+                }
+            }
             is SearchUiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text(state.message, color = MaterialTheme.colorScheme.error) }
+                Text(state.message, color = MaterialTheme.colorScheme.error)
+            }
             is SearchUiState.Success -> {
                 val bySource = state.results.groupBy { it.source }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -89,14 +121,12 @@ fun SearchResultCard(result: SearchResult) {
                 fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Surface(color = sourceColor.copy(alpha = 0.15f),
-                    shape = MaterialTheme.shapes.small) {
+                Surface(color = sourceColor.copy(alpha = 0.15f), shape = MaterialTheme.shapes.small) {
                     Text(result.source.displayName,
                         style = MaterialTheme.typography.labelSmall, color = sourceColor,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                 }
-                Text(formatSize(result.sizeBytes),
-                    style = MaterialTheme.typography.labelSmall,
+                Text(formatSize(result.sizeBytes), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(2.dp))
