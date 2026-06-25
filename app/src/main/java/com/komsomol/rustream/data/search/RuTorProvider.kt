@@ -91,7 +91,7 @@ class RuTorProvider @Inject constructor() {
 
                 // td[4]: "6  0" — первое число сиды, второе личи
                 val seedsLeech = if (tds.size > 4) tds[4].text().trim() else ""
-                val parts = seedsLeech.split(Regex("\s+")).filter { it.isNotBlank() }
+                val parts = seedsLeech.trim().split(" ").filter { it.isNotBlank() }
                 val seeds  = parts.getOrNull(0)?.toIntOrNull() ?: 0
                 val leech  = parts.getOrNull(1)?.toIntOrNull() ?: 0
 
