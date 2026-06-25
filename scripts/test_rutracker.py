@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-import requests, urllib.parse, json, base64, traceback
+"""Разбираем структуру NNM RSS — что есть в торрент-элементах vs новостях"""
+import requests, json, base64, traceback
 import urllib.request as ur
-from bs4 import BeautifulSoup
+from xml.etree import ElementTree as ET
 
 GH_TOKEN = __import__("os").environ.get("GITHUB_TOKEN","")
 REPO = "Komsomol39/rustream"
@@ -25,51 +26,67 @@ def push():
         with ur.urlopen(req2): pass
     except: pass
 
-s = requests.Session()
-s.headers.update({"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"})
-
-# Kinozal детальный разбор строки
-log("=== KINOZAL детальный парсинг ===")
 try:
-    r = s.get("https://kinozal.tv/browse.php?s=sting&g=0&c=0&v=0&d=0&w=0&t=0&f=0", timeout=12)
-    soup = BeautifulSoup(r.text, "html.parser")
-    rows = soup.select("tr.first.bg, tr.bg")[:5]
-    log(f"Строк: {len(rows)}")
-    for row in rows[:3]:
-        tds = row.find_all("td")
-        log(f"  TD классы: {[td.get('class') for td in tds]}")
-        # Ищем ссылку на детали
-        detail_a = row.select_one("td.nam a") or row.select_one("a[href*=details]")
-        size_td  = row.select_one("td.s")
-        seeds_td = row.select_one("td.sl_s")
-        leech_td = row.select_one("td.sl_p")
-        topic_id = detail_a["href"].split("id=")[-1] if detail_a and "id=" in detail_a.get("href","") else "?"
-        log(f"  title: {detail_a.text.strip()[:65] if detail_a else '?'}")
-        log(f"  size={size_td.text.strip() if size_td else '?'} seeds={seeds_td.text.strip() if seeds_td else '?'} id={topic_id}")
-    push()
-except Exception as e:
-    log(f"Kinozal ERROR: {e}"); log(traceback.format_exc()); push()
+    s = requests.Session()
+    s.headers.update({"User-Agent":"Mozilla/5.0"})
 
-# NNM-Club RSS детальный разбор
-log("\n=== NNM-CLUB RSS парсинг ===")
-try:
-    r2 = s.get("https://nnmclub.to/forum/rss.php?nm=sting", timeout=12)
-    # RSS в windows-1251
-    content_bytes = r2.content
-    xml_text = content_bytes.decode("windows-1251", errors="replace")
-    
-    from xml.etree import ElementTree as ET
-    root = ET.fromstring(xml_text.encode("utf-8"))
-    ns = {"dc": "http://purl.org/dc/elements/1.1/"}
+    # 1. Смотрим что есть в элементах RSS для "Паша Техник"
+    log("=== RSS элементы для 'паша техник' ===")
+    import urllib.parse
+    r = s.get(f"https://nnmclub.to/forum/rss.php?nm={urllib.parse.quote('паша техник')}", timeout=15)
+    root = ET.fromstring(r.content.decode("windows-1251", errors="replace").encode("utf-8"))
     
     items = root.findall(".//item")
-    log(f"Items в RSS: {len(items)}")
-    for item in items[:5]:
-        title   = item.findtext("title","?")
-        link    = item.findtext("link","?")
-        size_el = item.find("enclosure")
-        size    = int(size_el.get("length",0))//1024//1024 if size_el is not None else 0
-        log(f"  {title[:65]} | {size}MB | {link[-30:]}")
+    log(f"Всего items: {len(items)}")
+    
+    has_enclosure = 0
+    no_enclosure = 0
+    for item in items:
+        title = item.findtext("title","")
+        link  = item.findtext("link","")
+        enc   = item.find("enclosure")
+        cat   = item.findtext("category","")
+        desc  = item.findtext("description","")[:80] if item.findtext("description") else ""
+        
+        if enc is not None:
+            has_enclosure += 1
+            size = int(enc.get("length",0))//1024//1024
+            log(f"  [TORRENT] {title[:60]} | cat={cat} | {size}MB")
+        else:
+            no_enclosure += 1
+            if no_enclosure <= 5:
+                log(f"  [NEWS]    {title[:60]} | cat={cat}")
+    
+    log(f"\nИтого: {has_enclosure} торрентов, {no_enclosure} новостей/прочего")
     push()
+
+    # 2. Проверим RSS с параметром категории
+    log("\n=== RSS с фильтром категорий ===")
+    # NNM поддерживает параметр c= для категорий
+    # Попробуем разные варианты фильтрации
+    test_urls = [
+        f"https://nnmclub.to/forum/rss.php?nm={urllib.parse.quote('паша техник')}&c=1",   # музыка?
+        f"https://nnmclub.to/forum/rss.php?nm={urllib.parse.quote('паша техник')}&f=1",   # с файлом?
+        f"https://nnmclub.to/forum/rss.php?nm={urllib.parse.quote('паша техник')}&dl=1",  # downloads?
+    ]
+    for url in test_urls:
+        try:
+            r2 = s.get(url, timeout=10)
+            root2 = ET.fromstring(r2.content.decode("windows-1251", errors="replace").encode("utf-8"))
+            items2 = root2.findall(".//item")
+            with_enc = sum(1 for i in items2 if i.find("enclosure") is not None)
+            log(f"  {url[-30:]}: {len(items2)} items, {with_enc} с enclosure")
+        except Exception as e:
+            log(f"  ERROR: {e}")
+    push()
+
+    # 3. Смотрим все теги внутри торрент-элемента
+    log("\n=== Полная структура торрент-элемента ===")
+    tor_item = next((i for i in items if i.find("enclosure") is not None), None)
+    if tor_item:
+        for child in tor_item:
+            log(f"  <{child.tag}> = {child.text[:80] if child.text else ''} attrib={child.attrib}")
+    push()
+
 except Exception as e:
-    log(f"NNM ERROR: {e}"); log(traceback.format_exc()); push()
+    log(f"FATAL: {e}"); log(traceback.format_exc()); push()
