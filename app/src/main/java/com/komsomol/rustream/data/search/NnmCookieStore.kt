@@ -39,17 +39,11 @@ class NnmCookieStore @Inject constructor(
         val raw = getRawCookies()
         if (raw.isBlank()) return false
         val cookies = parseCookies(raw)
-        Log.d(TAG, "Checking login, cookie keys: ${cookies.keys}")
-        // NNM использует разные имена сессионного куки в зависимости от версии phpBB
-        // Проверяем любой из возможных вариантов
-        val sessionCookies = listOf(
-            "phpbb2mysql_4_sid", "phpbb2mysql_sid",
-            "phpbb2mysql_3_sid", "phpbb_sid",
-            "NNMSid", "sid"
-        )
-        return sessionCookies.any { name ->
-            val value = cookies[name]
-            !value.isNullOrBlank() && value != "0" && value.length > 5
+        Log.d(TAG, "All cookie keys: ${cookies.keys}")
+        // Куки подтверждены: phpbb2mysql_4_sid
+        // Считаем залогиненным если любой phpbb2mysql куки присутствует и непустой
+        return cookies.any { (name, value) ->
+            name.startsWith("phpbb2mysql") && value.isNotBlank()
         }
     }
 
