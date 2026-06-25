@@ -30,6 +30,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val nnmEnabled        by viewModel.nnmEnabled.collectAsState()
     val nnmLoggedIn       by viewModel.nnmLoggedIn.collectAsState()
     val nnmCookieDebug    by viewModel.nnmCookieDebug.collectAsState()
+    val nnmDebugHtml      by viewModel.nnmDebugHtml.collectAsState()
 
     val rtLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_OK) viewModel.onRuTrackerLoginSuccess()
@@ -66,12 +67,17 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     { nnmLauncher.launch(Intent(context, NnmLoginActivity::class.java)) },
                     viewModel::logoutNnm)
 
-                // DEBUG: показываем сырые куки NNM
                 if (nnmCookieDebug.isNotBlank()) {
                     HorizontalDivider()
-                    Text("Debug cookies:", style = MaterialTheme.typography.labelSmall,
+                    Text("Cookies: $nnmCookieDebug",
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(nnmCookieDebug,
+                }
+                if (nnmDebugHtml.isNotBlank()) {
+                    HorizontalDivider()
+                    Text("Last search debug:", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(nnmDebugHtml.take(400),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
