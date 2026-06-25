@@ -29,6 +29,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val kinozalEnabled    by viewModel.kinozalEnabled.collectAsState()
     val nnmEnabled        by viewModel.nnmEnabled.collectAsState()
     val nnmLoggedIn       by viewModel.nnmLoggedIn.collectAsState()
+    val nnmCookieDebug    by viewModel.nnmCookieDebug.collectAsState()
 
     val rtLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_OK) viewModel.onRuTrackerLoginSuccess()
@@ -43,7 +44,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     ) {
         Text("Настройки", style = MaterialTheme.typography.headlineSmall)
 
-        // Тема
         Card(Modifier.fillMaxWidth()) {
             Row(Modifier.fillMaxWidth().padding(16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text("Тёмная тема", style = MaterialTheme.typography.bodyLarge)
@@ -51,36 +51,30 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             }
         }
 
-        // Источники
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Источники поиска", style = MaterialTheme.typography.titleMedium)
-
                 SourceRow("Kinozal", "Без авторизации", kinozalEnabled, viewModel::setKinozalEnabled)
                 HorizontalDivider()
                 SourceRow("RuTor", "Магнет-ссылки, может не работать в РФ", ruTorEnabled, viewModel::setRuTorEnabled)
                 HorizontalDivider()
-
-                // RuTracker
-                AuthSourceRow(
-                    name = "RuTracker",
-                    loggedIn = rtLoggedIn,
-                    enabled = ruTrackerEnabled,
-                    onToggle = viewModel::setRuTrackerEnabled,
-                    onLogin = { rtLauncher.launch(Intent(context, RuTrackerLoginActivity::class.java)) },
-                    onLogout = viewModel::logoutRuTracker
-                )
+                AuthSourceRow("RuTracker", rtLoggedIn, ruTrackerEnabled, viewModel::setRuTrackerEnabled,
+                    { rtLauncher.launch(Intent(context, RuTrackerLoginActivity::class.java)) },
+                    viewModel::logoutRuTracker)
                 HorizontalDivider()
+                AuthSourceRow("NNM-Club", nnmLoggedIn, nnmEnabled, viewModel::setNnmEnabled,
+                    { nnmLauncher.launch(Intent(context, NnmLoginActivity::class.java)) },
+                    viewModel::logoutNnm)
 
-                // NNM-Club
-                AuthSourceRow(
-                    name = "NNM-Club",
-                    loggedIn = nnmLoggedIn,
-                    enabled = nnmEnabled,
-                    onToggle = viewModel::setNnmEnabled,
-                    onLogin = { nnmLauncher.launch(Intent(context, NnmLoginActivity::class.java)) },
-                    onLogout = viewModel::logoutNnm
-                )
+                // DEBUG: показываем сырые куки NNM
+                if (nnmCookieDebug.isNotBlank()) {
+                    HorizontalDivider()
+                    Text("Debug cookies:", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(nnmCookieDebug,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
 
@@ -134,16 +128,16 @@ private fun AuthSourceRow(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (loggedIn) {
-                OutlinedButton(onClick = onLogin, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onLogin, Modifier.weight(1f)) {
                     Icon(Icons.Default.Login, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp)); Text("Обновить")
                 }
-                OutlinedButton(onClick = onLogout, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onLogout, Modifier.weight(1f)) {
                     Icon(Icons.Default.Logout, null, Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp)); Text("Выйти")
                 }
             } else {
-                Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = onLogin, Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Login, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp)); Text("Войти в $name")
                 }
