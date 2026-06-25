@@ -38,9 +38,9 @@ class NnmClubProvider @Inject constructor() {
         val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
         if (bytes.isEmpty()) return emptyList()
 
-        // RSS в windows-1251
+        // RSS в windows-1251 — декодируем и заменяем encoding в заголовке
         val xml = bytes.toString(Charsets.ISO_8859_1)
-            .replace("encoding="windows-1251"", "encoding="ISO-8859-1"")
+            .replace("encoding="windows-1251"", "encoding="UTF-8"")
 
         return parseRss(xml, category)
     }
@@ -63,18 +63,19 @@ class NnmClubProvider @Inject constructor() {
                         "title"     -> if (inItem) title = parser.nextText()
                         "link"      -> if (inItem) link = parser.nextText()
                         "pubDate"   -> if (inItem) pubDate = parser.nextText()
-                        "enclosure" -> if (inItem) sizeBytesVal = parser.getAttributeValue(null, "length")?.toLongOrNull() ?: 0L
+                        "enclosure" -> if (inItem) {
+                            sizeBytesVal = parser.getAttributeValue(null, "length")?.toLongOrNull() ?: 0L
+                        }
                     }
                     XmlPullParser.END_TAG -> if (parser.name == "item" && inItem && title.isNotBlank()) {
                         inItem = false
-                        // Извлекаем topic id из ссылки: viewtopic.php?t=XXXXX
                         val topicId = link.substringAfter("t=").substringBefore("&")
                         results.add(SearchResult(
                             title      = title.trim(),
                             source     = SearchSource.NNM,
                             category   = CategoryDetector.detect(title, "", category),
                             sizeBytes  = sizeBytesVal,
-                            seeders    = 0, // RSS не даёт сиды
+                            seeders    = 0,
                             leechers   = 0,
                             magnetUri  = null,
                             torrentUrl = if (topicId.isNotEmpty())
