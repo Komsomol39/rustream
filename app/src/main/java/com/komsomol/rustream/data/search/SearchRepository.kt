@@ -32,7 +32,7 @@ class SearchRepository @Inject constructor(
         val d3 = if (kinozalEnabled)
             async { runCatching { kinozalProvider.search(query, category) }.getOrElse { emptyList() } }
         else null
-        val d4 = if (nnmEnabled)
+        val d4 = if (nnmEnabled && nnmProvider.isLoggedIn())
             async { runCatching { nnmProvider.search(query, category) }.getOrElse { emptyList() } }
         else null
 
@@ -42,13 +42,11 @@ class SearchRepository @Inject constructor(
         d3?.let { raw.addAll(it.await()) }
         d4?.let { raw.addAll(it.await()) }
 
-        // Фильтрация по категории — если запрошена конкретная, убираем несовпадающие
         val filtered = when (category) {
             ContentCategory.ALL   -> raw
             ContentCategory.MUSIC -> raw.filter { it.category == ContentCategory.MUSIC }
             ContentCategory.VIDEO -> raw.filter { it.category == ContentCategory.VIDEO }
         }
-
         filtered.sortedByDescending { it.seeders }
     }
 }
