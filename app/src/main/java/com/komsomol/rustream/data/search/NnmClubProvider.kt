@@ -9,7 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
-import java.io.StringReader
+import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -38,19 +38,16 @@ class NnmClubProvider @Inject constructor() {
         val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
         if (bytes.isEmpty()) return emptyList()
 
-        // RSS в windows-1251 — декодируем и патчим заголовок
-        val xml = bytes.toString(Charsets.ISO_8859_1)
-            .replace("""encoding="windows-1251"""", """encoding="UTF-8"""")
-
-        return parseRss(xml, category)
+        return parseRss(bytes, category)
     }
 
-    private fun parseRss(xml: String, category: ContentCategory): List<SearchResult> {
+    private fun parseRss(bytes: ByteArray, category: ContentCategory): List<SearchResult> {
         val results = mutableListOf<SearchResult>()
         try {
             val factory = XmlPullParserFactory.newInstance()
             val parser = factory.newPullParser()
-            parser.setInput(StringReader(xml))
+            // Передаём bytes напрямую с явной кодировкой windows-1251
+            parser.setInput(ByteArrayInputStream(bytes), "windows-1251")
 
             var inItem = false
             var title = ""; var link = ""; var sizeBytes = 0L; var pubDate = ""
