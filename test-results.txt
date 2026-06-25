@@ -8,3 +8,16 @@ status=200
 <td align="center"><a class="gen" href="tracker.php?f=340&amp;nm=РїР°С€Р° С‚РµС…РЅРёРє">Rap, Hip-hop отечественный</a></td>
 <td class="genmed" title=""><a class="genmed topictitle" href="viewtopic.php?t=1511209"><b>Паша Техник - 264.1 (2021) [MP3|320 Kbps] &lt;Rap, Hip-Hop&gt;</b></a> <span class="gensmall" title="Платиновая раздача"><img src="https://nnmstatic.win/forum/images/platinum.gif"/> </span></td>
 <td align="center"><a
+
+=== ПРОВЕРКА ДОСТУПНОСТИ ПОИСКА ===
+auth_required=False
+Есть 'Регистрация': True
+Есть 'Выход': False
+Есть 'tracker': True
+table.forumline rows: 6
+  row 0: 1 tds, classes=None
+  row 1: 13 tds, classes=None
+  row 2: 7 tds, classes=None
+  row 3: 3 tds, classes=None
+  row 4: 5 tds, classes=None
+  row 5: 1 tds, classes=None
