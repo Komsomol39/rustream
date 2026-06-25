@@ -37,7 +37,6 @@ class NnmClubProvider @Inject constructor() {
 
         val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
         if (bytes.isEmpty()) return emptyList()
-
         return parseRss(bytes, category)
     }
 
@@ -46,40 +45,49 @@ class NnmClubProvider @Inject constructor() {
         try {
             val factory = XmlPullParserFactory.newInstance()
             val parser = factory.newPullParser()
-            // Передаём bytes напрямую с явной кодировкой windows-1251
             parser.setInput(ByteArrayInputStream(bytes), "windows-1251")
 
             var inItem = false
             var title = ""; var link = ""; var sizeBytes = 0L; var pubDate = ""
+            var hasEnclosure = false  // флаг — это торрент, а не новость
 
             var event = parser.eventType
             while (event != XmlPullParser.END_DOCUMENT) {
                 when (event) {
                     XmlPullParser.START_TAG -> when (parser.name) {
-                        "item"      -> { inItem = true; title = ""; link = ""; sizeBytes = 0L; pubDate = "" }
+                        "item" -> {
+                            inItem = true
+                            title = ""; link = ""; sizeBytes = 0L; pubDate = ""
+                            hasEnclosure = false
+                        }
                         "title"     -> if (inItem) title = parser.nextText()
                         "link"      -> if (inItem) link = parser.nextText()
                         "pubDate"   -> if (inItem) pubDate = parser.nextText()
                         "enclosure" -> if (inItem) {
+                            // enclosure есть только у торрентов, у новостей его нет
+                            hasEnclosure = true
                             sizeBytes = parser.getAttributeValue(null, "length")?.toLongOrNull() ?: 0L
                         }
                     }
                     XmlPullParser.END_TAG -> if (parser.name == "item" && inItem && title.isNotBlank()) {
                         inItem = false
-                        val topicId = link.substringAfter("t=").substringBefore("&")
-                        results.add(SearchResult(
-                            title      = title.trim(),
-                            source     = SearchSource.NNM,
-                            category   = CategoryDetector.detect(title, "", category),
-                            sizeBytes  = sizeBytes,
-                            seeders    = 0,
-                            leechers   = 0,
-                            magnetUri  = null,
-                            torrentUrl = if (topicId.isNotEmpty())
-                                "https://nnmclub.to/forum/download.php?id=$topicId" else null,
-                            detailUrl  = link,
-                            uploadDate = pubDate.take(16)
-                        ))
+                        // Пропускаем новости и прочее — только торренты (с enclosure)
+                        if (hasEnclosure) {
+                            val topicId = link.substringAfter("t=").substringBefore("&")
+                            results.add(SearchResult(
+                                title      = title.trim(),
+                                source     = SearchSource.NNM,
+                                category   = CategoryDetector.detect(title, "", category),
+                                sizeBytes  = sizeBytes,
+                                seeders    = 0,
+                                leechers   = 0,
+                                magnetUri  = null,
+                                torrentUrl = if (topicId.isNotEmpty())
+                                    "https://nnmclub.to/forum/download.php?id=$topicId" else null,
+                                detailUrl  = link,
+                                uploadDate = pubDate.take(16)
+                            ))
+                        }
                     }
                 }
                 event = parser.next()
