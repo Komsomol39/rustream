@@ -34,7 +34,7 @@ class NnmClubProvider @Inject constructor(
         withContext(Dispatchers.IO) {
             if (!cookieStore.isLoggedIn()) return@withContext emptyList()
             try { doSearch(query, category) } catch (e: Exception) {
-                Log.e(TAG, "Search failed: ${e.message}")
+                Log.e(TAG, "Failed: ${e.message}")
                 cookieStore.saveDebugHtml("ERROR: ${e.message}")
                 emptyList()
             }
@@ -51,35 +51,42 @@ class NnmClubProvider @Inject constructor(
 
         val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
         val html  = String(bytes, Charset.forName("windows-1251"))
+        val doc   = Jsoup.parse(html)
 
-        val isLoggedIn = html.contains("Выход") || html.contains("logout")
-        val doc = Jsoup.parse(html)
-
-        // Собираем диагностику
-        val trClasses = doc.select("tr").map { it.className() }.filter { it.isNotBlank() }.distinct().take(10)
-        val tables    = doc.select("table").map { "id=${it.id()} cls=${it.className()}" }.take(6)
-        val prows     = doc.select("tr.prow1, tr.prow2").size
-        val topicLinks = doc.select("a.topictitle").size
+        // Таблица результатов — class="tg"
+        val tbl = doc.selectFirst("table.tg") ?: doc.selectFirst("table[class~=tg]")
 
         val debug = buildString {
-            appendLine("loggedIn=$isLoggedIn htmlLen=${html.length}")
-            appendLine("TR classes: $trClasses")
-            appendLine("Tables: $tables")
-            appendLine("prow1/2 rows: $prows")
-            appendLine("topictitle links: $topicLinks")
-            appendLine("---HTML start---")
-            append(html.take(800))
+            appendLine("loggedIn=${html.contains("Выход")} len=${html.length}")
+            appendLine("table.tg found: ${tbl != null}")
+            if (tbl != null) {
+                val rows = tbl.select("tr")
+                appendLine("TR count: ${rows.size}")
+                // Первая строка с данными (не header)
+                val firstDataRow = rows.drop(1).firstOrNull()
+                if (firstDataRow != null) {
+                    appendLine("First data TR: ${firstDataRow.outerHtml().take(600)}")
+                }
+            } else {
+                // Показываем фрагмент HTML где могут быть результаты
+                val idx = html.indexOf("tLink")
+                if (idx > 0) appendLine("tLink context: ${html.substring(maxOf(0,idx-200), minOf(html.length,idx+400))}")
+                else appendLine("HTML mid: ${html.substring(minOf(html.length/3, html.length), minOf(html.length/3+600, html.length))}")
+            }
         }
         Log.d(TAG, debug)
         cookieStore.saveDebugHtml(debug)
 
+        if (tbl == null) return emptyList()
+
         val results = mutableListOf<SearchResult>()
-        doc.select("tr.prow1, tr.prow2").take(50).forEach { row ->
+        // Строки результатов в table.tg — пробуем все TR кроме заголовка
+        tbl.select("tr").drop(1).take(50).forEach { row ->
             try {
-                val titleEl = row.selectFirst("a.topictitle") ?: return@forEach
+                val titleEl = row.selectFirst("a.topictitle, a[href*='viewtopic']") ?: return@forEach
                 val href    = titleEl.attr("href")
                 val topicId = href.substringAfter("t=").substringBefore("&").substringBefore("#")
-                val catEl   = row.selectFirst("a.forumtitle")
+                val catEl   = row.selectFirst("a.forumtitle, a[href*='viewforum']")
                 val tds     = row.select("td")
                 val sizeEl  = tds.firstOrNull { td ->
                     val t = td.text().trim().lowercase()
@@ -87,9 +94,9 @@ class NnmClubProvider @Inject constructor(
                      t.contains("gb")||t.contains("mb")||t.contains("kb")||
                      t.contains("тб")||t.contains("tb")) && t.any { it.isDigit() }
                 }
-                val seedsEl = row.selectFirst("span.seedmed, b.seedmed")
-                val leechEl = row.selectFirst("span.leechmed, b.leechmed")
-                val dlEl    = row.selectFirst("a[href*='download.php']")
+                val seedsEl = row.selectFirst("span.seedmed, b.seedmed, td.seedmed")
+                val leechEl = row.selectFirst("span.leechmed, b.leechmed, td.leechmed")
+                val dlEl    = row.selectFirst("a[href*='download.php'], a[href*='dl.php']")
 
                 results.add(SearchResult(
                     title      = titleEl.text().trim(),
