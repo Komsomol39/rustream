@@ -6,3 +6,9 @@
     Новый Адрес: RUTOR.INFO и RUTOR.IS
     Вечная блокировка в России
     Путеводитель по RUTOR.is: Правила, Руководства, Секреты
+
+=== https://rutorka.org ===
+  ERROR: HTTPSConnectionPool(host='rutorka.org', port=443): Max retries exceeded with url: /search/0/0/0/sting (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f17f17fd1c0>: Failed to resolve 'rutorka.org' ([Errno -2] Name or service not known)"))
+
+=== https://2rutor.org ===
+  ERROR: HTTPSConnectionPool(host='2rutor.org', port=443): Max retries exceeded with url: /search/0/0/0/sting (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f17f172ff50>: Failed to resolve '2rutor.org' ([Errno -2] Name or service not known)"))
