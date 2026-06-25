@@ -26,63 +26,54 @@ def push():
     except: pass
 
 s = requests.Session()
-s.headers.update({"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+s.headers.update({"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"})
 
-# 1. TPB API (apibay.org) — JSON, работает глобально
-log("=== TPB API (apibay.org) ===")
-try:
-    r = s.get("https://apibay.org/q.php?q=sting&cat=0", timeout=10)
-    data = r.json()
-    log(f"status={r.status_code} results={len(data)}")
-    for item in data[:3]:
-        log(f"  [{item.get('seeders','?')}s] {item.get('name','?')[:60]} | {int(item.get('size',0))//1024//1024}MB")
-        log(f"    magnet=magnet:?xt=urn:btih:{item.get('info_hash','')}&dn={urllib.parse.quote(item.get('name',''))}")
-except Exception as e:
-    log(f"ERROR: {e}")
+# TPB — попробуем разные эндпоинты
+log("=== TPB / apibay ===")
+for url in [
+    "https://apibay.org/q.php?q=sting&cat=0",
+    "https://thepiratebay.org/api/v2/search/sting",
+    "https://piratebay.live/apibay/q.php?q=sting",
+]:
+    try:
+        r = s.get(url, timeout=8)
+        log(f"  {url[-40:]}: {r.status_code} len={len(r.text)} content={r.text[:100]}")
+    except Exception as e:
+        log(f"  {url[-40:]}: ERROR {e}")
 push()
 
-# 2. Kinozal — российский трекер, без авторизации
-log("\n=== Kinozal (без авторизации) ===")
+# Kinozal — разберём HTML структуру
+log("\n=== Kinozal HTML структура ===")
 try:
     r = s.get("https://kinozal.tv/browse.php?s=sting&g=0&c=0&v=0&d=0&w=0&t=0&f=0", timeout=10)
     log(f"status={r.status_code}")
     soup = BeautifulSoup(r.text, "html.parser")
-    rows = soup.select("table.t_peer tr.bg")[: 3]
-    log(f"rows={len(rows)}")
-    for row in rows:
-        title = row.select_one("a.nam")
-        log(f"  {title.text.strip()[:60] if title else '?'}")
+    
+    # Все таблицы
+    for t in soup.find_all("table")[:5]:
+        log(f"  table id={t.get('id')} class={t.get('class')}")
+    
+    # Найти строки с результатами
+    rows = soup.select("tr.bg")[:3]
+    log(f"  tr.bg rows: {len(rows)}")
+    if rows:
+        log(f"  Первая строка: {str(rows[0])[:400]}")
+    
+    # Ищем любые ссылки на торренты
+    links = soup.select("a[href*='details']") or soup.select("a[href*='torrent']")
+    log(f"  detail links: {len(links)}")
+    for a in links[:3]:
+        log(f"    {a.text.strip()[:60]} → {a.get('href','')[:60]}")
 except Exception as e:
     log(f"ERROR: {e}")
 push()
 
-# 3. 1337x  
-log("\n=== 1337x ===")
+# NNM-Club RSS (без авторизации)
+log("\n=== NNM-Club RSS ===")
 try:
-    r = s.get("https://1337x.to/search/sting/1/", timeout=10)
-    log(f"status={r.status_code}")
-    soup = BeautifulSoup(r.text, "html.parser")
-    rows = soup.select("table.table-list tbody tr")[:3]
-    log(f"rows={len(rows)}")
-    for row in rows:
-        title = row.select_one("td.name a:last-child")
-        seeds = row.select_one("td.seeds")
-        log(f"  [{seeds.text.strip() if seeds else '?'}s] {title.text.strip()[:60] if title else '?'}")
-except Exception as e:
-    log(f"ERROR: {e}")
-push()
-
-# 4. Rutor — проверим реальный ответ с российского IP через другой подход
-log("\n=== RuTor прямой IP доступ ===")
-try:
-    # Попробуем обойти блокировку через direct IP
-    r = s.get("https://rutor.info/search/0/0/0/sting",
-        timeout=10,
-        headers={"X-Forwarded-For": "77.88.8.8"})  # Яндекс DNS IP
-    soup = BeautifulSoup(r.text, "html.parser")
-    tbl = soup.find("table", id="index")
-    rows = tbl.select("tr")[1:] if tbl else []
-    log(f"status={r.status_code} table={'✅' if tbl else '❌'} rows={len(rows)}")
+    r = s.get("https://nnmclub.to/forum/rss.php?nm=sting", timeout=10)
+    log(f"status={r.status_code} len={len(r.text)}")
+    log(f"content: {r.text[:300]}")
 except Exception as e:
     log(f"ERROR: {e}")
 push()
