@@ -21,18 +21,20 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
-    val context          = LocalContext.current
-    val darkTheme        by viewModel.darkTheme.collectAsState()
-    val ruTorEnabled     by viewModel.ruTorEnabled.collectAsState()
-    val ruTrackerEnabled by viewModel.ruTrackerEnabled.collectAsState()
-    val ruTrackerLoggedIn by viewModel.ruTrackerLoggedIn.collectAsState()
-    val kinozalEnabled   by viewModel.kinozalEnabled.collectAsState()
-    val nnmEnabled       by viewModel.nnmEnabled.collectAsState()
+    val context           = LocalContext.current
+    val darkTheme         by viewModel.darkTheme.collectAsState()
+    val ruTorEnabled      by viewModel.ruTorEnabled.collectAsState()
+    val ruTrackerEnabled  by viewModel.ruTrackerEnabled.collectAsState()
+    val rtLoggedIn        by viewModel.ruTrackerLoggedIn.collectAsState()
+    val kinozalEnabled    by viewModel.kinozalEnabled.collectAsState()
+    val nnmEnabled        by viewModel.nnmEnabled.collectAsState()
+    val nnmLoggedIn       by viewModel.nnmLoggedIn.collectAsState()
 
-    val loginLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) viewModel.onRuTrackerLoginSuccess()
+    val rtLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == Activity.RESULT_OK) viewModel.onRuTrackerLoginSuccess()
+    }
+    val nnmLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == Activity.RESULT_OK) viewModel.onNnmLoginSuccess()
     }
 
     Column(
@@ -42,89 +44,52 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         Text("Настройки", style = MaterialTheme.typography.headlineSmall)
 
         // Тема
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().padding(16.dp),
-                Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Card(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Text("Тёмная тема", style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = darkTheme, onCheckedChange = viewModel::setDarkTheme)
             }
         }
 
-        // Источники поиска
-        Card(modifier = Modifier.fillMaxWidth()) {
+        // Источники
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Источники поиска", style = MaterialTheme.typography.titleMedium)
 
                 SourceRow("Kinozal", "Без авторизации", kinozalEnabled, viewModel::setKinozalEnabled)
                 HorizontalDivider()
-                SourceRow("NNM-Club", "Без авторизации (RSS)", nnmEnabled, viewModel::setNnmEnabled)
-                HorizontalDivider()
-                SourceRow("RuTor", "Может не работать в РФ", ruTorEnabled, viewModel::setRuTorEnabled)
+                SourceRow("RuTor", "Магнет-ссылки, может не работать в РФ", ruTorEnabled, viewModel::setRuTorEnabled)
                 HorizontalDivider()
 
-                // RuTracker со статусом авторизации
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                    Column {
-                        Text("RuTracker", style = MaterialTheme.typography.bodyLarge)
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (ruTrackerLoggedIn) {
-                                Icon(Icons.Default.CheckCircle, null,
-                                    Modifier.size(14.dp), MaterialTheme.colorScheme.tertiary)
-                                Text("Авторизован",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.tertiary)
-                            } else {
-                                Text("Требуется вход",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                    Switch(checked = ruTrackerEnabled, onCheckedChange = viewModel::setRuTrackerEnabled,
-                        enabled = ruTrackerLoggedIn)
-                }
+                // RuTracker
+                AuthSourceRow(
+                    name = "RuTracker",
+                    loggedIn = rtLoggedIn,
+                    enabled = ruTrackerEnabled,
+                    onToggle = viewModel::setRuTrackerEnabled,
+                    onLogin = { rtLauncher.launch(Intent(context, RuTrackerLoginActivity::class.java)) },
+                    onLogout = viewModel::logoutRuTracker
+                )
+                HorizontalDivider()
+
+                // NNM-Club
+                AuthSourceRow(
+                    name = "NNM-Club",
+                    loggedIn = nnmLoggedIn,
+                    enabled = nnmEnabled,
+                    onToggle = viewModel::setNnmEnabled,
+                    onLogin = { nnmLauncher.launch(Intent(context, NnmLoginActivity::class.java)) },
+                    onLogout = viewModel::logoutNnm
+                )
             }
         }
 
-        // RuTracker авторизация
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Авторизация RuTracker", style = MaterialTheme.typography.titleMedium)
-                Text("Открывает браузер — войдите в аккаунт, куки сохранятся автоматически.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (ruTrackerLoggedIn) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = {
-                            loginLauncher.launch(Intent(context, RuTrackerLoginActivity::class.java))
-                        }, Modifier.weight(1f)) {
-                            Icon(Icons.Default.Login, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp)); Text("Обновить сессию")
-                        }
-                        OutlinedButton(onClick = viewModel::logoutRuTracker, Modifier.weight(1f)) {
-                            Icon(Icons.Default.Logout, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(6.dp)); Text("Выйти")
-                        }
-                    }
-                } else {
-                    Button(onClick = {
-                        loginLauncher.launch(Intent(context, RuTrackerLoginActivity::class.java))
-                    }, Modifier.fillMaxWidth()) {
-                        Icon(Icons.Default.Login, null, Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp)); Text("Войти в RuTracker")
-                    }
-                }
-            }
-        }
-
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
                 Text("О приложении", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text("RuStream v1.0", style = MaterialTheme.typography.bodyMedium)
-                Text("Поиск и загрузка торрентов",
-                    style = MaterialTheme.typography.bodySmall,
+                Text("Поиск торрентов", style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -132,10 +97,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun SourceRow(
-    name: String, subtitle: String,
-    enabled: Boolean, onToggle: (Boolean) -> Unit
-) {
+private fun SourceRow(name: String, subtitle: String, enabled: Boolean, onToggle: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Column {
             Text(name, style = MaterialTheme.typography.bodyLarge)
@@ -143,5 +105,49 @@ private fun SourceRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = enabled, onCheckedChange = onToggle)
+    }
+}
+
+@Composable
+private fun AuthSourceRow(
+    name: String, loggedIn: Boolean, enabled: Boolean,
+    onToggle: (Boolean) -> Unit, onLogin: () -> Unit, onLogout: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Column {
+                Text(name, style = MaterialTheme.typography.bodyLarge)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (loggedIn) {
+                        Icon(Icons.Default.CheckCircle, null, Modifier.size(14.dp),
+                            MaterialTheme.colorScheme.tertiary)
+                        Text("Авторизован", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary)
+                    } else {
+                        Text("Требуется вход", style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+            Switch(checked = enabled, onCheckedChange = onToggle, enabled = loggedIn)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (loggedIn) {
+                OutlinedButton(onClick = onLogin, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Login, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp)); Text("Обновить")
+                }
+                OutlinedButton(onClick = onLogout, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Logout, null, Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp)); Text("Выйти")
+                }
+            } else {
+                Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Login, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp)); Text("Войти в $name")
+                }
+            }
+        }
     }
 }
