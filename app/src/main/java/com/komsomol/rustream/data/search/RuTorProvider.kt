@@ -21,37 +21,31 @@ class RuTorProvider @Inject constructor() {
         .followRedirects(true)
         .build()
 
-    private val mirrors = listOf(
-        "https://rutor.info",
-        "https://rutor.is"
-    )
+    private val mirrors = listOf("https://rutor.info", "https://rutor.is")
 
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
         withContext(Dispatchers.IO) {
             for (mirror in mirrors) {
-                try {
-                    return@withContext searchOn(mirror, query, category)
-                } catch (e: Exception) {
-                    continue
-                }
+                try { return@withContext searchOn(mirror, query, category) } catch (_: Exception) {}
             }
             emptyList()
         }
 
     private fun searchOn(base: String, query: String, category: ContentCategory): List<SearchResult> {
+        // Категория RuTor: 0=все, 1=фильмы, 2=сериалы, 3=игры, 4=музыка, ...
         val catCode = when (category) {
             ContentCategory.VIDEO -> "1"
-            ContentCategory.MUSIC -> "2"
-            ContentCategory.ALL -> "0"
+            ContentCategory.MUSIC -> "4"
+            ContentCategory.ALL   -> "0"
         }
-        val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
-        val url = "$base/search/0/$catCode/0/$encodedQuery"
+        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+        val url = "$base/search/0/$catCode/0/$encoded"
 
-        val request = Request.Builder().url(url)
+        val req = Request.Builder().url(url)
             .header("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36")
             .build()
 
-        val html = client.newCall(request).execute().use { it.body?.string() ?: "" }
+        val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
         val doc = Jsoup.parse(html)
         val results = mutableListOf<SearchResult>()
 
@@ -62,40 +56,27 @@ class RuTorProvider @Inject constructor() {
             val titleCell = cells[1]
             val title = titleCell.select("a").lastOrNull()?.text() ?: return@forEach
             val detailHref = titleCell.select("a").lastOrNull()?.attr("href") ?: return@forEach
-            val detailUrl = "$base$detailHref"
-
             val magnetLink = titleCell.select("a[href^=magnet:]").attr("href").takeIf { it.isNotEmpty() }
 
             val sizeText = cells.getOrNull(3)?.text() ?: ""
-            val sizeBytes = parseSize(sizeText)
-
-            val seeders = cells.getOrNull(4)?.select("span")?.firstOrNull()?.text()?.trim()?.toIntOrNull() ?: 0
+            val seeders  = cells.getOrNull(4)?.select("span")?.firstOrNull()?.text()?.trim()?.toIntOrNull() ?: 0
             val leechers = cells.getOrNull(4)?.select("span")?.lastOrNull()?.text()?.trim()?.toIntOrNull() ?: 0
+            val date     = cells.getOrNull(0)?.text() ?: ""
 
-            val date = cells.getOrNull(0)?.text() ?: ""
+            val detectedCat = CategoryDetector.detect(title, "", category)
 
-            val detectedCategory = when {
-                catCode == "1" -> ContentCategory.VIDEO
-                catCode == "2" -> ContentCategory.MUSIC
-                title.lowercase().contains(Regex("сериал|фильм|movie|series|mkv|avi|mp4|hdtv|bluray|bdrip")) -> ContentCategory.VIDEO
-                title.lowercase().contains(Regex("mp3|flac|альбом|discography|soundtrack")) -> ContentCategory.MUSIC
-                else -> ContentCategory.ALL
-            }
-
-            results.add(
-                SearchResult(
-                    title = title,
-                    source = SearchSource.RUTOR,
-                    category = detectedCategory,
-                    sizeBytes = sizeBytes,
-                    seeders = seeders,
-                    leechers = leechers,
-                    magnetUri = magnetLink,
-                    torrentUrl = null,
-                    detailUrl = detailUrl,
-                    uploadDate = date
-                )
-            )
+            results.add(SearchResult(
+                title      = title,
+                source     = SearchSource.RUTOR,
+                category   = detectedCat,
+                sizeBytes  = parseSize(sizeText),
+                seeders    = seeders,
+                leechers   = leechers,
+                magnetUri  = magnetLink,
+                torrentUrl = null,
+                detailUrl  = "$base$detailHref",
+                uploadDate = date
+            ))
         }
         return results
     }
@@ -104,8 +85,8 @@ class RuTorProvider @Inject constructor() {
         val lower = text.lowercase().trim()
         val num = lower.replace(Regex("[^0-9.]"), "").toDoubleOrNull() ?: return 0L
         return when {
-            lower.contains("gb") || lower.contains("гб") -> (num * 1024 * 1024 * 1024).toLong()
-            lower.contains("mb") || lower.contains("мб") -> (num * 1024 * 1024).toLong()
+            lower.contains("gb") || lower.contains("гб") -> (num * 1_073_741_824).toLong()
+            lower.contains("mb") || lower.contains("мб") -> (num * 1_048_576).toLong()
             lower.contains("kb") || lower.contains("кб") -> (num * 1024).toLong()
             else -> 0L
         }
