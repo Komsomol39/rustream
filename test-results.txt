@@ -1,2 +1,9 @@
 === TPB API (apibay.org) ===
 ERROR: Expecting value: line 1 column 1 (char 0)
+
+=== Kinozal (без авторизации) ===
+status=200
+rows=3
+  ?
+  ?
+  ?
