@@ -16,4 +16,15 @@ class SimpleCookieJar : CookieJar {
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> =
         store[url.host] ?: emptyList()
+
+    /** Прямой доступ к куки по хосту и имени */
+    fun getCookie(host: String, name: String): String? =
+        store[host]?.firstOrNull { it.name == name }?.value
+
+    fun hasSessionCookie(host: String): Boolean {
+        val session = getCookie(host, "bb_session") ?: return false
+        // Валидная сессия: "0-<userId>-<token>" где userId != 0
+        val parts = session.split("-")
+        return parts.size >= 2 && (parts.getOrNull(1)?.toIntOrNull() ?: 0) > 0
+    }
 }
