@@ -19,5 +19,7 @@ jobs:
         env:
           RUTRACKER_LOGIN: ${{ secrets.RUTRACKER_LOGIN }}
           RUTRACKER_PASSWORD: ${{ secrets.RUTRACKER_PASSWORD }}
+          NNM_LOGIN: ${{ secrets.NNM_LOGIN }}
+          NNM_PASSWORD: ${{ secrets.NNM_PASSWORD }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/test_rutracker.py || true
