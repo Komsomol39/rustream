@@ -22,12 +22,7 @@ class RuTorProvider @Inject constructor() {
         .followRedirects(true)
         .build()
 
-    // RuTor зеркала — работают только с российских IP
-    private val mirrors = listOf(
-        "https://rutor.info",
-        "https://rutor.is"
-    )
-
+    private val mirrors = listOf("https://rutor.info", "https://rutor.is")
     private val TAG = "RuTor"
 
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
@@ -37,61 +32,70 @@ class RuTorProvider @Inject constructor() {
                     val results = searchOn(mirror, query, category)
                     if (results.isNotEmpty()) return@withContext results
                 } catch (e: Exception) {
-                    Log.d(TAG, "$mirror failed: ${e.message}")
+                    Log.d(TAG, "$mirror exception: ${e.message}")
                 }
             }
             emptyList()
         }
 
     private fun searchOn(base: String, query: String, category: ContentCategory): List<SearchResult> {
-        // Категория: 0=все, 1=фильмы, 2=сериалы, 3=игры, 4=музыка, 5=аниме, 6=ТВ, 7=документальные
         val catCode = when (category) {
             ContentCategory.VIDEO -> "1"
             ContentCategory.MUSIC -> "4"
             ContentCategory.ALL   -> "0"
         }
         val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-        // Сортировка по сидам: /100/ в URL
         val url = "$base/search/0/$catCode/100/$encoded"
 
-        val req = Request.Builder().url(url)
-            .header("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36")
-            .build()
+        val resp = client.newCall(
+            Request.Builder().url(url)
+                .header("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36")
+                .build()
+        ).execute()
 
-        val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
+        val html = resp.use { it.body?.string() ?: "" }
 
-        // Проверяем — это заглушка блокировки или реальные результаты
-        if (html.contains("Вечная блокировка") || html.contains("Новый Адрес") || html.length < 15000) {
-            Log.d(TAG, "$base: blocked page (len=${html.length})")
+        Log.d(TAG, "$base: status=${resp.code} len=${html.length} url=${resp.request.url}")
+        Log.d(TAG, "blocked_text=${html.contains("Вечная блокировка")} blocked_addr=${html.contains("Новый Адрес")}")
+
+        // Проверяем только по тексту блокировки, не по длине
+        if (html.contains("Вечная блокировка") || html.contains("Новый Адрес")) {
+            Log.d(TAG, "$base: BLOCKED")
             return emptyList()
         }
 
         val doc = Jsoup.parse(html)
+
+        // Диагностика
+        val rows_gai = doc.select("tr.gai").size
+        val magnets  = doc.select("a[href^='magnet:']").size
+        Log.d(TAG, "tr.gai=$rows_gai magnets=$magnets")
+
+        // Все TR классы на странице
+        val trClasses = doc.select("tr").map { it.className() }.filter { it.isNotBlank() }.distinct()
+        Log.d(TAG, "TR classes: $trClasses")
+
         val results = mutableListOf<SearchResult>()
 
-        // Строки результатов: tr.gai
         doc.select("tr.gai").take(50).forEach { row ->
             try {
                 val tds = row.select("td")
                 if (tds.size < 4) return@forEach
 
-                // td[1] содержит: ссылку DL, magnet, и title
-                val td1 = tds[1]
+                val td1     = tds[1]
                 val titleEl = td1.selectFirst("a[href*='rutor.info/torrent'], a[href*='rutor.is/torrent']")
                     ?: td1.select("a").lastOrNull { it.text().length > 5 }
                     ?: return@forEach
 
-                val title   = titleEl.text().trim()
+                val title      = titleEl.text().trim()
                 val detailHref = titleEl.attr("href")
+                val magnet     = td1.selectFirst("a[href^='magnet:']")?.attr("href")
+                val dlEl       = td1.selectFirst("a.downgif, a[href*='d.rutor']")
+                val size       = if (tds.size > 3) tds[3].text().trim() else ""
+                val date       = tds[0].text().trim()
 
-                val magnet  = td1.selectFirst("a[href^='magnet:']")?.attr("href")
-                val dlEl    = td1.selectFirst("a.downgif, a[href*='d.rutor']")
-                val size    = if (tds.size > 3) tds[3].text().trim() else ""
-                val date    = tds[0].text().trim()
-
-                // td[4]: "6  0" — первое число сиды, второе личи
                 val seedsLeech = if (tds.size > 4) tds[4].text().trim() else ""
-                val parts = seedsLeech.trim().split(" ").filter { it.isNotBlank() }
+                val parts  = seedsLeech.trim().split(" ").filter { it.isNotBlank() }
                 val seeds  = parts.getOrNull(0)?.toIntOrNull() ?: 0
                 val leech  = parts.getOrNull(1)?.toIntOrNull() ?: 0
 
