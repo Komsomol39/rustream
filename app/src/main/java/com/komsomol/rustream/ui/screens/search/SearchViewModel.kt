@@ -25,6 +25,12 @@ sealed class SearchUiState {
     data class Error(val message: String) : SearchUiState()
 }
 
+data class SourceStatus(
+    val name: String,
+    val enabled: Boolean,
+    val ready: Boolean  // enabled + авторизован (если нужно)
+)
+
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: SearchRepository,
@@ -42,7 +48,24 @@ class SearchViewModel @Inject constructor(
     private val _category = MutableStateFlow(ContentCategory.ALL)
     val category: StateFlow<ContentCategory> = _category.asStateFlow()
 
+    private val _sourceStatuses = MutableStateFlow<List<SourceStatus>>(emptyList())
+    val sourceStatuses: StateFlow<List<SourceStatus>> = _sourceStatuses.asStateFlow()
+
     private var searchJob: Job? = null
+
+    init { refreshSourceStatuses() }
+
+    fun refreshSourceStatuses() = viewModelScope.launch {
+        val statuses = listOf(
+            SourceStatus("Kinozal",    settings.kinozalEnabled.first(),   settings.kinozalEnabled.first()),
+            SourceStatus("RuTor",      settings.ruTorEnabled.first(),     settings.ruTorEnabled.first()),
+            SourceStatus("RuTracker",  settings.ruTrackerEnabled.first(), settings.ruTrackerEnabled.first() && rtCookies.isLoggedIn()),
+            SourceStatus("NNM-Club",   settings.nnmEnabled.first(),       settings.nnmEnabled.first() && nnmCookies.isLoggedIn()),
+        )
+        _sourceStatuses.value = statuses
+        Log.d("SearchVM", "Source statuses: $statuses")
+        Log.d("SearchVM", "NNM cookies: ${nnmCookies.getRawCookies().take(100)}")
+    }
 
     fun onQueryChange(q: String) { _query.value = q }
 
@@ -54,23 +77,13 @@ class SearchViewModel @Inject constructor(
     fun search() {
         val q = _query.value.trim()
         if (q.isBlank()) return
+        refreshSourceStatuses()
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _uiState.value = SearchUiState.Loading
-
-            // Debug: логируем состояние источников
-            val rtEnabled  = settings.ruTrackerEnabled.first()
-            val nnmEnabled = settings.nnmEnabled.first()
-            val rtLogged   = rtCookies.isLoggedIn()
-            val nnmLogged  = nnmCookies.isLoggedIn()
-            val nnmRaw     = nnmCookies.getRawCookies()
-            Log.d("SearchVM", "RT enabled=$rtEnabled logged=$rtLogged")
-            Log.d("SearchVM", "NNM enabled=$nnmEnabled logged=$nnmLogged")
-            Log.d("SearchVM", "NNM raw cookies: $nnmRaw")
-
             try {
                 val results = repository.search(q, _category.value)
-                Log.d("SearchVM", "Results: ${results.size}")
+                Log.d("SearchVM", "Total results: ${results.size}")
                 _uiState.value = if (results.isEmpty())
                     SearchUiState.Error("Ничего не найдено")
                 else
