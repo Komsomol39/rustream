@@ -1,15 +1,5 @@
-=== ДОСТУПНОСТЬ ЗЕРКАЛ ===
-https://rutor.info: 200 (len=131524)
-https://rutor.is: 200 (len=131524)
-https://rutor.im: ERROR HTTPSConnectionPool(host='rutor.im', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f5774096750>: Failed to resolve 'rutor.im' ([Errno -2] Name or service not known)"))
-
-=== ТЕСТ ПОИСКА на https://rutor.info ===
-  [200] 0%20%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D0%BA: rows=0
-  [200] 0%20%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D0%BA: rows=0
-  [200] 0%20%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D0%BA: rows=0
-  [200] https://rutor.info/search/0/0/0/sting: rows=0
-  [200] https://rutor.info/search/0/0/100/sting: rows=0
-  [200] https://rutor.info/index.php?s=sting: rows=0
-  [200] rch/0/0/0/%D0%BF%D0%B8%D0%BB%D0%BE%D1%82: rows=0
-  [200] h/0/0/100/%D0%BF%D0%B8%D0%BB%D0%BE%D1%82: rows=0
-  [200] dex.php?s=%D0%BF%D0%B8%D0%BB%D0%BE%D1%82: rows=0
+URL: https://rutor.info/search/0/0/0/sting status=200
+Таблиц на странице: 3
+  table id=news_table class=None rows=4
+  table id=None class=None rows=4
+  table id=None class=None rows=2
