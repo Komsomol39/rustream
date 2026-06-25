@@ -15,7 +15,9 @@ data class SearchResult(
 
 enum class SearchSource(val displayName: String) {
     RUTOR("RuTor"),
-    RUTRACKER("RuTracker")
+    RUTRACKER("RuTracker"),
+    KINOZAL("Kinozal"),
+    NNM("NNM-Club")
 }
 
 enum class ContentCategory(val displayName: String) {
