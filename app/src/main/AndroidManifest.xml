@@ -26,6 +26,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ui.screens.settings.RuTrackerLoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.RuStream" />
+
     </application>
 
 </manifest>
