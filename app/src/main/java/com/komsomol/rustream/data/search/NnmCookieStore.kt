@@ -1,6 +1,7 @@
 package com.komsomol.rustream.data.search
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.komsomol.rustream.data.settings.dataStore
@@ -22,21 +23,39 @@ class NnmCookieStore @Inject constructor(
     companion object {
         private val KEY_COOKIES = stringPreferencesKey("nnm_webview_cookies")
         private const val HOST  = "nnmclub.to"
+        private const val TAG   = "NnmCookieStore"
     }
 
     fun saveCookies(rawCookies: String) = runBlocking {
+        Log.d(TAG, "Saving cookies: $rawCookies")
         context.dataStore.edit { it[KEY_COOKIES] = rawCookies }
     }
 
+    fun getRawCookies(): String = runBlocking {
+        context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first()
+    }
+
     fun isLoggedIn(): Boolean {
-        val raw = runBlocking { context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first() }
-        return parseCookies(raw).containsKey("phpbb2mysql_4_sid") ||
-               parseCookies(raw).containsKey("phpbb2mysql_sid")
+        val raw = getRawCookies()
+        if (raw.isBlank()) return false
+        val cookies = parseCookies(raw)
+        Log.d(TAG, "Checking login, cookie keys: ${cookies.keys}")
+        // NNM использует разные имена сессионного куки в зависимости от версии phpBB
+        // Проверяем любой из возможных вариантов
+        val sessionCookies = listOf(
+            "phpbb2mysql_4_sid", "phpbb2mysql_sid",
+            "phpbb2mysql_3_sid", "phpbb_sid",
+            "NNMSid", "sid"
+        )
+        return sessionCookies.any { name ->
+            val value = cookies[name]
+            !value.isNullOrBlank() && value != "0" && value.length > 5
+        }
     }
 
     fun clearCookies() = runBlocking { context.dataStore.edit { it[KEY_COOKIES] = "" } }
 
-    private fun parseCookies(raw: String): Map<String, String> =
+    fun parseCookies(raw: String): Map<String, String> =
         raw.split(";").mapNotNull { part ->
             val eq = part.indexOf("=")
             if (eq > 0) part.substring(0, eq).trim() to part.substring(eq + 1).trim()
@@ -47,7 +66,7 @@ class NnmCookieStore @Inject constructor(
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         if (!url.host.contains("nnmclub")) return emptyList()
-        val raw = runBlocking { context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first() }
+        val raw = getRawCookies()
         if (raw.isBlank()) return emptyList()
         return parseCookies(raw).mapNotNull { (name, value) ->
             try { Cookie.Builder().name(name).value(value).domain(HOST).build() }
