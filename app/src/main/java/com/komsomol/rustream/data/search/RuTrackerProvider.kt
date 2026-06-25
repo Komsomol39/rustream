@@ -17,65 +17,69 @@ class RuTrackerProvider @Inject constructor(
     private val cookieStore: RuTrackerCookieStore
 ) {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
         .followRedirects(true)
         .cookieJar(cookieStore)
         .build()
-
-    private val BASE = "https://rutracker.net/forum"
 
     fun isLoggedIn(): Boolean = cookieStore.isLoggedIn()
 
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
         withContext(Dispatchers.IO) {
             if (!cookieStore.isLoggedIn()) return@withContext emptyList()
-            doSearch(query, category)
+
+            // Пробуем сначала сохранённое зеркало, потом остальные
+            val activeMirror = cookieStore.getActiveMirror()
+            val mirrors = listOf(activeMirror) +
+                RuTrackerMirrors.ALL.filter { it != activeMirror }
+
+            for (mirror in mirrors) {
+                try {
+                    val results = doSearch(query, category, "$mirror/forum")
+                    if (results.isNotEmpty()) return@withContext results
+                } catch (_: Exception) { /* пробуем следующее */ }
+            }
+            emptyList()
         }
 
-    private fun doSearch(query: String, category: ContentCategory): List<SearchResult> {
-        return try {
-            val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-            val req = Request.Builder()
-                .url("$BASE/tracker.php?nm=$encoded")
-                .header("User-Agent", UA)
-                .header("Referer", "$BASE/index.php")
-                .header("Accept-Language", "ru-RU,ru;q=0.9")
-                .build()
+    private fun doSearch(query: String, category: ContentCategory, base: String): List<SearchResult> {
+        val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+        val req = Request.Builder()
+            .url("$base/tracker.php?nm=$encoded")
+            .header("User-Agent", UA)
+            .header("Referer", "$base/index.php")
+            .header("Accept-Language", "ru-RU,ru;q=0.9")
+            .build()
 
-            val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
-            val doc = Jsoup.parse(html)
-            val results = mutableListOf<SearchResult>()
+        val html = client.newCall(req).execute().use { it.body?.string() ?: "" }
+        val doc = Jsoup.parse(html)
+        val results = mutableListOf<SearchResult>()
 
-            doc.select("table#tor-tbl tbody tr.tCenter").take(50).forEach { row ->
-                try {
-                    val topicId = row.attr("data-topic_id").takeIf { it.isNotEmpty() } ?: return@forEach
-                    val titleEl = row.selectFirst("a.tLink") ?: return@forEach
-                    val catEl   = row.selectFirst("td.f-name-col a")
-                    val sizeEl  = row.selectFirst("td.tor-size")
-                    val seedsEl = row.selectFirst("b.seedmed")
-                    val leechEl = row.selectFirst("td.leechmed b")
-                    val dlEl    = row.selectFirst("a.tr-dl")
+        doc.select("table#tor-tbl tbody tr.tCenter").take(50).forEach { row ->
+            try {
+                val topicId = row.attr("data-topic_id").takeIf { it.isNotEmpty() } ?: return@forEach
+                val titleEl = row.selectFirst("a.tLink") ?: return@forEach
+                val catEl   = row.selectFirst("td.f-name-col a")
+                val sizeEl  = row.selectFirst("td.tor-size")
+                val seedsEl = row.selectFirst("b.seedmed")
+                val leechEl = row.selectFirst("td.leechmed b")
+                val dlEl    = row.selectFirst("a.tr-dl")
 
-                    val detectedCat = CategoryDetector.detect(
-                        titleEl.text(), catEl?.text() ?: "", category
-                    )
-
-                    results.add(SearchResult(
-                        title      = titleEl.text().trim(),
-                        source     = SearchSource.RUTRACKER,
-                        category   = detectedCat,
-                        sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
-                        seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
-                        leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
-                        magnetUri  = null,
-                        torrentUrl = dlEl?.let { "$BASE/${it.attr("href")}" },
-                        detailUrl  = "$BASE/viewtopic.php?t=$topicId",
-                    ))
-                } catch (_: Exception) {}
-            }
-            results
-        } catch (_: Exception) { emptyList() }
+                results.add(SearchResult(
+                    title      = titleEl.text().trim(),
+                    source     = SearchSource.RUTRACKER,
+                    category   = CategoryDetector.detect(titleEl.text(), catEl?.text() ?: "", category),
+                    sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
+                    seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
+                    leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
+                    magnetUri  = null,
+                    torrentUrl = dlEl?.let { "$base/${it.attr("href")}" },
+                    detailUrl  = "$base/viewtopic.php?t=$topicId",
+                ))
+            } catch (_: Exception) {}
+        }
+        return results
     }
 
     private fun parseSize(text: String): Long {
