@@ -1,11 +1,8 @@
-URL: https://rutor.info/search/0/0/0/sting status=200
-Таблиц на странице: 3
-  table id=news_table class=None rows=4
-  table id=None class=None rows=4
-  table id=None class=None rows=2
 
-=== ПОИСК РЕЗУЛЬТАТОВ ===
-Ссылки /torrent/: 4
-  Новый Адрес: RUTOR.INFO и RUTOR.IS → /torrent/472
-  Вечная блокировка в России → /torrent/178905
-  Путеводитель по RUTOR.is: Правила, Руководства, Секреты → /torrent/145012
+=== https://rutor.is ===
+  status=200 len=9895
+  Таблиц: 3, ids: ['news_table', None, None]
+  Ссылок /torrent/: 3
+    Новый Адрес: RUTOR.INFO и RUTOR.IS
+    Вечная блокировка в России
+    Путеводитель по RUTOR.is: Правила, Руководства, Секреты
