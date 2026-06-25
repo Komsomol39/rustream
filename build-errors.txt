@@ -42,6 +42,7 @@ to this project's gradle.properties.
 > Task :app:parseDebugLocalResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
+> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
@@ -49,10 +50,10 @@ to this project's gradle.properties.
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
-> Task :app:mergeDebugStartupProfile
-> Task :app:processDebugManifestForPackage
-> Task :app:checkDebugDuplicateClasses
 > Task :app:processDebugResources
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugStartupProfile
+> Task :app:kspDebugKotlin
 > Task :app:mergeExtDexDebug
 > Task :app:mergeDebugJniLibFolders
 > Task :app:mergeLibDexDebug
@@ -64,8 +65,11 @@ to this project's gradle.properties.
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libtorrent4j.so.
 
-> Task :app:kspDebugKotlin
 > Task :app:compileDebugKotlin
+w: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:135:48 'val Icons.Filled.Login: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Login.
+w: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:143:48 'val Icons.Filled.Logout: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Logout.
+w: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:156:44 'val Icons.Filled.Login: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Login.
+
 > Task :app:compileDebugJavaWithJavac
 
 > Task :app:hiltAggregateDepsDebug
@@ -84,5 +88,5 @@ WARNING: [Processor] Library '/home/runner/.gradle/caches/transforms-4/c98e57c77
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 3m 44s
+BUILD SUCCESSFUL in 4m 1s
 41 actionable tasks: 41 executed
