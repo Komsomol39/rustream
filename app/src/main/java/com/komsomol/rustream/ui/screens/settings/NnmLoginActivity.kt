@@ -3,6 +3,7 @@ package com.komsomol.rustream.ui.screens.settings
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebResourceError
@@ -16,10 +17,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import com.komsomol.rustream.data.search.NnmCookieStore
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -46,8 +43,8 @@ class NnmLoginActivity : ComponentActivity() {
 
         statusText = TextView(this).apply {
             text = "Загрузка..."
-            textSize = 12f
-            setPadding(16, 4, 16, 4)
+            textSize = 13f
+            setPadding(16, 6, 16, 6)
             layoutParams = RelativeLayout.LayoutParams(
                 RelativeLayout.LayoutParams.MATCH_PARENT,
                 RelativeLayout.LayoutParams.WRAP_CONTENT
@@ -63,7 +60,7 @@ class NnmLoginActivity : ComponentActivity() {
         val webParams = RelativeLayout.LayoutParams(
             RelativeLayout.LayoutParams.MATCH_PARENT,
             RelativeLayout.LayoutParams.MATCH_PARENT
-        ).apply { addRule(RelativeLayout.BELOW, progressBar.id); topMargin = 24 }
+        ).apply { addRule(RelativeLayout.BELOW, progressBar.id); topMargin = 32 }
 
         root.addView(progressBar)
         root.addView(statusText)
@@ -73,25 +70,42 @@ class NnmLoginActivity : ComponentActivity() {
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
         CookieManager.getInstance().removeAllCookies(null)
+        CookieManager.getInstance().flush()
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView, url: String) {
                 progressBar.visibility = View.GONE
-                statusText.text = "Войдите в аккаунт NNM-Club"
                 if (loginDetected) return
 
-                val cookies = CookieManager.getInstance().getCookie(url) ?: return
-                // NNM использует phpbb2mysql_4_sid или phpbb2mysql_sid
-                if (cookies.contains("phpbb2mysql") && url.contains("nnmclub") && !url.contains("login")) {
+                val rawCookies = CookieManager.getInstance().getCookie(url) ?: ""
+                Log.d("NnmLogin", "URL=$url cookies=$rawCookies")
+
+                // Показываем статус
+                if (url.contains("login")) {
+                    statusText.text = "Войдите в аккаунт NNM-Club"
+                } else {
+                    statusText.text = "Проверка авторизации..."
+                }
+
+                // Успех: ушли со страницы логина на любую другую страницу NNM
+                // И есть хоть какие-то куки
+                if (!url.contains("login.php") && url.contains("nnmclub") && rawCookies.isNotBlank()) {
+                    Log.d("NnmLogin", "Login detected! Cookies: $rawCookies")
                     loginDetected = true
-                    cookieStore.saveCookies(cookies)
-                    Toast.makeText(this@NnmLoginActivity, "✓ NNM-Club: авторизация успешна!", Toast.LENGTH_SHORT).show()
-                    setResult(Activity.RESULT_OK)
-                    finish()
+                    cookieStore.saveCookies(rawCookies)
+                    runOnUiThread {
+                        Toast.makeText(this@NnmLoginActivity,
+                            "✓ NNM-Club: авторизация успешна!", Toast.LENGTH_SHORT).show()
+                        setResult(Activity.RESULT_OK)
+                        finish()
+                    }
                 }
             }
+
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                if (request.isForMainFrame) statusText.text = "Ошибка соединения, повторная попытка..."
+                if (request.isForMainFrame) {
+                    statusText.text = "Ошибка: ${error.description}"
+                }
             }
         }
 
