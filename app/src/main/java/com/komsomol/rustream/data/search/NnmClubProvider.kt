@@ -1,5 +1,6 @@
 package com.komsomol.rustream.data.search
 
+import android.util.Log
 import com.komsomol.rustream.domain.model.ContentCategory
 import com.komsomol.rustream.domain.model.SearchResult
 import com.komsomol.rustream.domain.model.SearchSource
@@ -8,6 +9,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
+import java.nio.charset.Charset
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,13 +26,20 @@ class NnmClubProvider @Inject constructor(
         .build()
 
     private val BASE = "https://nnmclub.to/forum"
+    private val TAG  = "NnmClubProvider"
 
     fun isLoggedIn(): Boolean = cookieStore.isLoggedIn()
 
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
         withContext(Dispatchers.IO) {
-            if (!cookieStore.isLoggedIn()) return@withContext emptyList()
-            try { doSearch(query, category) } catch (_: Exception) { emptyList() }
+            if (!cookieStore.isLoggedIn()) {
+                Log.d(TAG, "Not logged in, skipping search")
+                return@withContext emptyList()
+            }
+            try { doSearch(query, category) } catch (e: Exception) {
+                Log.e(TAG, "Search error", e)
+                emptyList()
+            }
         }
 
     private fun doSearch(query: String, category: ContentCategory): List<SearchResult> {
@@ -42,21 +51,43 @@ class NnmClubProvider @Inject constructor(
             .build()
 
         val bytes = client.newCall(req).execute().use { it.body?.bytes() ?: ByteArray(0) }
-        val html = bytes.toString(java.nio.charset.Charset.forName("windows-1251"))
+        val html = String(bytes, Charset.forName("windows-1251"))
+
+        Log.d(TAG, "Search HTML length: ${html.length}, logged=${html.contains("Выход")}")
+
         val doc = Jsoup.parse(html)
         val results = mutableListOf<SearchResult>()
 
-        // NNM таблица похожа на RuTracker — tr с классами prow1/prow2
-        doc.select("table.forumline tr.prow1, table.forumline tr.prow2").take(50).forEach { row ->
+        // NNM-Club: строки с классами prow1 и prow2
+        val rows = doc.select("tr.prow1, tr.prow2")
+        Log.d(TAG, "Found rows: ${rows.size}")
+
+        rows.take(50).forEach { row ->
             try {
-                val titleEl = row.selectFirst("a.topictitle, td.torTopic a") ?: return@forEach
-                val href    = titleEl.attr("href") // viewtopic.php?t=XXXXX
-                val topicId = href.substringAfter("t=").substringBefore("&")
-                val catEl   = row.selectFirst("td.forumName a, td.forumname a")
-                val sizeEl  = row.selectFirst("td.torSize, td:nth-child(6)")
-                val seedsEl = row.selectFirst("span.seedmed, b.seedmed, td.seedmed")
-                val leechEl = row.selectFirst("span.leechmed, b.leechmed, td.leechmed")
-                val dlEl    = row.selectFirst("a[href*=download]")
+                // Ссылка на тему
+                val titleEl = row.selectFirst("a.topictitle") ?: return@forEach
+                val href    = titleEl.attr("href")
+                val topicId = href.substringAfter("t=").substringBefore("&").substringBefore("#")
+
+                // Категория форума
+                val catEl   = row.selectFirst("a.forumtitle")
+
+                // Размер — ищем ячейку с размером (обычно 6-я или 7-я)
+                val tds     = row.select("td")
+                val sizeEl  = tds.firstOrNull { td ->
+                    val t = td.text().trim()
+                    t.contains(Regex("\d+\.?\d*\s*(ГБ|МБ|КБ|GB|MB|KB|тб|TB)", RegexOption.IGNORE_CASE))
+                }
+
+                // Сиды и личи
+                val seedsEl = row.selectFirst("span.seedmed, b.seedmed")
+                val leechEl = row.selectFirst("span.leechmed, b.leechmed")
+
+                // Ссылка на скачивание
+                val dlEl    = row.selectFirst("a[href*='download.php']")
+                    ?: row.selectFirst("a[href*='dl.php']")
+
+                Log.d(TAG, "Row: title=${titleEl.text().take(40)} size=${sizeEl?.text()} seeds=${seedsEl?.text()} dl=${dlEl?.attr("href")}")
 
                 results.add(SearchResult(
                     title      = titleEl.text().trim(),
@@ -66,17 +97,24 @@ class NnmClubProvider @Inject constructor(
                     seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
                     leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
                     magnetUri  = null,
-                    torrentUrl = dlEl?.let { "$BASE/${it.attr("href").trimStart('/')}" },
-                    detailUrl  = if (topicId.isNotEmpty()) "$BASE/viewtopic.php?t=$topicId" else href,
+                    torrentUrl = dlEl?.let {
+                        val dlHref = it.attr("href")
+                        if (dlHref.startsWith("http")) dlHref else "$BASE/$dlHref"
+                    },
+                    detailUrl  = if (topicId.isNotEmpty()) "$BASE/viewtopic.php?t=$topicId" else "$BASE/$href",
                 ))
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                Log.e(TAG, "Row parse error", e)
+            }
         }
+
+        Log.d(TAG, "Total results: ${results.size}")
         return results
     }
 
     private fun parseSize(text: String): Long {
         val lower = text.lowercase().replace(",", ".").trim()
-        val num = lower.replace(Regex("[^0-9.]"), "").toDoubleOrNull() ?: return 0L
+        val num = Regex("([\d.]+)").find(lower)?.value?.toDoubleOrNull() ?: return 0L
         return when {
             lower.contains("тб") || lower.contains("tb") -> (num * 1_099_511_627_776).toLong()
             lower.contains("гб") || lower.contains("gb") -> (num * 1_073_741_824).toLong()
