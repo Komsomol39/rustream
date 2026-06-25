@@ -21,3 +21,6 @@ table.forumline rows: 6
   row 3: 3 tds, classes=None
   row 4: 5 tds, classes=None
   row 5: 1 tds, classes=None
+
+=== ТЕСТ С ПОДДЕЛЬНЫМИ КУКАМИ ===
+С куками: rows=1, auth=False
