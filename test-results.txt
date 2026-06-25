@@ -1,13 +1,13 @@
-HTTP 200, len=102582
-Первые 300 символов: <?xml version="1.0" encoding="windows-1251" ?>
-<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"
-xmlns:annotate="http://purl.org/rss/1.0/modules/annotate/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:yandex="http://news.yandex.ru" xmlns:turbo="http://turbo.yandex.ru"
-
-Items: 25
-  [NEWS] Нелинейный Видеомонтаж, Авторинг, Кодировщики :: RE: Movavi Video | cat=Нелинейный Видеомонтаж, Авторинг, Кодировщики
-  [NEWS] Предложения и замечания :: RE: Пользовательские спасибки МОДЕРАТО | cat=Предложения и замечания
-  [NEWS] Зарубежные Новинки (HD, FHD, UHD, 3D) :: RE: Нормал / Normal (202 | cat=Зарубежные Новинки (HD, FHD, UHD, 3D)
-
-Торрентов: 0, Новостей/прочего: 25
-
-Фильтр: оставлять только items с <enclosure> — это торренты
+=== 1. ФОРМА ЛОГИНА ===
+GET: 200
+Form id=None action=/forum/tracker.php
+  <input name=f type=hidden value=-1>
+  <input name=nm type=text value=>
+  <input name=search_submit type=submit value=Искать>
+Form id=loginFrm action=login.php
+  <input name=username type=text value=>
+  <input name=password type=password value=>
+  <input name=autologin type=checkbox value=>
+  <input name=redirect type=hidden value=>
+  <input name=code type=hidden value=5c66ad20f4d30d1b>
+  <input name=login type=submit value=Вход>
