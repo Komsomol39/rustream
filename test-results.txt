@@ -9,3 +9,13 @@
   TD классы: [['bt'], ['nam'], ['s'], ['s'], ['sl_s'], ['sl_p'], ['s'], ['sl']]
   title: Подкол / Stikk (Sting) / 2007 / ЛО / DVDRip
   size=0 seeds=0 id=2121965
+
+=== NNM-CLUB RSS парсинг ===
+NNM ERROR: not well-formed (invalid token): line 32, column 24
+Traceback (most recent call last):
+  File "/home/runner/work/rustream/rustream/scripts/test_rutracker.py", line 62, in <module>
+    root = ET.fromstring(xml_text.encode("utf-8"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/xml/etree/ElementTree.py", line 1335, in XML
+    parser.feed(text)
+xml.etree.ElementTree.ParseError: not well-formed (invalid token): line 32, column 24
