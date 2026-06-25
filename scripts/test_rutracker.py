@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import requests, urllib.parse, traceback, json, base64
+import requests, urllib.parse, json, base64, traceback
 import urllib.request as ur
 from bs4 import BeautifulSoup
 
@@ -23,70 +23,53 @@ def push():
         headers={"Authorization":f"token {GH_TOKEN}","Content-Type":"application/json"})
     try:
         with ur.urlopen(req2): pass
-    except Exception as e: print(f"push err: {e}")
+    except: pass
 
 try:
-    MIRRORS = ["https://rutor.info", "https://rutor.is", "https://rutor.im"]
-    QUERIES = ["паша техник", "sting", "пилот"]
-    UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"
-
     s = requests.Session()
-    s.headers.update({"User-Agent": UA})
-
-    log("=== ДОСТУПНОСТЬ ЗЕРКАЛ ===")
-    working = None
-    for mirror in MIRRORS:
-        try:
-            r = s.get(mirror, timeout=10)
-            log(f"{mirror}: {r.status_code} (len={len(r.text)})")
-            if r.status_code == 200 and working is None:
-                working = mirror
-        except Exception as e:
-            log(f"{mirror}: ERROR {e}")
+    s.headers.update({"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36"})
+    
+    url = "https://rutor.info/search/0/0/0/sting"
+    r = s.get(url, timeout=12)
+    soup = BeautifulSoup(r.text, "html.parser")
+    
+    log(f"URL: {r.url} status={r.status_code}")
+    
+    # Все таблицы
+    tables = soup.find_all("table")
+    log(f"Таблиц на странице: {len(tables)}")
+    for t in tables:
+        rows = t.find_all("tr")
+        log(f"  table id={t.get('id')} class={t.get('class')} rows={len(rows)}")
     push()
 
-    if not working:
-        log("Ни одно зеркало не работает"); push(); exit()
+    # Попробуем найти результаты по-другому
+    log("\n=== ПОИСК РЕЗУЛЬТАТОВ ===")
+    # Строки с ссылками на детали
+    detail_links = soup.select("a[href*='/torrent/']")
+    log(f"Ссылки /torrent/: {len(detail_links)}")
+    for a in detail_links[:3]:
+        log(f"  {a.text.strip()[:60]} → {a['href']}")
+    push()
 
-    log(f"\n=== ТЕСТ ПОИСКА на {working} ===")
-    for query in QUERIES:
-        enc = urllib.parse.quote(query)
-        # Пробуем разные URL форматы
-        urls = [
-            f"{working}/search/0/0/0/{enc}",
-            f"{working}/search/0/0/100/{enc}",  # сортировка по сидам
-            f"{working}/index.php?s={enc}",
-        ]
-        for search_url in urls:
-            try:
-                r2 = s.get(search_url, timeout=12)
-                soup = BeautifulSoup(r2.text, "html.parser")
-                tbl = soup.find("table", id="index")
-                rows = tbl.select("tr")[1:] if tbl else []
-                log(f"  [{r2.status_code}] {search_url[-40:]}: rows={len(rows)}")
-                if rows:
-                    for row in rows[:3]:
-                        cells = row.select("td")
-                        if len(cells) < 4: continue
-                        links = cells[1].select("a")
-                        title = links[-1].text.strip()[:60] if links else "?"
-                        magnet = cells[1].select_one("a[href^='magnet:']")
-                        seeds = cells[4].select_one("span") if len(cells) > 4 else None
-                        size = cells[3].text.strip() if len(cells) > 3 else "?"
-                        log(f"    [{seeds.text.strip() if seeds else '?'}s] {title} | {size} | magnet={'✅' if magnet else '❌'}")
-                    break  # нашли рабочий URL
-            except Exception as e:
-                log(f"  ERROR: {e}")
-        push()
+    # Magnet ссылки
+    magnets = soup.select("a[href^='magnet:']")
+    log(f"Magnet ссылок: {len(magnets)}")
+    for m in magnets[:2]:
+        log(f"  {m['href'][:80]}")
+    push()
 
-    log("\n=== HTML СТРУКТУРА ПЕРВОЙ СТРОКИ ===")
-    r3 = s.get(f"{working}/search/0/0/0/{urllib.parse.quote('sting')}", timeout=12)
-    soup3 = BeautifulSoup(r3.text, "html.parser")
-    tbl3 = soup3.find("table", id="index")
-    if tbl3:
-        rows3 = tbl3.select("tr")
-        if len(rows3) > 1:
-            log(str(rows3[1])[:600])
+    # Полный HTML фрагмент где есть результаты (ищем по тексту sting)
+    log("\n=== HTML вокруг первого результата ===")
+    # Найдём первый элемент содержащий Sting
+    for tag in soup.find_all(string=lambda t: t and "sting" in t.lower() and len(t) > 10):
+        parent = tag.parent
+        log(f"tag={parent.name} class={parent.get('class')} text={str(tag)[:80]}")
+        # Покажем строку таблицы
+        tr = parent.find_parent("tr")
+        if tr:
+            log(f"TR: {str(tr)[:400]}")
+            break
     push()
 
 except Exception as e:
