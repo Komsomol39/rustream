@@ -1,22 +1,21 @@
 BUILD FAILED
-e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
 e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:43:45 Expecting ','
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:43:70 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:43:65 Expecting ','
 --- LAST 30 LINES ---
-Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libtorrent4j.so.
-
+> Task :app:mergeExtDexDebug
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeLibDexDebug
+> Task :app:mergeDebugNativeLibs
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
-> Task :app:processDebugResources
 
-> Task :app:kspDebugKotlin
-e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
-    1. Kotlin compile daemon is ready
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:43:45 Expecting ','
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:43:70 Expecting ','
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libtorrent4j.so.
 
 > Task :app:kspDebugKotlin FAILED
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:43:45 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:43:65 Expecting ','
 
 FAILURE: Build failed with an exception.
 
@@ -31,5 +30,5 @@ Execution failed for task ':app:kspDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 11s
+BUILD FAILED in 3m 17s
 29 actionable tasks: 29 executed
