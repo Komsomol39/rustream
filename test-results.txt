@@ -1,3 +1,6 @@
 === ЛОГИН С CSRF ===
 CSRF code: 5c66ad20f4d30d1b...
 Cookies after GET: {}
+POST: 200 → https://nnmclub.to/forum/login.php
+Cookies: {}
+logged=False
