@@ -29,22 +29,29 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace 2>&1 | tee build-log.txt || true
+        run: ./gradlew assembleDebug 2>&1 | tee build-log.txt || true
 
-      - name: Commit build log
+      - name: Save errors to repo
         if: always()
         run: |
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            echo "BUILD SUCCESSFUL" > build-errors.txt
+          else
+            echo "BUILD FAILED" > build-errors.txt
+            grep -E "^e: |error:|unresolved reference|None of the following" build-log.txt | head -40 >> build-errors.txt || true
+            echo "--- LAST 30 LINES ---" >> build-errors.txt
+            tail -30 build-log.txt >> build-errors.txt
+          fi
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          cp build-log.txt build-errors.txt
           git add build-errors.txt
-          git diff --staged --quiet || git commit -m "build log [skip ci]"
-          git push
+          git diff --staged --quiet || git commit -m "build result [skip ci]"
+          git push || true
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: RuStream-debug
           path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: warn
           retention-days: 7
