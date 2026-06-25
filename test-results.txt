@@ -2,3 +2,8 @@
 https://rutor.info: 200 (len=131524)
 https://rutor.is: 200 (len=131524)
 https://rutor.im: ERROR HTTPSConnectionPool(host='rutor.im', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f5774096750>: Failed to resolve 'rutor.im' ([Errno -2] Name or service not known)"))
+
+=== ТЕСТ ПОИСКА на https://rutor.info ===
+  [200] 0%20%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D0%BA: rows=0
+  [200] 0%20%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D0%BA: rows=0
+  [200] 0%20%D1%82%D0%B5%D1%85%D0%BD%D0%B8%D0%BA: rows=0
