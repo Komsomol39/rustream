@@ -27,26 +27,21 @@ class SettingsViewModel @Inject constructor(
     val kinozalEnabled   = repo.kinozalEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val nnmEnabled       = repo.nnmEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    private val _rtLoggedIn  = MutableStateFlow(rtCookies.isLoggedIn())
+    private val _rtLoggedIn = MutableStateFlow(rtCookies.isLoggedIn())
     val ruTrackerLoggedIn: StateFlow<Boolean> = _rtLoggedIn.asStateFlow()
 
     private val _nnmLoggedIn = MutableStateFlow(nnmCookies.isLoggedIn())
     val nnmLoggedIn: StateFlow<Boolean> = _nnmLoggedIn.asStateFlow()
 
-    // Debug: показываем имена куков в UI
-    private val _nnmCookieDebug = MutableStateFlow("")
-    val nnmCookieDebug: StateFlow<String> = _nnmCookieDebug.asStateFlow()
-
-    init { refreshDebug() }
-
-    private fun refreshDebug() {
+    val nnmCookieDebug: StateFlow<String> = MutableStateFlow(run {
         val raw = nnmCookies.getRawCookies()
-        val keys = raw.split(";").mapNotNull { part ->
-            val eq = part.indexOf("=")
-            if (eq > 0) part.substring(0, eq).trim() else null
-        }
-        _nnmCookieDebug.value = if (keys.isEmpty()) "(нет куков)" else keys.joinToString(", ")
-    }
+        if (raw.isBlank()) "(нет куков)"
+        else nnmCookies.parseCookies(raw).keys.joinToString(", ")
+    }).asStateFlow()
+
+    // Debug HTML от последнего поиска
+    val nnmDebugHtml = nnmCookies.debugHtml
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     fun setDarkTheme(v: Boolean)        = viewModelScope.launch { repo.setDarkTheme(v) }
     fun setRuTorEnabled(v: Boolean)     = viewModelScope.launch { repo.setRuTorEnabled(v) }
@@ -55,10 +50,7 @@ class SettingsViewModel @Inject constructor(
     fun setNnmEnabled(v: Boolean)       = viewModelScope.launch { repo.setNnmEnabled(v) }
 
     fun onRuTrackerLoginSuccess() { _rtLoggedIn.value = rtCookies.isLoggedIn() }
-    fun onNnmLoginSuccess() {
-        _nnmLoggedIn.value = nnmCookies.isLoggedIn()
-        refreshDebug()
-    }
+    fun onNnmLoginSuccess()       { _nnmLoggedIn.value = nnmCookies.isLoggedIn() }
 
     fun logoutRuTracker() {
         rtCookies.clearCookies(); _rtLoggedIn.value = false
@@ -66,7 +58,6 @@ class SettingsViewModel @Inject constructor(
     }
     fun logoutNnm() {
         nnmCookies.clearCookies(); _nnmLoggedIn.value = false
-        _nnmCookieDebug.value = "(нет куков)"
         viewModelScope.launch { repo.setNnmEnabled(false) }
     }
 }
