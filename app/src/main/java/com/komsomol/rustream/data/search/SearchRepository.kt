@@ -18,25 +18,18 @@ class SearchRepository @Inject constructor(
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> = coroutineScope {
         val ruTorEnabled     = settings.ruTorEnabled.first()
         val ruTrackerEnabled = settings.ruTrackerEnabled.first()
-        val rtLogin          = settings.ruTrackerLogin.first()
-        val rtPassword       = settings.ruTrackerPassword.first()
 
-        if (ruTrackerEnabled && rtLogin.isNotBlank()) {
-            ruTrackerProvider.setCredentials(rtLogin, rtPassword)
-        }
+        val ruTorDeferred = if (ruTorEnabled)
+            async { runCatching { ruTorProvider.search(query, category) }.getOrElse { emptyList() } }
+        else null
 
-        val ruTorDeferred     = if (ruTorEnabled) async { ruTorProvider.search(query, category) } else null
-        val ruTrackerDeferred = if (ruTrackerEnabled && rtLogin.isNotBlank()) async { ruTrackerProvider.search(query, category) } else null
+        val ruTrackerDeferred = if (ruTrackerEnabled && ruTrackerProvider.isLoggedIn())
+            async { runCatching { ruTrackerProvider.search(query, category) }.getOrElse { emptyList() } }
+        else null
 
-        val allResults = mutableListOf<SearchResult>()
-        ruTorDeferred?.let {
-            try { allResults.addAll(it.await()) } catch (_: Exception) {}
-        }
-        ruTrackerDeferred?.let {
-            try { allResults.addAll(it.await()) } catch (_: Exception) {}
-        }
-
-        // Сортируем по сидам
-        allResults.sortedByDescending { it.seeders }
+        val results = mutableListOf<SearchResult>()
+        ruTorDeferred?.let { results.addAll(it.await()) }
+        ruTrackerDeferred?.let { results.addAll(it.await()) }
+        results.sortedByDescending { it.seeders }
     }
 }
