@@ -1,24 +1,20 @@
 BUILD FAILED
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:79:39 Unsupported escape sequence.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:79:42 Unsupported escape sequence.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:79:45 Unsupported escape sequence.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:79:48 Unsupported escape sequence.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:117:28 Unsupported escape sequence.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:120:28 Unsupported escape sequence.
 --- LAST 30 LINES ---
+> Task :app:kspDebugKotlin
+> Task :app:mergeExtDexDebug
+> Task :app:mergeDebugJniLibFolders
+> Task :app:mergeLibDexDebug
+> Task :app:mergeDebugNativeLibs
+> Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
 
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libtorrent4j.so.
 
-> Task :app:kspDebugKotlin
-
 > Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:79:39 Unsupported escape sequence.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:79:42 Unsupported escape sequence.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:79:45 Unsupported escape sequence.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:79:48 Unsupported escape sequence.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:117:28 Unsupported escape sequence.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/NnmClubProvider.kt:120:28 Unsupported escape sequence.
 
 FAILURE: Build failed with an exception.
 
@@ -33,5 +29,5 @@ Execution failed for task ':app:compileDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 28s
+BUILD FAILED in 3m 31s
 30 actionable tasks: 30 executed
