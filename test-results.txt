@@ -6,3 +6,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content
   ps://piratebay.live/apibay/q.php?q=sting: 404 len=8016 content=<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtm
+
+=== Kinozal HTML структура ===
+status=200
+  table id=None class=None
+  table id=None class=['tables1']
+  table id=None class=['t_peer', 'w100p']
+  tr.bg rows: 3
+  Первая строка: <tr class="first bg"><td class="bt"><img alt="" class="p90x32 pointer" onclick="cat(48);" src="/pic/cat/48.gif"/></td><td class="nam"><a class="r0" href="/details.php?id=2027257">Sting - Live At The Olympia Paris / 2017 / БП / BDRip (720p)</a><td class="s">3</td>
+<td class="s">6.29 ГБ</td>
+<td class="sl_s">3</td>
+<td class="sl_p">0</td>
+<td class="s">16.05.2026 в 16:02</td>
+<td class="sl"><a class
+  detail links: 100
+    Sting - Live At The Olympia Paris / 2017 / БП / BDRip (720p) → /details.php?id=2027257
+    Andj → /userdetails.php?id=20922841
+    Друзья Ника Хезарда / Gli amici di Nick Hezard (Nick the Sti → /details.php?id=2060982
