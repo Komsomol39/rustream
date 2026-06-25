@@ -53,40 +53,51 @@ class NnmClubProvider @Inject constructor(
         val html  = String(bytes, Charset.forName("windows-1251"))
         val doc   = Jsoup.parse(html)
 
-        // Таблица результатов — class="tg"
-        val tbl = doc.selectFirst("table.tg") ?: doc.selectFirst("table[class~=tg]")
+        // Ищем все ссылки на viewtopic — это и есть торренты
+        val topicLinks = doc.select("a[href*='viewtopic.php']")
+        // Ищем все ссылки на скачивание
+        val dlLinks    = doc.select("a[href*='download.php']")
+        // Ищем любые ссылки с классом
+        val anyTopicTitle = doc.select("a.topictitle")
+        val anyTLink      = doc.select("a.tLink")
+
+        // Ищем слово "seedmed" в HTML
+        val seedIdx = html.indexOf("seedmed")
+        val torIdx  = html.indexOf("viewtopic")
 
         val debug = buildString {
             appendLine("loggedIn=${html.contains("Выход")} len=${html.length}")
-            appendLine("table.tg found: ${tbl != null}")
-            if (tbl != null) {
-                val rows = tbl.select("tr")
-                appendLine("TR count: ${rows.size}")
-                // Первая строка с данными (не header)
-                val firstDataRow = rows.drop(1).firstOrNull()
-                if (firstDataRow != null) {
-                    appendLine("First data TR: ${firstDataRow.outerHtml().take(600)}")
-                }
-            } else {
-                // Показываем фрагмент HTML где могут быть результаты
-                val idx = html.indexOf("tLink")
-                if (idx > 0) appendLine("tLink context: ${html.substring(maxOf(0,idx-200), minOf(html.length,idx+400))}")
-                else appendLine("HTML mid: ${html.substring(minOf(html.length/3, html.length), minOf(html.length/3+600, html.length))}")
+            appendLine("viewtopic links: ${topicLinks.size}")
+            appendLine("download links:  ${dlLinks.size}")
+            appendLine("a.topictitle:    ${anyTopicTitle.size}")
+            appendLine("a.tLink:         ${anyTLink.size}")
+            appendLine("seedmed at:      $seedIdx")
+            appendLine("viewtopic at:    $torIdx")
+            if (torIdx > 0) {
+                appendLine("Context around viewtopic:")
+                appendLine(html.substring(maxOf(0, torIdx - 100), minOf(html.length, torIdx + 400)))
+            }
+            if (topicLinks.isNotEmpty()) {
+                appendLine("First viewtopic link:")
+                appendLine(topicLinks.first().outerHtml().take(200))
+                // Попробуем найти TR родителя
+                val parentTr = topicLinks.first().parents().firstOrNull { it.tagName() == "tr" }
+                if (parentTr != null) appendLine("Parent TR: ${parentTr.outerHtml().take(400)}")
             }
         }
         Log.d(TAG, debug)
         cookieStore.saveDebugHtml(debug)
 
-        if (tbl == null) return emptyList()
-
+        // Парсим результаты через viewtopic ссылки
         val results = mutableListOf<SearchResult>()
-        // Строки результатов в table.tg — пробуем все TR кроме заголовка
-        tbl.select("tr").drop(1).take(50).forEach { row ->
+        topicLinks.distinctBy { it.attr("href") }.take(50).forEach { link ->
             try {
-                val titleEl = row.selectFirst("a.topictitle, a[href*='viewtopic']") ?: return@forEach
-                val href    = titleEl.attr("href")
+                val href    = link.attr("href")
                 val topicId = href.substringAfter("t=").substringBefore("&").substringBefore("#")
-                val catEl   = row.selectFirst("a.forumtitle, a[href*='viewforum']")
+                val title   = link.text().trim()
+                if (title.isBlank()) return@forEach
+
+                val row = link.parents().firstOrNull { it.tagName() == "tr" } ?: return@forEach
                 val tds     = row.select("td")
                 val sizeEl  = tds.firstOrNull { td ->
                     val t = td.text().trim().lowercase()
@@ -94,21 +105,22 @@ class NnmClubProvider @Inject constructor(
                      t.contains("gb")||t.contains("mb")||t.contains("kb")||
                      t.contains("тб")||t.contains("tb")) && t.any { it.isDigit() }
                 }
-                val seedsEl = row.selectFirst("span.seedmed, b.seedmed, td.seedmed")
-                val leechEl = row.selectFirst("span.leechmed, b.leechmed, td.leechmed")
-                val dlEl    = row.selectFirst("a[href*='download.php'], a[href*='dl.php']")
+                val seedsEl = row.selectFirst("span.seedmed, b.seedmed, td.seedmed, [class*=seed]")
+                val leechEl = row.selectFirst("span.leechmed, b.leechmed, [class*=leech]")
+                val dlEl    = row.selectFirst("a[href*='download.php']")
+                val catEl   = row.selectFirst("a[href*='viewforum']")
 
                 results.add(SearchResult(
-                    title      = titleEl.text().trim(),
+                    title      = title,
                     source     = SearchSource.NNM,
-                    category   = CategoryDetector.detect(titleEl.text(), catEl?.text() ?: "", category),
+                    category   = CategoryDetector.detect(title, catEl?.text() ?: "", category),
                     sizeBytes  = parseSize(sizeEl?.text()?.trim() ?: ""),
                     seeders    = seedsEl?.text()?.trim()?.toIntOrNull() ?: 0,
                     leechers   = leechEl?.text()?.trim()?.toIntOrNull() ?: 0,
                     magnetUri  = null,
                     torrentUrl = dlEl?.let { h ->
-                        val href2 = h.attr("href")
-                        if (href2.startsWith("http")) href2 else "$BASE/$href2"
+                        val h2 = h.attr("href")
+                        if (h2.startsWith("http")) h2 else "$BASE/$h2"
                     },
                     detailUrl  = if (topicId.isNotEmpty()) "$BASE/viewtopic.php?t=$topicId" else "$BASE/$href",
                 ))
