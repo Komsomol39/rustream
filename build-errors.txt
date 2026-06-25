@@ -42,7 +42,6 @@ to this project's gradle.properties.
 > Task :app:parseDebugLocalResources
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
-> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
@@ -50,10 +49,10 @@ to this project's gradle.properties.
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
 > Task :app:desugarDebugFileDependencies
-> Task :app:processDebugResources
-> Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugStartupProfile
-> Task :app:kspDebugKotlin
+> Task :app:processDebugManifestForPackage
+> Task :app:checkDebugDuplicateClasses
+> Task :app:processDebugResources
 > Task :app:mergeExtDexDebug
 > Task :app:mergeDebugJniLibFolders
 > Task :app:mergeLibDexDebug
@@ -65,6 +64,7 @@ to this project's gradle.properties.
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libtorrent4j.so.
 
+> Task :app:kspDebugKotlin
 > Task :app:compileDebugKotlin
 > Task :app:compileDebugJavaWithJavac
 
@@ -84,5 +84,5 @@ WARNING: [Processor] Library '/home/runner/.gradle/caches/transforms-4/c98e57c77
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 4m
+BUILD SUCCESSFUL in 3m 44s
 41 actionable tasks: 41 executed
