@@ -1,16 +1,8 @@
-=== TPB API (apibay.org) ===
-ERROR: Expecting value: line 1 column 1 (char 0)
-
-=== Kinozal (без авторизации) ===
-status=200
-rows=3
-  ?
-  ?
-  ?
-
-=== 1337x ===
-status=403
-rows=0
-
-=== RuTor прямой IP доступ ===
-status=200 table=❌ rows=0
+=== TPB / apibay ===
+  https://apibay.org/q.php?q=sting&cat=0: 403 len=5573 content=<!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Typ
+  s://thepiratebay.org/api/v2/search/sting: 200 len=5276 content=<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content
+  ps://piratebay.live/apibay/q.php?q=sting: 404 len=8016 content=<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtm
