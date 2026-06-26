@@ -25,6 +25,7 @@ sealed class SearchUiState {
     data class Error(val message: String) : SearchUiState()
 }
 
+// Только включённые источники — enabled=true AND ready=true (авторизован если нужно)
 data class SourceStatus(val name: String, val enabled: Boolean, val ready: Boolean)
 
 @HiltViewModel
@@ -44,22 +45,24 @@ class SearchViewModel @Inject constructor(
     private val _category = MutableStateFlow(ContentCategory.ALL)
     val category: StateFlow<ContentCategory> = _category.asStateFlow()
 
-    private val _sourceStatuses = MutableStateFlow<List<SourceStatus>>(emptyList())
-    val sourceStatuses: StateFlow<List<SourceStatus>> = _sourceStatuses.asStateFlow()
+    // Только включённые источники
+    private val _activeStatuses = MutableStateFlow<List<SourceStatus>>(emptyList())
+    val activeStatuses: StateFlow<List<SourceStatus>> = _activeStatuses.asStateFlow()
 
     private var searchJob: Job? = null
 
-    init { refreshSourceStatuses() }
+    init { refreshStatuses() }
 
-    fun refreshSourceStatuses() = viewModelScope.launch {
-        val statuses = listOf(
+    fun refreshStatuses() = viewModelScope.launch {
+        val all = listOf(
             SourceStatus("Kinozal",   settings.kinozalEnabled.first(),   settings.kinozalEnabled.first()),
             SourceStatus("RuTor",     settings.ruTorEnabled.first(),     settings.ruTorEnabled.first()),
             SourceStatus("RuTracker", settings.ruTrackerEnabled.first(), settings.ruTrackerEnabled.first() && rtCookies.isLoggedIn()),
             SourceStatus("NNM-Club",  settings.nnmEnabled.first(),       settings.nnmEnabled.first() && nnmCookies.isLoggedIn()),
         )
-        _sourceStatuses.value = statuses
-        Log.d("SearchVM", "Statuses: $statuses")
+        // Показываем только включённые
+        _activeStatuses.value = all.filter { it.enabled }
+        Log.d("SearchVM", "Active: ${_activeStatuses.value}")
     }
 
     fun onQueryChange(q: String) { _query.value = q }
@@ -72,15 +75,15 @@ class SearchViewModel @Inject constructor(
     fun search() {
         val q = _query.value.trim()
         if (q.isBlank()) return
-        refreshSourceStatuses()
+        refreshStatuses()
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _uiState.value = SearchUiState.Loading
             try {
                 val results = repository.search(q, _category.value)
-                Log.d("SearchVM", "Got ${results.size} results")
+                Log.d("SearchVM", "Results: ${results.size}")
                 _uiState.value = if (results.isEmpty())
-                    SearchUiState.Error("Ничего не найдено (включено: ${_sourceStatuses.value.filter { it.ready }.map { it.name }})")
+                    SearchUiState.Error("Ничего не найдено")
                 else
                     SearchUiState.Success(results)
             } catch (e: Exception) {
