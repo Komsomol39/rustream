@@ -23,7 +23,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val uiState       by viewModel.uiState.collectAsState()
     val query         by viewModel.query.collectAsState()
     val category      by viewModel.category.collectAsState()
-    val sourceStatuses by viewModel.sourceStatuses.collectAsState()
+    val activeStatuses by viewModel.activeStatuses.collectAsState()
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(8.dp))
@@ -46,20 +46,17 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
             }
         }
 
-        // Статус источников — показываем только активные
-        val activeStatuses = sourceStatuses.filter { it.enabled }
+        // Статусы источников — только включённые
         if (activeStatuses.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 activeStatuses.forEach { src ->
+                    // Зелёный если ready, красный с ⚠ если включён но не авторизован
                     val color = if (src.ready)
                         MaterialTheme.colorScheme.tertiary
                     else
                         MaterialTheme.colorScheme.error
-                    Surface(
-                        color = color.copy(alpha = 0.12f),
-                        shape = MaterialTheme.shapes.small
-                    ) {
+                    Surface(color = color.copy(alpha = 0.12f), shape = MaterialTheme.shapes.small) {
                         Text(
                             text = if (src.ready) src.name else "${src.name} ⚠",
                             style = MaterialTheme.typography.labelSmall,
@@ -75,9 +72,15 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
 
         when (val state = uiState) {
             is SearchUiState.Idle -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text("Введите запрос для поиска",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (activeStatuses.isEmpty()) {
+                    Text("Включите источники в Настройках",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else {
+                    Text("Введите запрос для поиска",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
             is SearchUiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally,
