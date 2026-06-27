@@ -29,7 +29,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val kinozalEnabled    by viewModel.kinozalEnabled.collectAsState()
     val nnmEnabled        by viewModel.nnmEnabled.collectAsState()
     val nnmLoggedIn       by viewModel.nnmLoggedIn.collectAsState()
-    val nnmCookieDebug    by viewModel.nnmCookieDebug.collectAsState()
+    val rutorDebug        by viewModel.rutorDebug.collectAsState()
     val nnmDebugHtml      by viewModel.nnmDebugHtml.collectAsState()
 
     val rtLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -55,6 +55,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Источники поиска", style = MaterialTheme.typography.titleMedium)
+
                 SourceRow("Kinozal", "Без авторизации", kinozalEnabled, viewModel::setKinozalEnabled)
                 HorizontalDivider()
                 SourceRow("RuTor", "Магнет-ссылки, может не работать в РФ", ruTorEnabled, viewModel::setRuTorEnabled)
@@ -67,17 +68,22 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     { nnmLauncher.launch(Intent(context, NnmLoginActivity::class.java)) },
                     viewModel::logoutNnm)
 
-                if (nnmCookieDebug.isNotBlank()) {
+                // RuTor debug — показывается после поиска
+                if (rutorDebug.isNotBlank()) {
                     HorizontalDivider()
-                    Text("Cookies: $nnmCookieDebug",
+                    Text("RuTor debug:", style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(rutorDebug.take(600),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                if (nnmDebugHtml.isNotBlank()) {
+
+                // NNM debug
+                if (nnmDebugHtml.isNotBlank() && !nnmDebugHtml.startsWith("OK")) {
                     HorizontalDivider()
-                    Text("Last search debug:", style = MaterialTheme.typography.labelSmall,
+                    Text("NNM debug:", style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(nnmDebugHtml.take(400),
+                    Text(nnmDebugHtml.take(300),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
