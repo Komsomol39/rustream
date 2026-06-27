@@ -71,8 +71,10 @@ class RuTorProvider @Inject constructor(
 
                     settings.setRutorDebug(debugLines.joinToString("\n"))
 
-                    if (html.contains("Вечная блокировка") || html.contains("Новый Адрес")) {
-                        debugLines += "BLOCKED - skipping"
+                    // Проверяем по длине — заглушка блокировки ~9895 байт
+                    // НЕ проверяем по тексту — "Вечная блокировка" есть и на реальных страницах
+                    if (html.length < 15000 && !html.contains("tr class=\"gai\"")) {
+                        debugLines += "BLOCKED (short page, no results) - skipping"
                         continue
                     }
 
