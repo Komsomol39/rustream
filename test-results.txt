@@ -3,8 +3,3 @@
 status=200 len=9895
 blocked=True
 table#index: NOT FOUND, rows=0
-
-=== https://rutor.is ===
-status=200 len=9895
-blocked=True
-table#index: NOT FOUND, rows=0
