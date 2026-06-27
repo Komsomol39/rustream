@@ -39,8 +39,11 @@ class SettingsViewModel @Inject constructor(
         else nnmCookies.parseCookies(raw).keys.joinToString(", ")
     }).asStateFlow()
 
-    // Debug HTML от последнего поиска
     val nnmDebugHtml = nnmCookies.debugHtml
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+
+    // RuTor debug
+    val rutorDebug = repo.rutorDebug
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     fun setDarkTheme(v: Boolean)        = viewModelScope.launch { repo.setDarkTheme(v) }
