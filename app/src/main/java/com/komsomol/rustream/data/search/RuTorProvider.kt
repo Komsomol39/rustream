@@ -67,10 +67,9 @@ class RuTorProvider @Inject constructor(
                     debugLines += "tr.gai=$trGai magnets=$magnets"
                     debugLines += "TR classes: $trClasses"
                     debugLines += "Tables: $tables"
-                    debugLines += "HTML[0:300]: ${html.take(300)}"
+                    debugLines += "HTML300: " + html.take(300).replace("\n", " ")
 
-                    settings.setRutorDebug(debugLines.joinToString("
-"))
+                    settings.setRutorDebug(debugLines.joinToString("\n"))
 
                     if (html.contains("Вечная блокировка") || html.contains("Новый Адрес")) {
                         debugLines += "BLOCKED - skipping"
@@ -115,15 +114,13 @@ class RuTorProvider @Inject constructor(
                     }
 
                     debugLines += "RESULTS: ${results.size}"
-                    settings.setRutorDebug(debugLines.joinToString("
-"))
+                    settings.setRutorDebug(debugLines.joinToString("\n"))
 
                     if (results.isNotEmpty()) return@withContext results
 
                 } catch (e: Exception) {
                     debugLines += "$mirror ERROR: ${e.message}"
-                    settings.setRutorDebug(debugLines.joinToString("
-"))
+                    settings.setRutorDebug(debugLines.joinToString("\n"))
                     Log.e(TAG, "$mirror: ${e.message}")
                 }
             }
