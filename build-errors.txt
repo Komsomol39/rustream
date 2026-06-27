@@ -1,1 +1,55 @@
-BUILD SUCCESSFUL
+BUILD FAILED
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:72:69 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:72:69 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:73:4 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:73:4 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:80:21 Expecting ')'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:80:33 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:80:48 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:80:61 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:81:24 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:117:32 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:117:34 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:118:29 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:118:69 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:118:69 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:119:4 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:119:4 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:121:73 Expecting ')'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:125:69 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:125:69 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:126:4 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:127:24 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:127:30 Expecting ')'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:127:56 Expecting ')'
+--- LAST 30 LINES ---
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:117:32 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:117:34 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:118:29 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:118:69 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:118:69 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:119:4 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:119:4 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:121:73 Expecting ')'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:125:69 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:125:69 Expecting ','
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:126:4 Expecting '"'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:127:24 Expecting an element
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:127:30 Expecting ')'
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/search/RuTorProvider.kt:127:56 Expecting ')'
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:kspDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3m 14s
+29 actionable tasks: 29 executed
