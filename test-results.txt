@@ -1,3 +1,17 @@
 
 === https://yts.mx ===
 ERROR: HTTPSConnectionPool(host='yts.mx', port=443): Max retries exceeded with url: /api/v2/list_movies.json?query_term=sting&limit=5&sort_by=seeds (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f41a30683e0>: Failed to resolve 'yts.mx' ([Errno -2] Name or service not known)"))
+
+=== https://yts.lt ===
+status=200 len=15542
+API status: ok
+Movies: 5
+  Sting (2024) rating=5.7
+    [0s] 720p bluray size=841.5 MB magnet hash=98F9BFA2B4542F4B23EA
+    [0s] 720p bluray size=842.44 MB magnet hash=D0793D2A1971DE952FCA
+  Gli amici di Nick Hezard (1976) rating=5.9
+    [0s] 720p bluray size=893.67 MB magnet hash=935EDA8F5ECC723D72A8
+    [0s] 1080p bluray size=1.62 GB magnet hash=11AB2274E878AFCB523A
+  Shi no toge (1990) rating=6.8
+    [0s] 720p bluray size=1.03 GB magnet hash=82F8A8F859D5D407C524
+    [0s] 1080p bluray size=1.9 GB magnet hash=603D715C774A6157975B
