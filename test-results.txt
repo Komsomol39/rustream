@@ -1,20 +1,11 @@
-
-=== https://torrentby.tv ===
-ERROR: HTTPSConnectionPool(host='torrentby.tv', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f2299fe2300>: Failed to resolve 'torrentby.tv' ([Errno -2] Name or service not known)"))
-
-=== https://torrentby.org ===
-ERROR: HTTPSConnectionPool(host='torrentby.org', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f2299a88cb0>: Failed to resolve 'torrentby.org' ([Errno -2] Name or service not known)"))
-
-=== https://torrentby.net ===
-ERROR: HTTPSConnectionPool(host='torrentby.net', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f2299a89160>: Failed to resolve 'torrentby.net' ([Errno -2] Name or service not known)"))
-
-=== https://torrentby.ru ===
-ERROR: HTTPSConnectionPool(host='torrentby.ru', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f2299a89a00>: Failed to resolve 'torrentby.ru' ([Errno -2] Name or service not known)"))
-
-=== https://by.com.ru ===
-main: status=200 len=15131
-Forms: []
-  https://by.com.ru/search/sting: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-  https://by.com.ru/search.php?q=sting: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
-  https://by.com.ru/?s=sting: 200 torrent_links=0
-  https://by.com.ru/index.php?nm=sting: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+❌ https://torrentby.club: HTTPSConnectionPool(host='torrentby.club', port=44
+❌ https://torrentby.cc: HTTPSConnectionPool(host='torrentby.cc', port=443)
+❌ https://torrentby.pw: HTTPSConnectionPool(host='torrentby.pw', port=443)
+❌ https://torrentby.me: HTTPSConnectionPool(host='torrentby.me', port=443)
+❌ https://torrentby.io: HTTPSConnectionPool(host='torrentby.io', port=443)
+❌ https://torrent.by: HTTPSConnectionPool(host='torrent.by', port=443): 
+❌ https://tby.tv: HTTPSConnectionPool(host='tby.tv', port=443): Max 
+❌ https://t-by.net: HTTPSConnectionPool(host='t-by.net', port=443): Ma
+✅ https://tfilm.club: 200 len=1044
+✅ https://toloka.to: 200 len=20845
+❌ https://baibako.tv: HTTPSConnectionPool(host='baibako.tv', port=443): 
