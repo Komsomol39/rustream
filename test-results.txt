@@ -7,3 +7,6 @@ ERROR: HTTPSConnectionPool(host='torrentby.org', port=443): Max retries exceeded
 
 === https://torrentby.net ===
 ERROR: HTTPSConnectionPool(host='torrentby.net', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f2299a89160>: Failed to resolve 'torrentby.net' ([Errno -2] Name or service not known)"))
+
+=== https://torrentby.ru ===
+ERROR: HTTPSConnectionPool(host='torrentby.ru', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f2299a89a00>: Failed to resolve 'torrentby.ru' ([Errno -2] Name or service not known)"))
