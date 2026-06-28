@@ -40,7 +40,7 @@ class RuTorProvider @Inject constructor(
                         ContentCategory.ALL   -> "0"
                     }
                     val encoded = java.net.URLEncoder.encode(query, "UTF-8")
-                    val url = "$mirror/search/0/$catCode/100/$encoded"
+                    val url = "$mirror/search/0/$catCode/000/0/$encoded"
 
                     debugLines += "URL: $url"
 
