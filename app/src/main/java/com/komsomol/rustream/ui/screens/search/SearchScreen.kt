@@ -117,6 +117,7 @@ fun SearchResultCard(result: SearchResult) {
         SearchSource.RUTRACKER -> Color(0xFF00897B)
         SearchSource.KINOZAL   -> Color(0xFFE65100)
         SearchSource.NNM       -> Color(0xFF1565C0)
+        SearchSource.YTS       -> Color(0xFF2E7D32)
     }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
