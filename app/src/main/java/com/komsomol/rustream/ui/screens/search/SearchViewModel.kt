@@ -59,6 +59,7 @@ class SearchViewModel @Inject constructor(
             SourceStatus("RuTor",     settings.ruTorEnabled.first(),     settings.ruTorEnabled.first()),
             SourceStatus("RuTracker", settings.ruTrackerEnabled.first(), settings.ruTrackerEnabled.first() && rtCookies.isLoggedIn()),
             SourceStatus("NNM-Club",  settings.nnmEnabled.first(),       settings.nnmEnabled.first() && nnmCookies.isLoggedIn()),
+            SourceStatus("YTS",       settings.ytsEnabled.first(),       settings.ytsEnabled.first()),
         )
         // Показываем только включённые
         _activeStatuses.value = all.filter { it.enabled }
