@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Тест TorrentBy"""
 import requests, json, base64, urllib.parse
 import urllib.request as ur
 from bs4 import BeautifulSoup
@@ -30,43 +29,26 @@ def push():
 s = requests.Session()
 s.headers.update({"User-Agent": UA})
 
-# Пробуем разные домены TorrentBy
+# Расширенный список возможных доменов
 domains = [
-    "https://torrentby.tv",
-    "https://torrentby.org", 
-    "https://torrentby.net",
-    "https://torrentby.ru",
-    "https://by.com.ru",
+    "https://torrentby.club",
+    "https://torrentby.cc",
+    "https://torrentby.pw",
+    "https://torrentby.me",
+    "https://torrentby.io",
+    "https://torrent.by",
+    "https://tby.tv",
+    "https://t-by.net",
+    # Другие белорусские трекеры
+    "https://tfilm.club",
+    "https://toloka.to",
+    "https://baibako.tv",
 ]
 
 for domain in domains:
-    log(f"\n=== {domain} ===")
     try:
-        r = s.get(domain, timeout=8)
-        log(f"main: status={r.status_code} len={len(r.text)}")
-        if r.status_code == 200:
-            # Ищем форму поиска
-            soup = BeautifulSoup(r.text, "html.parser")
-            forms = soup.find_all("form")
-            log(f"Forms: {[f.get('action','') for f in forms[:3]]}")
-            # Пробуем поиск
-            q = urllib.parse.quote("sting")
-            for search_url in [
-                f"{domain}/search/{q}",
-                f"{domain}/search.php?q={q}",
-                f"{domain}/?s={q}",
-                f"{domain}/index.php?nm={q}",
-            ]:
-                try:
-                    r2 = s.get(search_url, timeout=8)
-                    soup2 = BeautifulSoup(r2.text, "html.parser")
-                    links = soup2.select("a[href*='torrent'], a[href*='download']")
-                    log(f"  {search_url[-40:]}: {r2.status_code} torrent_links={len(links)}")
-                    if links:
-                        log(f"    First: {links[0].text.strip()[:60]} -> {links[0].get('href','')[:60]}")
-                        break
-                except Exception as e:
-                    log(f"  {search_url[-40:]}: {e}")
+        r = s.get(domain, timeout=6)
+        log(f"✅ {domain}: {r.status_code} len={len(r.text)}")
     except Exception as e:
-        log(f"ERROR: {e}")
-    push()
+        log(f"❌ {domain}: {str(e)[:50]}")
+push()
