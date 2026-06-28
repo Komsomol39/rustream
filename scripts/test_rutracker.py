@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Тест зеркал RuTor — ищем незаблокированные"""
-import requests, urllib.parse, json, base64
+"""Тест YTS API"""
+import requests, json, base64
 import urllib.request as ur
-from bs4 import BeautifulSoup
 
 GH_TOKEN = __import__("os").environ.get("GITHUB_TOKEN","")
 REPO = "Komsomol39/rustream"
-UA = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36"
 
 results = []
 def log(msg): print(msg); results.append(str(msg))
@@ -28,41 +26,24 @@ def push():
     except: pass
 
 s = requests.Session()
-s.headers.update({"User-Agent": UA})
+s.headers.update({"User-Agent": "Mozilla/5.0"})
 
-# Все известные зеркала
-mirrors = [
-    "https://rutor.info",
-    "https://rutor.is",
-    "https://rutor.org",
-    "https://rutor.mobi",
-    "https://rutorka.club",
-    "https://rutorka.net",
-    "https://rutorra.com",
-    "https://rutor.lat",
-    "https://new-rutor.org",
-    "https://rutor.su",
-]
-
-q = urllib.parse.quote("sting")
-log("=== ТЕСТ ЗЕРКАЛ RUTOR ===")
-working = []
-
-for mirror in mirrors:
+# Тест разных YTS доменов
+for base in ["https://yts.mx", "https://yts.lt", "https://yts.rs"]:
+    log(f"\n=== {base} ===")
     try:
-        r = s.get(f"{mirror}/search/0/0/0/{q}", timeout=8)
-        html = r.text
-        is_blocked = "Вечная блокировка" in html or "Новый Адрес" in html
-        soup = BeautifulSoup(html, "html.parser")
-        rows = soup.select("tr.gai")
-        magnets = soup.select("a[href^=\'magnet:\']")
-        log(f"{mirror}: status={r.status_code} len={len(html)} blocked={is_blocked} tr.gai={len(rows)} magnets={len(magnets)}")
-        if not is_blocked and len(rows) > 0:
-            working.append(mirror)
-            log(f"  ✅ РАБОТАЕТ! Первая строка: {rows[0].text.strip()[:80]}")
+        url = f"{base}/api/v2/list_movies.json?query_term=sting&limit=5&sort_by=seeds"
+        r = s.get(url, timeout=10)
+        log(f"status={r.status_code} len={len(r.text)}")
+        data = r.json()
+        status = data.get("status","?")
+        log(f"API status: {status}")
+        movies = data.get("data", {}).get("movies", [])
+        log(f"Movies: {len(movies)}")
+        for m in movies[:3]:
+            log(f"  {m.get('title')} ({m.get('year')}) rating={m.get('rating')}")
+            for t in m.get("torrents", [])[:2]:
+                log(f"    [{t.get('seeds')}s] {t.get('quality')} {t.get('type')} size={t.get('size')} magnet hash={t.get('hash','')[:20]}")
     except Exception as e:
-        log(f"{mirror}: ERROR {str(e)[:60]}")
+        log(f"ERROR: {e}")
     push()
-
-log(f"\nРАБОТАЮЩИЕ: {working}")
-push()
