@@ -58,7 +58,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
                 SourceRow("Kinozal", "Без авторизации", kinozalEnabled, viewModel::setKinozalEnabled)
                 HorizontalDivider()
-                SourceRow("RuTor", "Магнет-ссылки, может не работать в РФ", ruTorEnabled, viewModel::setRuTorEnabled)
+                SourceRow("RuTor", "Требует VPN в РФ, есть магнет-ссылки", ruTorEnabled, viewModel::setRuTorEnabled)
                 HorizontalDivider()
                 AuthSourceRow("RuTracker", rtLoggedIn, ruTrackerEnabled, viewModel::setRuTrackerEnabled,
                     { rtLauncher.launch(Intent(context, RuTrackerLoginActivity::class.java)) },
