@@ -28,6 +28,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val rtLoggedIn        by viewModel.ruTrackerLoggedIn.collectAsState()
     val kinozalEnabled    by viewModel.kinozalEnabled.collectAsState()
     val nnmEnabled        by viewModel.nnmEnabled.collectAsState()
+    val ytsEnabled        by viewModel.ytsEnabled.collectAsState()
     val nnmLoggedIn       by viewModel.nnmLoggedIn.collectAsState()
     val rutorDebug        by viewModel.rutorDebug.collectAsState()
     val nnmDebugHtml      by viewModel.nnmDebugHtml.collectAsState()
@@ -56,6 +57,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Источники поиска", style = MaterialTheme.typography.titleMedium)
 
+                SourceRow("YTS", "Фильмы 720p-4K, без авторизации", ytsEnabled, viewModel::setYtsEnabled)
+                HorizontalDivider()
                 SourceRow("Kinozal", "Без авторизации", kinozalEnabled, viewModel::setKinozalEnabled)
                 HorizontalDivider()
                 SourceRow("RuTor", "Требует VPN в РФ, есть магнет-ссылки", ruTorEnabled, viewModel::setRuTorEnabled)
