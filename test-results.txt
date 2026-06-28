@@ -15,3 +15,7 @@ Movies: 5
   Shi no toge (1990) rating=6.8
     [0s] 720p bluray size=1.03 GB magnet hash=82F8A8F859D5D407C524
     [0s] 1080p bluray size=1.9 GB magnet hash=603D715C774A6157975B
+
+=== https://yts.rs ===
+status=523 len=7139
+ERROR: Expecting value: line 1 column 1 (char 0)
