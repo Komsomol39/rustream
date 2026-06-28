@@ -10,3 +10,11 @@ ERROR: HTTPSConnectionPool(host='torrentby.net', port=443): Max retries exceeded
 
 === https://torrentby.ru ===
 ERROR: HTTPSConnectionPool(host='torrentby.ru', port=443): Max retries exceeded with url: / (Caused by NameResolutionError("<urllib3.connection.HTTPSConnection object at 0x7f2299a89a00>: Failed to resolve 'torrentby.ru' ([Errno -2] Name or service not known)"))
+
+=== https://by.com.ru ===
+main: status=200 len=15131
+Forms: []
+  https://by.com.ru/search/sting: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+  https://by.com.ru/search.php?q=sting: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+  https://by.com.ru/?s=sting: 200 torrent_links=0
+  https://by.com.ru/index.php?nm=sting: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
