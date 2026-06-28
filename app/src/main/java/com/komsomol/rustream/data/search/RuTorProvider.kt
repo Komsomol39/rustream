@@ -46,7 +46,7 @@ class RuTorProvider @Inject constructor(
 
                     val resp = client.newCall(
                         Request.Builder().url(url)
-                            .header("User-Agent", "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36")
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
                             .build()
                     ).execute()
 
