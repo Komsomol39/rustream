@@ -22,8 +22,7 @@ class RuTorProvider @Inject constructor(
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
-        // Явно используем системный ProxySelector (VPN/прокси системы)
-        .proxySelector(java.net.ProxySelector.getDefault())
+
         .build()
 
     private val mirrors = listOf("https://rutor.info", "https://rutor.is")
