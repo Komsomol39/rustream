@@ -1,5 +1,7 @@
 package com.komsomol.rustream.ui.navigation
 
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.MusicNote
@@ -13,6 +15,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -23,6 +27,8 @@ import androidx.navigation.compose.rememberNavController
 import com.komsomol.rustream.ui.screens.downloads.DownloadsScreen
 import com.komsomol.rustream.ui.screens.search.SearchScreen
 import com.komsomol.rustream.ui.screens.settings.SettingsScreen
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Search    : Screen("search",    "Поиск",     Icons.Default.Search)
@@ -47,12 +53,14 @@ fun AppNavGraph() {
                 val currentDestination = navBackStackEntry?.destination
                 bottomNavItems.forEach { screen ->
                     NavigationBarItem(
-                        icon = { Icon(screen.icon, contentDescription = screen.label) },
+                        icon  = { Icon(screen.icon, screen.label) },
                         label = { Text(screen.label) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
                         onClick = {
                             navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -63,9 +71,9 @@ fun AppNavGraph() {
         }
     ) { innerPadding ->
         NavHost(
-            navController = navController,
+            navController    = navController,
             startDestination = Screen.Search.route,
-            modifier = androidx.compose.ui.Modifier.padding(innerPadding = innerPadding)
+            modifier         = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Search.route)    { SearchScreen() }
             composable(Screen.Downloads.route) { DownloadsScreen() }
@@ -78,10 +86,7 @@ fun AppNavGraph() {
 
 @Composable
 private fun PlaceholderScreen(name: String) {
-    androidx.compose.foundation.layout.Box(
-        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
-        contentAlignment = androidx.compose.ui.Alignment.Center
-    ) {
-        Text(name, style = androidx.compose.material3.MaterialTheme.typography.headlineMedium)
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(name, style = MaterialTheme.typography.headlineMedium)
     }
 }
