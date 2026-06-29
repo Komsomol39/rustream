@@ -1,26 +1,24 @@
 BUILD FAILED
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:106:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:131:54 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:137:54 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:144:60 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:146:67 Unresolved reference 'DELETE_FILES'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:160:64 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:164:23 Unresolved reference 'isPaused'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:99:42 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:100:60 Argument type mismatch: actual type is 'kotlin.Unit', but 'org.libtorrent4j.TorrentHandle' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:114:60 Argument type mismatch: actual type is 'kotlin.Unit', but 'org.libtorrent4j.TorrentHandle' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:149:81 Unresolved reference 'paused'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:149:89 Unresolved reference 'nonZero'.
 --- LAST 30 LINES ---
+> Task :app:mergeDebugNativeLibs
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
 
 > Task :app:stripDebugDebugSymbols
 Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libtorrent4j.so.
 
-> Task :app:kspDebugKotlin
-
 > Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:106:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:131:54 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:137:54 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:144:60 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:146:67 Unresolved reference 'DELETE_FILES'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:160:64 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:164:23 Unresolved reference 'isPaused'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:99:42 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:100:60 Argument type mismatch: actual type is 'kotlin.Unit', but 'org.libtorrent4j.TorrentHandle' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:114:60 Argument type mismatch: actual type is 'kotlin.Unit', but 'org.libtorrent4j.TorrentHandle' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:149:81 Unresolved reference 'paused'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:149:89 Unresolved reference 'nonZero'.
 
 FAILURE: Build failed with an exception.
 
@@ -35,5 +33,5 @@ Execution failed for task ':app:compileDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 35s
+BUILD FAILED in 3m 25s
 30 actionable tasks: 30 executed
