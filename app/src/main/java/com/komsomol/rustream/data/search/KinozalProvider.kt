@@ -46,12 +46,16 @@ class KinozalProvider @Inject constructor() {
         val results = mutableListOf<SearchResult>()
 
         // Строки результатов: tr.first.bg и tr.bg в таблице t_peer
-        doc.select("table.t_peer tr.first.bg, table.t_peer tr.bg").take(50).forEach { row ->
+        // Пробуем разные селекторы — Kinozal иногда меняет классы
+        val rows = doc.select("table.t_peer tr.first.bg, table.t_peer tr.bg")
+            .ifEmpty { doc.select("tr.bg") }
+            .ifEmpty { doc.select("table.t_peer tr").filter { it.select("td").size > 4 } }
+        rows.take(50).forEach { row ->
             try {
-                val titleA  = row.selectFirst("td.nam a") ?: return@forEach
-                val sizeEl  = row.select("td.s").firstOrNull()
-                val seedsEl = row.selectFirst("td.sl_s")
-                val leechEl = row.selectFirst("td.sl_p")
+                val titleA  = row.selectFirst("td.nam a, a[href*=details]") ?: return@forEach
+                val sizeEl  = row.select("td.s, td[class*=size]").firstOrNull()
+                val seedsEl = row.selectFirst("td.sl_s, td.seed, [class*=seed]")
+                val leechEl = row.selectFirst("td.sl_p, td.leech, [class*=leech]")
                 val href    = titleA.attr("href") // /details.php?id=XXXXX
                 val id      = href.substringAfter("id=").substringBefore("&")
 
