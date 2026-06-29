@@ -18,8 +18,10 @@ import org.libtorrent4j.AlertListener
 import org.libtorrent4j.SessionManager
 import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
+import org.libtorrent4j.TorrentStatus
 import org.libtorrent4j.alerts.Alert
 import org.libtorrent4j.alerts.AlertType
+import org.libtorrent4j.alerts.AddTorrentAlert
 import org.libtorrent4j.alerts.MetadataReceivedAlert
 import org.libtorrent4j.alerts.TorrentFinishedAlert
 import org.libtorrent4j.alerts.TorrentErrorAlert
@@ -33,14 +35,16 @@ class TorrentEngine @Inject constructor(
 ) {
     private val TAG = "TorrentEngine"
     private val scope = CoroutineScope(Dispatchers.IO)
-    private val session = SessionManager()
+    val session = SessionManager()
     private var started = false
 
     private val _downloads = MutableStateFlow<Map<String, DownloadItem>>(emptyMap())
     val downloads: StateFlow<Map<String, DownloadItem>> = _downloads.asStateFlow()
 
-    // Храним handles напрямую — id -> TorrentHandle
+    // id -> TorrentHandle
     private val handles = mutableMapOf<String, TorrentHandle>()
+    // infoHash -> id (для связи alert -> item)
+    private val hashToId = mutableMapOf<String, String>()
 
     val savePath: String = Environment.getExternalStoragePublicDirectory(
         Environment.DIRECTORY_DOWNLOADS
@@ -54,20 +58,36 @@ class TorrentEngine @Inject constructor(
             override fun types(): IntArray? = null
             override fun alert(alert: Alert<*>) {
                 when (alert.type()) {
+                    AlertType.ADD_TORRENT -> {
+                        val h = (alert as AddTorrentAlert).handle()
+                        val hash = h.infoHash().toString()
+                        val id = synchronized(hashToId) { hashToId[hash] }
+                        if (id != null) synchronized(handles) { handles[id] = h }
+                        Log.d(TAG, "ADD_TORRENT hash=$hash id=$id")
+                    }
                     AlertType.METADATA_RECEIVED -> {
                         val h = (alert as MetadataReceivedAlert).handle()
-                        val id = findIdByHandle(h)
-                        Log.d(TAG, "Metadata received id=$id")
-                        id?.let { updateState(it, DownloadState.DOWNLOADING) }
-                            ?: synchronized(handles) { handles["meta_${h.hashCode()}"] = h }
+                        val hash = h.infoHash().toString()
+                        val id = synchronized(hashToId) { hashToId[hash] }
+                        if (id != null) {
+                            synchronized(handles) { handles[id] = h }
+                            updateState(id, DownloadState.DOWNLOADING)
+                        }
+                        Log.d(TAG, "METADATA hash=$hash id=$id")
                     }
                     AlertType.TORRENT_FINISHED -> {
                         val h = (alert as TorrentFinishedAlert).handle()
-                        findIdByHandle(h)?.let { updateState(it, DownloadState.FINISHED, 1f) }
+                        val hash = h.infoHash().toString()
+                        synchronized(hashToId) { hashToId[hash] }?.let {
+                            updateState(it, DownloadState.FINISHED, 1f)
+                        }
                     }
                     AlertType.TORRENT_ERROR -> {
                         val h = (alert as TorrentErrorAlert).handle()
-                        findIdByHandle(h)?.let { updateState(it, DownloadState.ERROR) }
+                        val hash = h.infoHash().toString()
+                        synchronized(hashToId) { hashToId[hash] }?.let {
+                            updateState(it, DownloadState.ERROR)
+                        }
                     }
                     else -> {}
                 }
@@ -94,10 +114,11 @@ class TorrentEngine @Inject constructor(
     fun addMagnet(item: DownloadItem) {
         val magnet = item.magnetUri ?: return
         _downloads.update { it + (item.id to item.copy(state = DownloadState.FETCHING_META)) }
+        val hash = extractHash(magnet)
+        if (hash != null) synchronized(hashToId) { hashToId[hash] = item.id }
         scope.launch {
             try {
-                val h = session.download(magnet, File(savePath))
-                synchronized(handles) { handles[item.id] = h }
+                session.download(magnet, File(savePath))
             } catch (e: Exception) {
                 Log.e(TAG, "addMagnet: ${e.message}")
                 updateState(item.id, DownloadState.ERROR)
@@ -110,8 +131,9 @@ class TorrentEngine @Inject constructor(
         scope.launch {
             try {
                 val ti = TorrentInfo.bdecode(bytes)
-                val h  = session.download(ti, File(savePath))
-                synchronized(handles) { handles[item.id] = h }
+                val hash = ti.infoHash().toString()
+                synchronized(hashToId) { hashToId[hash] = item.id }
+                session.download(ti, File(savePath))
             } catch (e: Exception) {
                 Log.e(TAG, "addTorrentFile: ${e.message}")
                 updateState(item.id, DownloadState.ERROR)
@@ -131,9 +153,7 @@ class TorrentEngine @Inject constructor(
 
     fun remove(id: String, deleteFiles: Boolean = false) {
         val h = synchronized(handles) { handles.remove(id) }
-        if (h != null) {
-            try { session.remove(h) } catch (_: Exception) {}
-        }
+        if (h != null) try { session.remove(h) } catch (_: Exception) {}
         _downloads.update { it - id }
     }
 
@@ -145,16 +165,16 @@ class TorrentEngine @Inject constructor(
             try {
                 if (!h.isValid) return@forEach
                 val s = h.status()
-                val flags = s.flags()
-                val isPaused = flags.and_(org.libtorrent4j.swig.torrent_flags_t.paused).nonZero()
-                val newState = when {
-                    s.isFinished -> DownloadState.FINISHED
-                    isPaused     -> DownloadState.PAUSED
-                    else         -> DownloadState.DOWNLOADING
+                val state = when (s.state()) {
+                    TorrentStatus.State.DOWNLOADING          -> DownloadState.DOWNLOADING
+                    TorrentStatus.State.DOWNLOADING_METADATA -> DownloadState.FETCHING_META
+                    TorrentStatus.State.FINISHED,
+                    TorrentStatus.State.SEEDING              -> DownloadState.FINISHED
+                    else                                     -> DownloadState.DOWNLOADING
                 }
                 _downloads.update { map ->
                     map + (id to item.copy(
-                        state            = newState,
+                        state            = state,
                         progress         = s.progress(),
                         downloadedBytes  = s.totalDone(),
                         totalBytes       = s.total(),
@@ -168,13 +188,14 @@ class TorrentEngine @Inject constructor(
         }
     }
 
-    private fun findIdByHandle(h: TorrentHandle): String? =
-        synchronized(handles) { handles.entries.firstOrNull { it.value == h }?.key }
-
     private fun updateState(id: String, state: DownloadState, progress: Float? = null) {
         _downloads.update { map ->
             val item = map[id] ?: return@update map
             map + (id to item.copy(state = state, progress = progress ?: item.progress))
         }
     }
+
+    private fun extractHash(magnet: String): String? =
+        Regex("urn:btih:([a-fA-F0-9]{40})", RegexOption.IGNORE_CASE)
+            .find(magnet)?.groupValues?.get(1)?.lowercase()
 }
