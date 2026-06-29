@@ -39,10 +39,10 @@ object AppModule {
     fun provideNnmClubProvider(cookies: NnmCookieStore) = NnmClubProvider(cookies)
 
     @Provides @Singleton
-    fun provideKinozalProvider() = KinozalProvider()
+    fun provideRuTorProvider(settings: SettingsRepository) = RuTorProvider(settings)
 
     @Provides @Singleton
-    fun provideRuTorProvider(settings: SettingsRepository) = RuTorProvider(settings)
+    fun provideKinozalProvider() = KinozalProvider()
 
     @Provides @Singleton
     fun provideYtsProvider() = YtsProvider()
