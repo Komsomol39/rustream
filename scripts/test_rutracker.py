@@ -29,26 +29,47 @@ def push():
 s = requests.Session()
 s.headers.update({"User-Agent": UA})
 
-# Расширенный список возможных доменов
-domains = [
-    "https://torrentby.club",
-    "https://torrentby.cc",
-    "https://torrentby.pw",
-    "https://torrentby.me",
-    "https://torrentby.io",
-    "https://torrent.by",
-    "https://tby.tv",
-    "https://t-by.net",
-    # Другие белорусские трекеры
-    "https://tfilm.club",
-    "https://toloka.to",
-    "https://baibako.tv",
-]
-
-for domain in domains:
-    try:
-        r = s.get(domain, timeout=6)
-        log(f"✅ {domain}: {r.status_code} len={len(r.text)}")
-    except Exception as e:
-        log(f"❌ {domain}: {str(e)[:50]}")
+# Kinozal
+log("=== KINOZAL ===")
+try:
+    q = urllib.parse.quote("пацаны")
+    r = s.get(f"https://kinozal.tv/browse.php?s={q}&g=0&c=0&v=0&d=0&w=0&t=0&f=0", timeout=12)
+    log(f"status={r.status_code}")
+    soup = BeautifulSoup(r.content.decode("windows-1251","replace"), "html.parser")
+    
+    # Текущий селектор
+    rows1 = soup.select("table.t_peer tr.first.bg, table.t_peer tr.bg")
+    log(f"table.t_peer tr.bg: {len(rows1)}")
+    
+    # Альтернативные селекторы
+    rows2 = soup.select("tr.bg")
+    log(f"tr.bg: {len(rows2)}")
+    
+    rows3 = soup.select("table.t_peer tr")
+    log(f"table.t_peer tr: {len(rows3)}")
+    
+    # Ищем любые ссылки на details
+    detail_links = soup.select("a[href*='details']")
+    log(f"details links: {len(detail_links)}")
+    for a in detail_links[:3]:
+        log(f"  {a.text.strip()[:60]}")
+    
+    # Показываем структуру таблицы
+    tbl = soup.find("table", class_="t_peer")
+    if tbl:
+        rows = tbl.find_all("tr")[:5]
+        for row in rows:
+            cls = row.get("class", [])
+            tds = len(row.find_all("td"))
+            log(f"  TR cls={cls} tds={tds}")
+            if tds > 3:
+                log(f"  HTML: {str(row)[:300]}")
+                break
+    else:
+        # Все таблицы
+        tables = soup.find_all("table")
+        log(f"Tables: {[(t.get('class'), t.get('id')) for t in tables[:6]]}")
+except Exception as e:
+    import traceback
+    log(f"ERROR: {e}"); log(traceback.format_exc())
 push()
