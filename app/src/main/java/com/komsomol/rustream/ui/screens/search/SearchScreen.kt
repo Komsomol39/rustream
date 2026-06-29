@@ -1,9 +1,11 @@
 package com.komsomol.rustream.ui.screens.search
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,98 +22,166 @@ import com.komsomol.rustream.domain.model.SearchSource
 
 @Composable
 fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
-    val uiState       by viewModel.uiState.collectAsState()
-    val query         by viewModel.query.collectAsState()
-    val category      by viewModel.category.collectAsState()
+    val uiState        by viewModel.uiState.collectAsState()
+    val query          by viewModel.query.collectAsState()
+    val category       by viewModel.category.collectAsState()
     val activeStatuses by viewModel.activeStatuses.collectAsState()
+    val downloadResult by viewModel.downloadResult.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Spacer(Modifier.height(8.dp))
+    // Диалог скачивания
+    var selectedResult by remember { mutableStateOf<SearchResult?>(null) }
 
-        OutlinedTextField(
-            value = query, onValueChange = viewModel::onQueryChange,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("Поиск торрентов...") },
-            trailingIcon = { IconButton(onClick = viewModel::search) {
-                Icon(Icons.Default.Search, "Поиск") } },
-            singleLine = true
-        )
-        Spacer(Modifier.height(8.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ContentCategory.values().forEach { cat ->
-                FilterChip(selected = category == cat,
-                    onClick = { viewModel.onCategoryChange(cat) },
-                    label = { Text(cat.displayName) })
-            }
+    // Снекбар для уведомлений о загрузке
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(downloadResult) {
+        downloadResult?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearDownloadResult()
         }
+    }
 
-        // Статусы источников — только включённые
-        if (activeStatuses.isNotEmpty()) {
-            Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                activeStatuses.forEach { src ->
-                    // Зелёный если ready, красный с ⚠ если включён но не авторизован
-                    val color = if (src.ready)
-                        MaterialTheme.colorScheme.tertiary
-                    else
-                        MaterialTheme.colorScheme.error
-                    Surface(color = color.copy(alpha = 0.12f), shape = MaterialTheme.shapes.small) {
-                        Text(
-                            text = if (src.ready) src.name else "${src.name} ⚠",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = color,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
-                    }
-                }
-            }
-        }
+    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
+            Spacer(Modifier.height(8.dp))
 
-        Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = query, onValueChange = viewModel::onQueryChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Поиск торрентов...") },
+                trailingIcon = { IconButton(onClick = viewModel::search) {
+                    Icon(Icons.Default.Search, "Поиск") } },
+                singleLine = true
+            )
+            Spacer(Modifier.height(8.dp))
 
-        when (val state = uiState) {
-            is SearchUiState.Idle -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                if (activeStatuses.isEmpty()) {
-                    Text("Включите источники в Настройках",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Text("Введите запрос для поиска",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ContentCategory.values().forEach { cat ->
+                    FilterChip(selected = category == cat,
+                        onClick = { viewModel.onCategoryChange(cat) },
+                        label = { Text(cat.displayName) })
                 }
             }
-            is SearchUiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CircularProgressIndicator()
-                    Text("Поиск...", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-            is SearchUiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text(state.message, color = MaterialTheme.colorScheme.error)
-            }
-            is SearchUiState.Success -> {
-                val bySource = state.results.groupBy { it.source }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    bySource.forEach { (src, list) ->
-                        SuggestionChip(onClick = {},
-                            label = { Text("${src.displayName}: ${list.size}",
-                                style = MaterialTheme.typography.labelSmall) })
-                    }
-                }
+
+            if (activeStatuses.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(state.results) { SearchResultCard(it) }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    activeStatuses.forEach { src ->
+                        val color = if (src.ready) MaterialTheme.colorScheme.tertiary
+                                    else MaterialTheme.colorScheme.error
+                        Surface(color = color.copy(alpha = 0.12f), shape = MaterialTheme.shapes.small) {
+                            Text(
+                                text = if (src.ready) src.name else "${src.name} ⚠",
+                                style = MaterialTheme.typography.labelSmall, color = color,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            when (val state = uiState) {
+                is SearchUiState.Idle -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text(
+                        if (activeStatuses.isEmpty()) "Включите источники в Настройках"
+                        else "Введите запрос для поиска",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                is SearchUiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        CircularProgressIndicator()
+                        Text("Поиск...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                is SearchUiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    Text(state.message, color = MaterialTheme.colorScheme.error)
+                }
+                is SearchUiState.Success -> {
+                    val bySource = state.results.groupBy { it.source }
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        bySource.forEach { (src, list) ->
+                            SuggestionChip(onClick = {},
+                                label = { Text("${src.displayName}: ${list.size}",
+                                    style = MaterialTheme.typography.labelSmall) })
+                        }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(state.results) { result ->
+                            SearchResultCard(
+                                result = result,
+                                onClick = { selectedResult = result }
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+
+    // Диалог скачивания
+    selectedResult?.let { result ->
+        DownloadDialog(
+            result = result,
+            onDismiss = { selectedResult = null },
+            onDownload = {
+                viewModel.download(result)
+                selectedResult = null
+            }
+        )
+    }
 }
 
 @Composable
-fun SearchResultCard(result: SearchResult) {
+fun DownloadDialog(
+    result: SearchResult,
+    onDismiss: () -> Unit,
+    onDownload: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Download, null) },
+        title = { Text("Скачать") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(result.title, style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Spacer(Modifier.height(4.dp))
+                if (result.sizeBytes > 0)
+                    Text("Размер: ${formatSize(result.sizeBytes)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (result.seeders > 0)
+                    Text("Сиды: ${result.seeders}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary)
+                val method = when {
+                    result.magnetUri != null -> "Magnet-ссылка"
+                    result.torrentUrl != null -> ".torrent файл"
+                    else -> "Нет ссылки"
+                }
+                Text("Метод: $method", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDownload,
+                enabled = result.magnetUri != null || result.torrentUrl != null
+            ) { Text("Скачать") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Отмена") }
+        }
+    )
+}
+
+@Composable
+fun SearchResultCard(result: SearchResult, onClick: () -> Unit) {
     val sourceColor = when (result.source) {
         SearchSource.RUTOR     -> Color(0xFF6750A4)
         SearchSource.RUTRACKER -> Color(0xFF00897B)
@@ -119,7 +189,7 @@ fun SearchResultCard(result: SearchResult) {
         SearchSource.NNM       -> Color(0xFF1565C0)
         SearchSource.YTS       -> Color(0xFF2E7D32)
     }
-    Card(modifier = Modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(12.dp)) {
             Text(result.title, style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
