@@ -1,41 +1,26 @@
 BUILD FAILED
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:55:37 Unresolved reference 'integer_types'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:56:37 Unresolved reference 'integer_types'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:57:37 Unresolved reference 'integer_types'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:66:47 Unresolved reference 'infoHashes'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:72:47 Unresolved reference 'infoHashes'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:78:47 Unresolved reference 'infoHashes'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:87:23 Argument type mismatch: actual type is 'org.libtorrent4j.SettingsPack', but 'org.libtorrent4j.SessionParams!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:110:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:143:63 Unresolved reference 'REMOVE_AND_DELETE'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:150:37 Unresolved reference 'handles'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:151:17 Overload resolution ambiguity between candidates:
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:151:27 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:152:20 Unresolved reference 'isValid'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:152:29 Return type mismatch: expected 'ERROR CLASS: Cannot infer type variable TypeVariable(_L)', actual 'kotlin.Unit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:154:32 Unresolved reference 'status'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:155:32 Unresolved reference 'infoHashes'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:156:56 Return type mismatch: expected 'ERROR CLASS: Cannot infer type variable TypeVariable(_L)', actual 'kotlin.Unit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:157:96 Return type mismatch: expected 'ERROR CLASS: Cannot infer type variable TypeVariable(_L)', actual 'kotlin.Unit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:167:33 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:183:23 Unresolved reference 'handles'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:183:47 Unresolved reference 'it'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:183:61 Unresolved reference 'it'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:106:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:131:54 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:137:54 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:144:60 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:146:67 Unresolved reference 'DELETE_FILES'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:160:64 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:164:23 Unresolved reference 'isPaused'.
 --- LAST 30 LINES ---
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:151:17 Overload resolution ambiguity between candidates:
-fun <T> Iterable<T>.forEach(action: (T) -> Unit): Unit
-fun <K, V> Map<out K, V>.forEach(action: (Map.Entry<K, V>) -> Unit): Unit
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:151:27 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:152:20 Unresolved reference 'isValid'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:152:29 Return type mismatch: expected 'ERROR CLASS: Cannot infer type variable TypeVariable(_L)', actual 'kotlin.Unit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:154:32 Unresolved reference 'status'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:155:32 Unresolved reference 'infoHashes'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:156:56 Return type mismatch: expected 'ERROR CLASS: Cannot infer type variable TypeVariable(_L)', actual 'kotlin.Unit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:157:96 Return type mismatch: expected 'ERROR CLASS: Cannot infer type variable TypeVariable(_L)', actual 'kotlin.Unit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:167:33 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:183:23 Unresolved reference 'handles'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:183:47 Unresolved reference 'it'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:183:61 Unresolved reference 'it'.
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libtorrent4j.so.
+
+> Task :app:kspDebugKotlin
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:106:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:131:54 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:137:54 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:144:60 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:146:67 Unresolved reference 'DELETE_FILES'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:160:64 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.swig.sha1_hash!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:164:23 Unresolved reference 'isPaused'.
 
 FAILURE: Build failed with an exception.
 
@@ -50,5 +35,5 @@ Execution failed for task ':app:compileDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 32s
+BUILD FAILED in 3m 35s
 30 actionable tasks: 30 executed
