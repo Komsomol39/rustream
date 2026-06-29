@@ -28,9 +28,28 @@ class DownloadRepository @Inject constructor(
 
     fun start() = engine.start()
 
+    // Публичные трекеры — помогают находить сиды быстрее
+    private val PUBLIC_TRACKERS = listOf(
+        "udp://tracker.opentrackr.org:1337/announce",
+        "udp://open.tracker.cl:1337/announce",
+        "udp://9.rarbg.to:2710/announce",
+        "udp://tracker.openbittorrent.com:6969/announce",
+        "udp://exodus.desync.com:6969/announce",
+        "udp://tracker.torrent.eu.org:451/announce",
+        "http://tracker.opentrackr.org:1337/announce"
+    )
+
+    private fun enrichMagnet(magnet: String): String {
+        val trackers = PUBLIC_TRACKERS.joinToString("") {
+            "&tr=${java.net.URLEncoder.encode(it, "UTF-8")}"
+        }
+        return if (magnet.contains("&tr=")) magnet else magnet + trackers
+    }
+
     // Запуск через magnet
     suspend fun startMagnet(result: SearchResult): String? = withContext(Dispatchers.IO) {
-        val magnet = result.magnetUri ?: return@withContext null
+        val rawMagnet = result.magnetUri ?: return@withContext null
+        val magnet = enrichMagnet(rawMagnet)
         val id = extractHash(magnet) ?: java.util.UUID.randomUUID().toString()
         val item = DownloadItem(
             id         = id,
