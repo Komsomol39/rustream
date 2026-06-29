@@ -25,6 +25,7 @@ import org.libtorrent4j.alerts.AddTorrentAlert
 import org.libtorrent4j.alerts.MetadataReceivedAlert
 import org.libtorrent4j.alerts.TorrentFinishedAlert
 import org.libtorrent4j.alerts.TorrentErrorAlert
+import org.libtorrent4j.swig.torrent_flags_t
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -118,7 +119,7 @@ class TorrentEngine @Inject constructor(
         if (hash != null) synchronized(hashToId) { hashToId[hash] = item.id }
         scope.launch {
             try {
-                session.download(magnet, File(savePath))
+                session.download(magnet, File(savePath), torrent_flags_t())
             } catch (e: Exception) {
                 Log.e(TAG, "addMagnet: ${e.message}")
                 updateState(item.id, DownloadState.ERROR)
