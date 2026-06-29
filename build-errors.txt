@@ -1,59 +1,21 @@
 BUILD FAILED
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:5:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:6:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:7:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:8:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:9:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:10:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:11:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:12:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:13:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:14:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:15:12 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:37:27 Unresolved reference 'SessionManager'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:45:48 Unresolved reference 'TorrentHandle'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:55:22 Unresolved reference 'SettingsPack'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:55:37 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:55:43 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:56:17 Unresolved reference 'connectionsLimit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:57:17 Unresolved reference 'downloadRateLimit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:58:17 Unresolved reference 'uploadRateLimit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:59:17 Unresolved reference 'activeDhtLimit'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:61:27 Unresolved reference 'SessionParams'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:62:42 Unresolved reference 'AlertListener'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:63:17 'types' overrides nothing.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:64:17 'alert' overrides nothing.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:64:43 Unresolved reference 'Alert'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:65:33 Unresolved reference 'type'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:66:25 Unresolved reference 'AlertType'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:67:46 Unresolved reference 'MetadataReceivedAlert'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:68:44 Unresolved reference 'handle'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:73:25 Unresolved reference 'AlertType'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:74:46 Unresolved reference 'TorrentFinishedAlert'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:75:44 Unresolved reference 'handle'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:99:47 Unresolved reference 'frostwire'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:102:46 Unresolved reference 'isValid'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:117:26 Unresolved reference 'TorrentInfo'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:118:34 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:118:55 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:118:57 Unresolved reference 'Priority'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:122:46 Unresolved reference 'isValid'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:133:22 Unresolved reference 'pause'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:86:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:112:25 None of the following candidates is applicable:
 --- LAST 30 LINES ---
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:122:46 Unresolved reference 'isValid'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:133:22 Unresolved reference 'pause'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:138:22 Unresolved reference 'resume'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:144:38 Unresolved reference 'isValid'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:166:25 Unresolved reference 'isValid'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:168:37 Unresolved reference 'status'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:197:40 Unresolved reference 'TorrentHandle'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:198:25 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:198:25 Not enough information to infer type argument for 'T'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:198:37 Cannot infer type for this parameter. Please specify it explicitly.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:198:42 Unresolved reference 'value'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:198:61 Unresolved reference 'key'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/navigation/AppNavGraph.kt:68:53 Unresolved reference 'padding'.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/navigation/AppNavGraph.kt:82:49 Unresolved reference 'fillMaxSize'.
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libtorrent4j.so.
+
+> Task :app:processDebugResources
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:kspDebugKotlin
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:86:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:112:25 None of the following candidates is applicable:
+fun download(p0: TorrentInfo!, p1: File!, p2: File!, p3: (Array<Priority!>..Array<out Priority!>?), p4: (MutableList<TcpEndpoint!>..List<TcpEndpoint!>?), p5: torrent_flags_t!): Unit
+fun download(p0: String!, p1: File!, p2: torrent_flags_t!): Unit
+fun download(p0: TorrentInfo!, p1: File!): Unit
 
 FAILURE: Build failed with an exception.
 
@@ -68,5 +30,5 @@ Execution failed for task ':app:compileDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 3m 23s
+BUILD FAILED in 3m 20s
 30 actionable tasks: 30 executed
