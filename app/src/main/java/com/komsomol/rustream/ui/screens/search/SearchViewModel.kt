@@ -30,11 +30,11 @@ data class SourceStatus(val name: String, val enabled: Boolean, val ready: Boole
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val searchRepo: SearchRepository,
-    private val downloadRepo: DownloadRepository,
+    private val repository: SearchRepository,
     private val settings: SettingsRepository,
     private val rtCookies: RuTrackerCookieStore,
-    private val nnmCookies: NnmCookieStore
+    private val nnmCookies: NnmCookieStore,
+    private val downloadRepo: DownloadRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
@@ -49,9 +49,6 @@ class SearchViewModel @Inject constructor(
     private val _activeStatuses = MutableStateFlow<List<SourceStatus>>(emptyList())
     val activeStatuses: StateFlow<List<SourceStatus>> = _activeStatuses.asStateFlow()
 
-    private val _downloadResult = MutableStateFlow<String?>(null)
-    val downloadResult: StateFlow<String?> = _downloadResult.asStateFlow()
-
     private var searchJob: Job? = null
 
     init { refreshStatuses() }
@@ -60,9 +57,9 @@ class SearchViewModel @Inject constructor(
         val all = listOf(
             SourceStatus("Kinozal",   settings.kinozalEnabled.first(),   settings.kinozalEnabled.first()),
             SourceStatus("RuTor",     settings.ruTorEnabled.first(),     settings.ruTorEnabled.first()),
+            SourceStatus("YTS",       settings.ytsEnabled.first(),       settings.ytsEnabled.first()),
             SourceStatus("RuTracker", settings.ruTrackerEnabled.first(), settings.ruTrackerEnabled.first() && rtCookies.isLoggedIn()),
             SourceStatus("NNM-Club",  settings.nnmEnabled.first(),       settings.nnmEnabled.first() && nnmCookies.isLoggedIn()),
-            SourceStatus("YTS",       settings.ytsEnabled.first(),       settings.ytsEnabled.first()),
         )
         _activeStatuses.value = all.filter { it.enabled }
     }
@@ -82,31 +79,22 @@ class SearchViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             _uiState.value = SearchUiState.Loading
             try {
-                val results = searchRepo.search(q, _category.value)
-                _uiState.value = if (results.isEmpty())
-                    SearchUiState.Error("Ничего не найдено")
-                else
-                    SearchUiState.Success(results)
+                val results = repository.search(q, _category.value)
+                _uiState.value = if (results.isEmpty()) SearchUiState.Error("Ничего не найдено")
+                                 else SearchUiState.Success(results)
             } catch (e: Exception) {
-                Log.e("SearchVM", "Error", e)
                 _uiState.value = SearchUiState.Error("Ошибка: ${e.message}")
             }
         }
     }
 
-    fun download(result: SearchResult) {
-        viewModelScope.launch {
-            val res = downloadRepo.startDownload(
-                title      = result.title,
-                magnetUri  = result.magnetUri,
-                torrentUrl = result.torrentUrl
-            )
-            _downloadResult.value = if (res.isSuccess)
-                "Загрузка добавлена: ${result.title.take(40)}"
-            else
-                "Ошибка: ${res.exceptionOrNull()?.message}"
-        }
+    fun startMagnet(result: SearchResult) = viewModelScope.launch {
+        downloadRepo.startMagnet(result)
+        Log.d("SearchVM", "Magnet started: ${result.title}")
     }
 
-    fun clearDownloadResult() { _downloadResult.value = null }
+    fun startTorrentUrl(result: SearchResult) = viewModelScope.launch {
+        downloadRepo.startTorrentUrl(result)
+        Log.d("SearchVM", "Torrent started: ${result.title}")
+    }
 }
