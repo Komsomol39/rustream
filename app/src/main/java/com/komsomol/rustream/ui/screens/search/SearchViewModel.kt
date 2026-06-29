@@ -7,6 +7,7 @@ import com.komsomol.rustream.data.search.NnmCookieStore
 import com.komsomol.rustream.data.search.RuTrackerCookieStore
 import com.komsomol.rustream.data.search.SearchRepository
 import com.komsomol.rustream.data.settings.SettingsRepository
+import com.komsomol.rustream.data.torrent.DownloadRepository
 import com.komsomol.rustream.domain.model.ContentCategory
 import com.komsomol.rustream.domain.model.SearchResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,12 +26,12 @@ sealed class SearchUiState {
     data class Error(val message: String) : SearchUiState()
 }
 
-// Только включённые источники — enabled=true AND ready=true (авторизован если нужно)
 data class SourceStatus(val name: String, val enabled: Boolean, val ready: Boolean)
 
 @HiltViewModel
 class SearchViewModel @Inject constructor(
-    private val repository: SearchRepository,
+    private val searchRepo: SearchRepository,
+    private val downloadRepo: DownloadRepository,
     private val settings: SettingsRepository,
     private val rtCookies: RuTrackerCookieStore,
     private val nnmCookies: NnmCookieStore
@@ -45,9 +46,11 @@ class SearchViewModel @Inject constructor(
     private val _category = MutableStateFlow(ContentCategory.ALL)
     val category: StateFlow<ContentCategory> = _category.asStateFlow()
 
-    // Только включённые источники
     private val _activeStatuses = MutableStateFlow<List<SourceStatus>>(emptyList())
     val activeStatuses: StateFlow<List<SourceStatus>> = _activeStatuses.asStateFlow()
+
+    private val _downloadResult = MutableStateFlow<String?>(null)
+    val downloadResult: StateFlow<String?> = _downloadResult.asStateFlow()
 
     private var searchJob: Job? = null
 
@@ -61,9 +64,7 @@ class SearchViewModel @Inject constructor(
             SourceStatus("NNM-Club",  settings.nnmEnabled.first(),       settings.nnmEnabled.first() && nnmCookies.isLoggedIn()),
             SourceStatus("YTS",       settings.ytsEnabled.first(),       settings.ytsEnabled.first()),
         )
-        // Показываем только включённые
         _activeStatuses.value = all.filter { it.enabled }
-        Log.d("SearchVM", "Active: ${_activeStatuses.value}")
     }
 
     fun onQueryChange(q: String) { _query.value = q }
@@ -81,8 +82,7 @@ class SearchViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             _uiState.value = SearchUiState.Loading
             try {
-                val results = repository.search(q, _category.value)
-                Log.d("SearchVM", "Results: ${results.size}")
+                val results = searchRepo.search(q, _category.value)
                 _uiState.value = if (results.isEmpty())
                     SearchUiState.Error("Ничего не найдено")
                 else
@@ -93,4 +93,20 @@ class SearchViewModel @Inject constructor(
             }
         }
     }
+
+    fun download(result: SearchResult) {
+        viewModelScope.launch {
+            val res = downloadRepo.startDownload(
+                title      = result.title,
+                magnetUri  = result.magnetUri,
+                torrentUrl = result.torrentUrl
+            )
+            _downloadResult.value = if (res.isSuccess)
+                "Загрузка добавлена: ${result.title.take(40)}"
+            else
+                "Ошибка: ${res.exceptionOrNull()?.message}"
+        }
+    }
+
+    fun clearDownloadResult() { _downloadResult.value = null }
 }
