@@ -17,15 +17,12 @@ import kotlinx.coroutines.launch
 import org.libtorrent4j.AlertListener
 import org.libtorrent4j.SessionManager
 import org.libtorrent4j.SettingsPack
-import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.alerts.Alert
 import org.libtorrent4j.alerts.AlertType
 import org.libtorrent4j.alerts.MetadataReceivedAlert
 import org.libtorrent4j.alerts.TorrentFinishedAlert
 import org.libtorrent4j.alerts.TorrentErrorAlert
-import org.libtorrent4j.swig.add_torrent_params
-import org.libtorrent4j.swig.error_code
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -36,12 +33,15 @@ class TorrentEngine @Inject constructor(
 ) {
     private val TAG = "TorrentEngine"
     private val scope = CoroutineScope(Dispatchers.IO)
-
     private val session = SessionManager()
     private var started = false
 
+    // id -> DownloadItem
     private val _downloads = MutableStateFlow<Map<String, DownloadItem>>(emptyMap())
     val downloads: StateFlow<Map<String, DownloadItem>> = _downloads.asStateFlow()
+
+    // id -> magnet/hash для поиска handle
+    private val idToHash = mutableMapOf<String, String>()
 
     val savePath: String = Environment.getExternalStoragePublicDirectory(
         Environment.DIRECTORY_DOWNLOADS
@@ -51,60 +51,56 @@ class TorrentEngine @Inject constructor(
         if (started) return
         started = true
 
-        val sp = SettingsPack().apply {
-            setInteger(SettingsPack.integer_types.connections_limit.swigValue(), 200)
-            setInteger(SettingsPack.integer_types.active_downloads.swigValue(), 5)
-            setInteger(SettingsPack.integer_types.active_seeds.swigValue(), 5)
-        }
-
         session.addListener(object : AlertListener {
             override fun types(): IntArray? = null
             override fun alert(alert: Alert<*>) {
                 when (alert.type()) {
                     AlertType.METADATA_RECEIVED -> {
                         val a = alert as MetadataReceivedAlert
-                        val hash = a.handle().infoHashes().best().toHex()
-                        Log.d(TAG, "Metadata received: $hash")
-                        updateState(hash, DownloadState.DOWNLOADING)
+                        val hash = a.handle().infoHash().toString()
+                        Log.d(TAG, "Metadata: $hash")
+                        findIdByHash(hash)?.let { updateState(it, DownloadState.DOWNLOADING) }
                     }
                     AlertType.TORRENT_FINISHED -> {
                         val a = alert as TorrentFinishedAlert
-                        val hash = a.handle().infoHashes().best().toHex()
+                        val hash = a.handle().infoHash().toString()
                         Log.d(TAG, "Finished: $hash")
-                        updateState(hash, DownloadState.FINISHED, progress = 1f)
+                        findIdByHash(hash)?.let { updateState(it, DownloadState.FINISHED, 1f) }
                     }
                     AlertType.TORRENT_ERROR -> {
                         val a = alert as TorrentErrorAlert
-                        val hash = a.handle().infoHashes().best().toHex()
-                        Log.e(TAG, "Error: $hash ${a.error()}")
-                        updateState(hash, DownloadState.ERROR)
+                        val hash = a.handle().infoHash().toString()
+                        Log.e(TAG, "Error: $hash")
+                        findIdByHash(hash)?.let { updateState(it, DownloadState.ERROR) }
                     }
                     else -> {}
                 }
             }
         })
 
-        session.start(sp)
+        session.start()
         File(savePath).mkdirs()
 
-        // Polling прогресса каждую секунду
         scope.launch {
             while (true) {
                 delay(1000)
-                pollProgress()
+                if (started) pollProgress()
             }
         }
-        Log.d(TAG, "Session started, savePath=$savePath")
+        Log.d(TAG, "Started, savePath=$savePath")
     }
 
     fun stop() {
-        if (started) session.stop()
         started = false
+        try { session.stop() } catch (_: Exception) {}
     }
 
     fun addMagnet(item: DownloadItem) {
         val magnet = item.magnetUri ?: return
         _downloads.update { it + (item.id to item.copy(state = DownloadState.FETCHING_META)) }
+        // Извлекаем hash из magnet для привязки handle
+        val hash = extractHash(magnet) ?: item.id
+        synchronized(idToHash) { idToHash[item.id] = hash }
         scope.launch {
             try {
                 session.download(magnet, File(savePath))
@@ -115,11 +111,13 @@ class TorrentEngine @Inject constructor(
         }
     }
 
-    fun addTorrentFile(item: DownloadItem, torrentBytes: ByteArray) {
+    fun addTorrentFile(item: DownloadItem, bytes: ByteArray) {
         _downloads.update { it + (item.id to item.copy(state = DownloadState.DOWNLOADING)) }
         scope.launch {
             try {
-                val ti = TorrentInfo.bdecode(torrentBytes)
+                val ti = TorrentInfo.bdecode(bytes)
+                val hash = ti.infoHash().toString()
+                synchronized(idToHash) { idToHash[item.id] = hash }
                 session.download(ti, File(savePath))
             } catch (e: Exception) {
                 Log.e(TAG, "addTorrentFile error: ${e.message}")
@@ -129,67 +127,70 @@ class TorrentEngine @Inject constructor(
     }
 
     fun pause(id: String) {
-        findHandle(id)?.pause()
+        val hash = synchronized(idToHash) { idToHash[id] } ?: return
+        try { session.find(org.libtorrent4j.Sha1Hash(hash))?.pause() } catch (_: Exception) {}
         updateState(id, DownloadState.PAUSED)
     }
 
     fun resume(id: String) {
-        findHandle(id)?.resume()
+        val hash = synchronized(idToHash) { idToHash[id] } ?: return
+        try { session.find(org.libtorrent4j.Sha1Hash(hash))?.resume() } catch (_: Exception) {}
         updateState(id, DownloadState.DOWNLOADING)
     }
 
     fun remove(id: String, deleteFiles: Boolean = false) {
-        findHandle(id)?.let { h ->
-            if (deleteFiles) session.remove(h, SessionManager.REMOVE_AND_DELETE)
-            else session.remove(h)
-        }
+        val hash = synchronized(idToHash) { idToHash.remove(id) } ?: return
+        try {
+            val h = session.find(org.libtorrent4j.Sha1Hash(hash))
+            if (h != null) {
+                if (deleteFiles) session.remove(h, SessionManager.DELETE_FILES)
+                else session.remove(h)
+            }
+        } catch (_: Exception) {}
         _downloads.update { it - id }
     }
 
     private fun pollProgress() {
-        val handles = try { session.handles() } catch (e: Exception) { return }
-        handles.forEach { h ->
-            if (!h.isValid) return@forEach
+        val current = _downloads.value
+        current.forEach { (id, item) ->
+            if (item.state == DownloadState.FINISHED || item.state == DownloadState.ERROR ||
+                item.state == DownloadState.QUEUED) return@forEach
+            val hash = synchronized(idToHash) { idToHash[id] } ?: return@forEach
             try {
-                val status = h.status()
-                val hash   = h.infoHashes().best().toHex()
-                val item   = _downloads.value[hash] ?: return@forEach
-                if (item.state == DownloadState.FINISHED || item.state == DownloadState.ERROR) return@forEach
-
-                val state = when {
-                    status.isFinished                     -> DownloadState.FINISHED
-                    status.isPaused                       -> DownloadState.PAUSED
-                    status.progress() < 1f && !status.isPaused -> DownloadState.DOWNLOADING
-                    else -> item.state
+                val h = session.find(org.libtorrent4j.Sha1Hash(hash)) ?: return@forEach
+                val s = h.status()
+                val newState = when {
+                    s.isFinished -> DownloadState.FINISHED
+                    s.isPaused  -> DownloadState.PAUSED
+                    else        -> DownloadState.DOWNLOADING
                 }
-
                 _downloads.update { map ->
-                    map + (hash to item.copy(
-                        state           = state,
-                        progress        = status.progress(),
-                        downloadedBytes = status.totalDone(),
-                        totalBytes      = status.total(),
-                        downloadSpeedBps = status.downloadPayloadRate().toLong(),
-                        uploadSpeedBps   = status.uploadPayloadRate().toLong(),
-                        seeds            = status.numSeeds(),
-                        peers            = status.numPeers()
+                    map + (id to item.copy(
+                        state            = newState,
+                        progress         = s.progress(),
+                        downloadedBytes  = s.totalDone(),
+                        totalBytes       = s.total(),
+                        downloadSpeedBps = s.downloadPayloadRate().toLong(),
+                        uploadSpeedBps   = s.uploadPayloadRate().toLong(),
+                        seeds            = s.numSeeds(),
+                        peers            = s.numPeers()
                     ))
                 }
             } catch (_: Exception) {}
         }
     }
 
-    private fun findHandle(id: String): TorrentHandle? =
-        try { session.handles().firstOrNull { it.isValid && it.infoHashes().best().toHex() == id } }
-        catch (_: Exception) { null }
+    private fun findIdByHash(hash: String): String? =
+        synchronized(idToHash) { idToHash.entries.firstOrNull { it.value == hash }?.key }
 
     private fun updateState(id: String, state: DownloadState, progress: Float? = null) {
         _downloads.update { map ->
             val item = map[id] ?: return@update map
-            map + (id to item.copy(
-                state    = state,
-                progress = progress ?: item.progress
-            ))
+            map + (id to item.copy(state = state, progress = progress ?: item.progress))
         }
     }
+
+    private fun extractHash(magnet: String): String? =
+        Regex("urn:btih:([a-fA-F0-9]{40})", RegexOption.IGNORE_CASE)
+            .find(magnet)?.groupValues?.get(1)?.lowercase()
 }
