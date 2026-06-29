@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,97 +25,78 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val query          by viewModel.query.collectAsState()
     val category       by viewModel.category.collectAsState()
     val activeStatuses by viewModel.activeStatuses.collectAsState()
-    val downloadResult by viewModel.downloadResult.collectAsState()
 
-    // Диалог скачивания
-    var selectedResult by remember { mutableStateOf<SearchResult?>(null) }
+    var downloadDialogItem by remember { mutableStateOf<SearchResult?>(null) }
 
-    // Снекбар для уведомлений о загрузке
-    val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(downloadResult) {
-        downloadResult?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearDownloadResult()
+    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = query, onValueChange = viewModel::onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Поиск торрентов...") },
+            trailingIcon = { IconButton(onClick = viewModel::search) {
+                Icon(Icons.Default.Search, "Поиск") } },
+            singleLine = true
+        )
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ContentCategory.values().forEach { cat ->
+                FilterChip(selected = category == cat,
+                    onClick = { viewModel.onCategoryChange(cat) },
+                    label = { Text(cat.displayName) })
+            }
         }
-    }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp)) {
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = query, onValueChange = viewModel::onQueryChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Поиск торрентов...") },
-                trailingIcon = { IconButton(onClick = viewModel::search) {
-                    Icon(Icons.Default.Search, "Поиск") } },
-                singleLine = true
-            )
-            Spacer(Modifier.height(8.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ContentCategory.values().forEach { cat ->
-                    FilterChip(selected = category == cat,
-                        onClick = { viewModel.onCategoryChange(cat) },
-                        label = { Text(cat.displayName) })
+        if (activeStatuses.isNotEmpty()) {
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                activeStatuses.forEach { src ->
+                    val color = if (src.ready) MaterialTheme.colorScheme.tertiary
+                                else MaterialTheme.colorScheme.error
+                    Surface(color = color.copy(alpha = 0.12f), shape = MaterialTheme.shapes.small) {
+                        Text(if (src.ready) src.name else "${src.name} ⚠",
+                            style = MaterialTheme.typography.labelSmall, color = color,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+                    }
                 }
             }
+        }
+        Spacer(Modifier.height(8.dp))
 
-            if (activeStatuses.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
+        when (val state = uiState) {
+            is SearchUiState.Idle -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Text(
+                    if (activeStatuses.isEmpty()) "Включите источники в Настройках"
+                    else "Введите запрос для поиска",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            is SearchUiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    CircularProgressIndicator()
+                    Text("Поиск...", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            is SearchUiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
+                Text(state.message, color = MaterialTheme.colorScheme.error)
+            }
+            is SearchUiState.Success -> {
+                val bySource = state.results.groupBy { it.source }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    activeStatuses.forEach { src ->
-                        val color = if (src.ready) MaterialTheme.colorScheme.tertiary
-                                    else MaterialTheme.colorScheme.error
-                        Surface(color = color.copy(alpha = 0.12f), shape = MaterialTheme.shapes.small) {
-                            Text(
-                                text = if (src.ready) src.name else "${src.name} ⚠",
-                                style = MaterialTheme.typography.labelSmall, color = color,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
+                    bySource.forEach { (src, list) ->
+                        SuggestionChip(onClick = {},
+                            label = { Text("${src.displayName}: ${list.size}",
+                                style = MaterialTheme.typography.labelSmall) })
                     }
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            when (val state = uiState) {
-                is SearchUiState.Idle -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text(
-                        if (activeStatuses.isEmpty()) "Включите источники в Настройках"
-                        else "Введите запрос для поиска",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                is SearchUiState.Loading -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        CircularProgressIndicator()
-                        Text("Поиск...", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-                is SearchUiState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text(state.message, color = MaterialTheme.colorScheme.error)
-                }
-                is SearchUiState.Success -> {
-                    val bySource = state.results.groupBy { it.source }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        bySource.forEach { (src, list) ->
-                            SuggestionChip(onClick = {},
-                                label = { Text("${src.displayName}: ${list.size}",
-                                    style = MaterialTheme.typography.labelSmall) })
-                        }
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(state.results) { result ->
-                            SearchResultCard(
-                                result = result,
-                                onClick = { selectedResult = result }
-                            )
-                        }
+                Spacer(Modifier.height(4.dp))
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(state.results) { result ->
+                        SearchResultCard(
+                            result  = result,
+                            onClick = { downloadDialogItem = result }
+                        )
                     }
                 }
             }
@@ -124,14 +104,18 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     }
 
     // Диалог скачивания
-    selectedResult?.let { result ->
+    downloadDialogItem?.let { item ->
         DownloadDialog(
-            result = result,
-            onDismiss = { selectedResult = null },
-            onDownload = {
-                viewModel.download(result)
-                selectedResult = null
-            }
+            result   = item,
+            onMagnet = {
+                viewModel.startMagnet(item)
+                downloadDialogItem = null
+            },
+            onTorrent = {
+                viewModel.startTorrentUrl(item)
+                downloadDialogItem = null
+            },
+            onDismiss = { downloadDialogItem = null }
         )
     }
 }
@@ -139,40 +123,42 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
 @Composable
 fun DownloadDialog(
     result: SearchResult,
-    onDismiss: () -> Unit,
-    onDownload: () -> Unit
+    onMagnet: () -> Unit,
+    onTorrent: () -> Unit,
+    onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Download, null) },
-        title = { Text("Скачать") },
+        title = { Text("Скачать", style = MaterialTheme.typography.titleMedium) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(result.title, style = MaterialTheme.typography.bodyMedium,
                     maxLines = 3, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.height(4.dp))
-                if (result.sizeBytes > 0)
-                    Text("Размер: ${formatSize(result.sizeBytes)}",
+                if (result.sizeBytes > 0) {
+                    Text(formatSize(result.sizeBytes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (result.seeders > 0)
-                    Text("Сиды: ${result.seeders}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary)
-                val method = when {
-                    result.magnetUri != null -> "Magnet-ссылка"
-                    result.torrentUrl != null -> ".torrent файл"
-                    else -> "Нет ссылки"
                 }
-                Text("Метод: $method", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = {
-            Button(
-                onClick = onDownload,
-                enabled = result.magnetUri != null || result.torrentUrl != null
-            ) { Text("Скачать") }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (result.magnetUri != null) {
+                    Button(onClick = onMagnet, modifier = Modifier.fillMaxWidth()) {
+                        Text("Magnet-ссылка")
+                    }
+                }
+                if (result.torrentUrl != null) {
+                    OutlinedButton(onClick = onTorrent, modifier = Modifier.fillMaxWidth()) {
+                        Text("Скачать .torrent")
+                    }
+                }
+                if (result.magnetUri == null && result.torrentUrl == null) {
+                    Text("Нет ссылки для скачивания",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error)
+                }
+            }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Отмена") }
