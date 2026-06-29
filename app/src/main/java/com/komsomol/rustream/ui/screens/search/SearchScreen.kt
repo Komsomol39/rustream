@@ -46,7 +46,6 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                     label = { Text(cat.displayName) })
             }
         }
-
         if (activeStatuses.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -62,12 +61,10 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
             }
         }
         Spacer(Modifier.height(8.dp))
-
         when (val state = uiState) {
             is SearchUiState.Idle -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Text(
-                    if (activeStatuses.isEmpty()) "Включите источники в Настройках"
-                    else "Введите запрос для поиска",
+                Text(if (activeStatuses.isEmpty()) "Включите источники в Настройках"
+                     else "Введите запрос для поиска",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -93,28 +90,18 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                 Spacer(Modifier.height(4.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(state.results) { result ->
-                        SearchResultCard(
-                            result  = result,
-                            onClick = { downloadDialogItem = result }
-                        )
+                        SearchResultCard(result = result, onClick = { downloadDialogItem = result })
                     }
                 }
             }
         }
     }
 
-    // Диалог скачивания
     downloadDialogItem?.let { item ->
         DownloadDialog(
-            result   = item,
-            onMagnet = {
-                viewModel.startMagnet(item)
-                downloadDialogItem = null
-            },
-            onTorrent = {
-                viewModel.startTorrentUrl(item)
-                downloadDialogItem = null
-            },
+            result    = item,
+            onMagnet  = { viewModel.startMagnet(item); downloadDialogItem = null },
+            onTorrent = { viewModel.startTorrentUrl(item); downloadDialogItem = null },
             onDismiss = { downloadDialogItem = null }
         )
     }
@@ -129,20 +116,22 @@ fun DownloadDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Скачать", style = MaterialTheme.typography.titleMedium) },
+        title = { Text("Скачать") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(result.title, style = MaterialTheme.typography.bodyMedium,
                     maxLines = 3, overflow = TextOverflow.Ellipsis)
-                if (result.sizeBytes > 0) {
+                if (result.sizeBytes > 0)
                     Text(formatSize(result.sizeBytes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
             }
         },
         confirmButton = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 if (result.magnetUri != null) {
                     Button(onClick = onMagnet, modifier = Modifier.fillMaxWidth()) {
                         Text("Magnet-ссылка")
@@ -153,15 +142,10 @@ fun DownloadDialog(
                         Text("Скачать .torrent")
                     }
                 }
-                if (result.magnetUri == null && result.torrentUrl == null) {
-                    Text("Нет ссылки для скачивания",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error)
+                TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                    Text("Отмена")
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Отмена") }
         }
     )
 }
