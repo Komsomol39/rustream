@@ -61,5 +61,9 @@ object AppModule {
     fun provideTorrentEngine(@ApplicationContext ctx: Context) = TorrentEngine(ctx)
 
     @Provides @Singleton
-    fun provideDownloadRepository(engine: TorrentEngine) = DownloadRepository(engine)
+    fun provideDownloadRepository(
+        engine: TorrentEngine,
+        rtCookies: RuTrackerCookieStore,
+        nnmCookies: NnmCookieStore
+    ) = DownloadRepository(engine, rtCookies, nnmCookies)
 }
