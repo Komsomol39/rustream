@@ -35,7 +35,11 @@ class TorrentEngine @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
     private val TAG = "TorrentEngine"
-    private val scope = CoroutineScope(Dispatchers.IO)
+    // SupervisorJob + handler: падение одной корутины не роняет приложение
+    private val crashHandler = kotlinx.coroutines.CoroutineExceptionHandler { _, e ->
+        Log.e("TorrentEngine", "Coroutine crash: " + e)
+    }
+    private val scope = CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob() + crashHandler)
     val session = SessionManager()
     private var started = false
 
@@ -140,12 +144,8 @@ class TorrentEngine @Inject constructor(
         if (hash != null) synchronized(hashToId) { hashToId[hash] = item.id }
         scope.launch {
             try {
-                // Явно передаём стандартные флаги (пустые флаги ломали поведение)
-                val flags = org.libtorrent4j.TorrentFlags.AUTO_MANAGED
-                    .or_(org.libtorrent4j.TorrentFlags.UPDATE_SUBSCRIBE)
-                    .or_(org.libtorrent4j.TorrentFlags.APPLY_IP_FILTER)
-                    .or_(org.libtorrent4j.TorrentFlags.NEED_SAVE_RESUME)
-                session.download(magnet, File(savePath), flags)
+                // null = не переопределять флаги, libtorrent применит свои дефолты
+                session.download(magnet, File(savePath), null)
             } catch (e: Exception) {
                 Log.e(TAG, "addMagnet: " + e.message)
                 updateState(item.id, DownloadState.ERROR, error = "Не удалось добавить: " + (e.message ?: "?"))
