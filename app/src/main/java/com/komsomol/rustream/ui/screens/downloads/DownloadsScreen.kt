@@ -21,6 +21,7 @@ import com.komsomol.rustream.domain.model.DownloadState
 @Composable
 fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
     val downloads by viewModel.downloads.collectAsState(initial = emptyList())
+    val dhtNodes by viewModel.dhtNodes.collectAsState(initial = 0L)
 
     if (downloads.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -30,6 +31,9 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("Нажмите на раздачу в поиске чтобы скачать",
                     style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("DHT: " + dhtNodes + " узлов",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -41,6 +45,11 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
+        item {
+            Text("DHT: " + dhtNodes + " узлов",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         items(downloads, key = { it.id }) { item ->
             DownloadCard(
                 item     = item,
@@ -102,12 +111,12 @@ fun DownloadCard(
                 // Состояние + прогресс %
                 val stateText = when (item.state) {
                     DownloadState.QUEUED        -> "В очереди"
-                    DownloadState.FETCHING_META -> "Получаем метаданные..."
+                    DownloadState.FETCHING_META -> "Метаданные... пиры: " + item.peers
                     DownloadState.DOWNLOADING   -> "%.1f%%  ↓ %s/с".format(
                         item.progress * 100, formatSpeed(item.downloadSpeedBps))
                     DownloadState.PAUSED        -> "Пауза  %.1f%%".format(item.progress * 100)
                     DownloadState.FINISHED      -> "✓ Готово"
-                    DownloadState.ERROR         -> "Ошибка"
+                    DownloadState.ERROR         -> item.errorMessage ?: "Ошибка"
                 }
                 val stateColor = when (item.state) {
                     DownloadState.FINISHED  -> MaterialTheme.colorScheme.tertiary
