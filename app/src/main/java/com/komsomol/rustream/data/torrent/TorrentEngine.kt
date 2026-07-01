@@ -106,7 +106,6 @@ class TorrentEngine @Inject constructor(
             "dht.libtorrent.org:25401"
         )
         sp.listenInterfaces("0.0.0.0:6881,[::]:6881")
-        sp.broadcastLsd(true)
         // Активные загрузки
         sp.activeDownloads(8)
 
