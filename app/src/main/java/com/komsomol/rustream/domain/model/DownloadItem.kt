@@ -14,6 +14,7 @@ data class DownloadItem(
     val uploadSpeedBps: Long = 0L,
     val seeds: Int = 0,
     val peers: Int = 0,
+    val errorMessage: String? = null,  // текст ошибки для UI
     val addedAt: Long = System.currentTimeMillis()
 )
 
