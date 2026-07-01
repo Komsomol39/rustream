@@ -109,7 +109,7 @@ class RuTorProvider @Inject constructor(
                                 seeders    = seeds,
                                 leechers   = leech,
                                 magnetUri  = magnet,
-                                torrentUrl = dlEl?.attr("href"),
+                                torrentUrl = normalizeUrl(dlEl?.attr("href"), mirror),
                                 detailUrl  = detailHref,
                                 uploadDate = date
                             ))
@@ -129,6 +129,17 @@ class RuTorProvider @Inject constructor(
             }
             emptyList()
         }
+
+    // //d.rutor.info/... -> https://d.rutor.info/...
+    private fun normalizeUrl(href: String?, mirror: String): String? {
+        if (href.isNullOrBlank()) return null
+        return when {
+            href.startsWith("http") -> href
+            href.startsWith("//")   -> "https:" + href
+            href.startsWith("/")    -> mirror + href
+            else                    -> href
+        }
+    }
 
     private fun parseSize(text: String): Long {
         val lower = text.lowercase().replace(",", ".").trim()
