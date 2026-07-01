@@ -129,7 +129,7 @@ fun DownloadDialog(
         },
         confirmButton = {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (result.magnetUri != null) {
