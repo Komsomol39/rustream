@@ -91,9 +91,9 @@ class TorrentEngine @Inject constructor(
                     AlertType.TORRENT_ERROR -> {
                         val a = alert as TorrentErrorAlert
                         val hash = a.handle().infoHash().toString()
-                        synchronized(hashToId) { hashToId[hash] }?.let {
-                            updateState(it, DownloadState.ERROR, error = a.error()?.message())
-                        }
+                        val msg: String = a.message()
+                        val id2 = synchronized(hashToId) { hashToId[hash] }
+                        if (id2 != null) updateState(id2, DownloadState.ERROR, error = msg)
                     }
                     else -> {}
                 }
@@ -140,8 +140,12 @@ class TorrentEngine @Inject constructor(
         if (hash != null) synchronized(hashToId) { hashToId[hash] = item.id }
         scope.launch {
             try {
-                // 2-аргументная версия: не затираем дефолтные флаги libtorrent
-                session.download(magnet, File(savePath))
+                // Явно передаём стандартные флаги (пустые флаги ломали поведение)
+                val flags = org.libtorrent4j.TorrentFlags.AUTO_MANAGED
+                    .or_(org.libtorrent4j.TorrentFlags.UPDATE_SUBSCRIBE)
+                    .or_(org.libtorrent4j.TorrentFlags.APPLY_IP_FILTER)
+                    .or_(org.libtorrent4j.TorrentFlags.NEED_SAVE_RESUME)
+                session.download(magnet, File(savePath), flags)
             } catch (e: Exception) {
                 Log.e(TAG, "addMagnet: " + e.message)
                 updateState(item.id, DownloadState.ERROR, error = "Не удалось добавить: " + (e.message ?: "?"))
