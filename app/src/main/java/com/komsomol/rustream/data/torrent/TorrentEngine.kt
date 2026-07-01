@@ -26,7 +26,6 @@ import org.libtorrent4j.alerts.AddTorrentAlert
 import org.libtorrent4j.alerts.MetadataReceivedAlert
 import org.libtorrent4j.alerts.TorrentFinishedAlert
 import org.libtorrent4j.alerts.TorrentErrorAlert
-import org.libtorrent4j.swig.torrent_flags_t
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -42,6 +41,10 @@ class TorrentEngine @Inject constructor(
 
     private val _downloads = MutableStateFlow<Map<String, DownloadItem>>(emptyMap())
     val downloads: StateFlow<Map<String, DownloadItem>> = _downloads.asStateFlow()
+
+    // Число узлов DHT — индикатор здоровья сети
+    private val _dhtNodes = MutableStateFlow(0L)
+    val dhtNodes: StateFlow<Long> = _dhtNodes.asStateFlow()
 
     // id -> TorrentHandle
     private val handles = mutableMapOf<String, TorrentHandle>()
@@ -65,7 +68,7 @@ class TorrentEngine @Inject constructor(
                         val hash = h.infoHash().toString()
                         val id = synchronized(hashToId) { hashToId[hash] }
                         if (id != null) synchronized(handles) { handles[id] = h }
-                        Log.d(TAG, "ADD_TORRENT hash=$hash id=$id")
+                        Log.d(TAG, "ADD_TORRENT hash=" + hash + " id=" + id)
                     }
                     AlertType.METADATA_RECEIVED -> {
                         val h = (alert as MetadataReceivedAlert).handle()
@@ -73,9 +76,10 @@ class TorrentEngine @Inject constructor(
                         val id = synchronized(hashToId) { hashToId[hash] }
                         if (id != null) {
                             synchronized(handles) { handles[id] = h }
+                            // даже если успел сработать таймаут — оживляем загрузку
                             updateState(id, DownloadState.DOWNLOADING)
                         }
-                        Log.d(TAG, "METADATA hash=$hash id=$id")
+                        Log.d(TAG, "METADATA hash=" + hash + " id=" + id)
                     }
                     AlertType.TORRENT_FINISHED -> {
                         val h = (alert as TorrentFinishedAlert).handle()
@@ -85,10 +89,10 @@ class TorrentEngine @Inject constructor(
                         }
                     }
                     AlertType.TORRENT_ERROR -> {
-                        val h = (alert as TorrentErrorAlert).handle()
-                        val hash = h.infoHash().toString()
+                        val a = alert as TorrentErrorAlert
+                        val hash = a.handle().infoHash().toString()
                         synchronized(hashToId) { hashToId[hash] }?.let {
-                            updateState(it, DownloadState.ERROR)
+                            updateState(it, DownloadState.ERROR, error = a.error()?.message())
                         }
                     }
                     else -> {}
@@ -106,7 +110,6 @@ class TorrentEngine @Inject constructor(
             "dht.libtorrent.org:25401"
         )
         sp.listenInterfaces("0.0.0.0:6881,[::]:6881")
-        // Активные загрузки
         sp.activeDownloads(8)
 
         session.start(org.libtorrent4j.SessionParams(sp))
@@ -116,10 +119,13 @@ class TorrentEngine @Inject constructor(
         scope.launch {
             while (true) {
                 delay(1000)
-                if (started) pollProgress()
+                if (started) {
+                    try { _dhtNodes.value = session.stats().dhtNodes() } catch (_: Exception) {}
+                    pollProgress()
+                }
             }
         }
-        Log.d(TAG, "Started, savePath=$savePath")
+        Log.d(TAG, "Started, savePath=" + savePath)
     }
 
     fun stop() {
@@ -129,21 +135,31 @@ class TorrentEngine @Inject constructor(
 
     fun addMagnet(item: DownloadItem) {
         val magnet = item.magnetUri ?: return
-        _downloads.update { it + (item.id to item.copy(state = DownloadState.FETCHING_META)) }
+        _downloads.update { it + (item.id to item.copy(state = DownloadState.FETCHING_META, errorMessage = null)) }
         val hash = extractHash(magnet)
         if (hash != null) synchronized(hashToId) { hashToId[hash] = item.id }
         scope.launch {
             try {
-                session.download(magnet, File(savePath), torrent_flags_t())
+                // 2-аргументная версия: не затираем дефолтные флаги libtorrent
+                session.download(magnet, File(savePath))
             } catch (e: Exception) {
-                Log.e(TAG, "addMagnet: ${e.message}")
-                updateState(item.id, DownloadState.ERROR)
+                Log.e(TAG, "addMagnet: " + e.message)
+                updateState(item.id, DownloadState.ERROR, error = "Не удалось добавить: " + (e.message ?: "?"))
+                return@launch
+            }
+            // Таймаут метаданных: если за 2 минуты пиров не нашлось — сообщаем
+            delay(METADATA_TIMEOUT_MS)
+            val cur = _downloads.value[item.id]
+            if (cur != null && cur.state == DownloadState.FETCHING_META) {
+                updateState(item.id, DownloadState.ERROR,
+                    error = "Пиры не найдены за 2 мин (DHT: " + _dhtNodes.value +
+                            " узлов). Раздача продолжится сама, если пиры появятся")
             }
         }
     }
 
     fun addTorrentFile(item: DownloadItem, bytes: ByteArray) {
-        _downloads.update { it + (item.id to item.copy(state = DownloadState.DOWNLOADING)) }
+        _downloads.update { it + (item.id to item.copy(state = DownloadState.DOWNLOADING, errorMessage = null)) }
         scope.launch {
             try {
                 val ti = TorrentInfo.bdecode(bytes)
@@ -151,10 +167,15 @@ class TorrentEngine @Inject constructor(
                 synchronized(hashToId) { hashToId[hash] = item.id }
                 session.download(ti, File(savePath))
             } catch (e: Exception) {
-                Log.e(TAG, "addTorrentFile: ${e.message}")
-                updateState(item.id, DownloadState.ERROR)
+                Log.e(TAG, "addTorrentFile: " + e.message)
+                updateState(item.id, DownloadState.ERROR, error = "Битый .torrent: " + (e.message ?: "?"))
             }
         }
+    }
+
+    // Регистрация ошибки без добавления в сессию (например .torrent не скачался)
+    fun addFailed(item: DownloadItem, message: String) {
+        _downloads.update { it + (item.id to item.copy(state = DownloadState.ERROR, errorMessage = message)) }
     }
 
     fun pause(id: String) {
@@ -204,14 +225,44 @@ class TorrentEngine @Inject constructor(
         }
     }
 
-    private fun updateState(id: String, state: DownloadState, progress: Float? = null) {
+    private fun updateState(id: String, state: DownloadState, progress: Float? = null, error: String? = null) {
         _downloads.update { map ->
             val item = map[id] ?: return@update map
-            map + (id to item.copy(state = state, progress = progress ?: item.progress))
+            map + (id to item.copy(
+                state = state,
+                progress = progress ?: item.progress,
+                errorMessage = if (state == DownloadState.ERROR) (error ?: item.errorMessage) else null
+            ))
         }
     }
 
-    private fun extractHash(magnet: String): String? =
-        Regex("urn:btih:([a-fA-F0-9]{40})", RegexOption.IGNORE_CASE)
-            .find(magnet)?.groupValues?.get(1)?.lowercase()
+    companion object {
+        private const val METADATA_TIMEOUT_MS = 120_000L
+
+        // Поддерживает hex (40) и base32 (32) инфохэши
+        fun extractHash(magnet: String): String? {
+            val m = Regex("urn:btih:([a-fA-F0-9]{40}|[A-Za-z2-7]{32})", RegexOption.IGNORE_CASE)
+                .find(magnet) ?: return null
+            val raw = m.groupValues[1]
+            return if (raw.length == 40) raw.lowercase() else base32ToHex(raw)
+        }
+
+        private fun base32ToHex(input: String): String? {
+            val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+            var bits = 0
+            var value = 0
+            val out = StringBuilder()
+            for (c in input.uppercase()) {
+                val idx = alphabet.indexOf(c)
+                if (idx < 0) return null
+                value = (value shl 5) or idx
+                bits += 5
+                if (bits >= 8) {
+                    bits -= 8
+                    out.append(String.format("%02x", (value shr bits) and 0xFF))
+                }
+            }
+            return if (out.length == 40) out.toString() else null
+        }
+    }
 }
