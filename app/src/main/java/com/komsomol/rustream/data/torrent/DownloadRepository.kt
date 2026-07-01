@@ -90,7 +90,8 @@ class DownloadRepository @Inject constructor(
 
     // Запуск через .torrent файл
     suspend fun startTorrentUrl(result: SearchResult): String? = withContext(Dispatchers.IO) {
-        val torrentUrl = result.torrentUrl ?: return@withContext null
+        var torrentUrl = result.torrentUrl ?: return@withContext null
+        if (torrentUrl.startsWith("//")) torrentUrl = "https:" + torrentUrl
         val id = java.util.UUID.randomUUID().toString()
         val item = DownloadItem(
             id         = id,
