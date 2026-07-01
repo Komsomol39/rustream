@@ -1,1 +1,41 @@
-BUILD SUCCESSFUL
+BUILD FAILED
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:41 Argument type mismatch: actual type is 'kotlin.String', but 'kotlin.String' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:45 Argument type mismatch: actual type is 'com.komsomol.rustream.domain.model.DownloadState', but 'com.komsomol.rustream.domain.model.DownloadState' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:74 Argument type mismatch: actual type is 'R?', but 'kotlin.String?' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:85 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:92 No value passed for parameter 'value'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:144:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/di/AppModule.kt:64:79 No value passed for parameter 'rtCookies'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/di/AppModule.kt:64:79 No value passed for parameter 'nnmCookies'.
+--- LAST 30 LINES ---
+
+> Task :app:kspDebugKotlin
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+    1. Kotlin compile daemon is ready
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:41 Argument type mismatch: actual type is 'kotlin.String', but 'kotlin.String' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:45 Argument type mismatch: actual type is 'com.komsomol.rustream.domain.model.DownloadState', but 'com.komsomol.rustream.domain.model.DownloadState' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:74 Argument type mismatch: actual type is 'R?', but 'kotlin.String?' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:85 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:95:92 No value passed for parameter 'value'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/torrent/TorrentEngine.kt:144:34 Argument type mismatch: actual type is 'kotlin.String', but 'org.libtorrent4j.TorrentInfo!' was expected.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/di/AppModule.kt:64:79 No value passed for parameter 'rtCookies'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/di/AppModule.kt:64:79 No value passed for parameter 'nnmCookies'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 3m 30s
+30 actionable tasks: 30 executed
