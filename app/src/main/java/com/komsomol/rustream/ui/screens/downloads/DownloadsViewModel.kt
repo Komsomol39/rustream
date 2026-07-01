@@ -13,6 +13,7 @@ class DownloadsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val downloads = repo.downloads.map { it.values.sortedByDescending { d -> d.addedAt } }
+    val dhtNodes  = repo.dhtNodes
 
     fun pause(item: DownloadItem)  = repo.pause(item.id)
     fun resume(item: DownloadItem) = repo.resume(item.id)
