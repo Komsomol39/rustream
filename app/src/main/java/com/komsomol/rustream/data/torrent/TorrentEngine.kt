@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.libtorrent4j.AlertListener
 import org.libtorrent4j.SessionManager
+import org.libtorrent4j.SettingsPack
 import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
@@ -95,7 +96,22 @@ class TorrentEngine @Inject constructor(
             }
         })
 
-        session.start()
+        // Настройки с DHT + bootstrap-нодами
+        val sp = SettingsPack()
+        sp.setEnableDht(true)
+        sp.setDhtBootstrapNodes(
+            "router.bittorrent.com:6881," +
+            "dht.transmissionbt.com:6881," +
+            "router.utorrent.com:6881," +
+            "dht.libtorrent.org:25401"
+        )
+        sp.listenInterfaces("0.0.0.0:6881,[::]:6881")
+        sp.broadcastLsd(true)
+        // Активные загрузки
+        sp.activeDownloads(8)
+
+        session.start(org.libtorrent4j.SessionParams(sp))
+        session.startDht()
         File(savePath).mkdirs()
 
         scope.launch {
