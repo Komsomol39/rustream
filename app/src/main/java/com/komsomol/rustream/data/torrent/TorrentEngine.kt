@@ -124,8 +124,8 @@ class TorrentEngine @Inject constructor(
 
         // Настройки с DHT + bootstrap-нодами
         val sp = SettingsPack()
-        sp.setEnableDht(true)
-        sp.setDhtBootstrapNodes(
+        sp.setBoolean(org.libtorrent4j.swig.settings_pack.bool_types.enable_dht.swigValue(), true)
+        sp.setString(org.libtorrent4j.swig.settings_pack.string_types.dht_bootstrap_nodes.swigValue(),
             "router.bittorrent.com:6881," +
             "dht.transmissionbt.com:6881," +
             "router.utorrent.com:6881," +
@@ -235,7 +235,7 @@ class TorrentEngine @Inject constructor(
                         state            = state,
                         progress         = s.progress(),
                         downloadedBytes  = s.totalDone(),
-                        totalBytes       = s.total(),
+                        totalBytes       = s.totalWanted(),
                         downloadSpeedBps = s.downloadPayloadRate().toLong(),
                         uploadSpeedBps   = s.uploadPayloadRate().toLong(),
                         seeds            = s.numSeeds(),
