@@ -21,6 +21,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Доступ ко всем файлам (Android 11+): чтобы libtorrent мог писать в Download
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            !android.os.Environment.isExternalStorageManager()) {
+            try {
+                val i = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                i.data = android.net.Uri.parse("package:" + packageName)
+                startActivity(i)
+            } catch (_: Exception) {
+                try {
+                    startActivity(Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                } catch (_: Exception) {}
+            }
+        }
+
         // Запрашиваем разрешение на уведомления (Android 13+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notifPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
