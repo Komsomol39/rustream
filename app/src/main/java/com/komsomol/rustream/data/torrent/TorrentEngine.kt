@@ -73,8 +73,14 @@ class TorrentEngine @Inject constructor(
         started = true
 
         session.addListener(object : AlertListener {
-            override fun types(): IntArray? = null
+            override fun types(): IntArray = intArrayOf(
+                AlertType.ADD_TORRENT.swig(),
+                AlertType.METADATA_RECEIVED.swig(),
+                AlertType.TORRENT_FINISHED.swig(),
+                AlertType.TORRENT_ERROR.swig()
+            )
             override fun alert(alert: Alert<*>) {
+                try {
                 when (alert.type()) {
                     AlertType.ADD_TORRENT -> {
                         val h = (alert as AddTorrentAlert).handle()
@@ -109,6 +115,9 @@ class TorrentEngine @Inject constructor(
                         if (id2 != null) updateState(id2, DownloadState.ERROR, error = msg)
                     }
                     else -> {}
+                }
+                } catch (e: Throwable) {
+                    Log.e(TAG, "alert handler: " + e)
                 }
             }
         })
