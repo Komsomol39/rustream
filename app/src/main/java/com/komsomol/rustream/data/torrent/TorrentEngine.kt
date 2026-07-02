@@ -55,9 +55,18 @@ class TorrentEngine @Inject constructor(
     // infoHash -> id (для связи alert -> item)
     private val hashToId = mutableMapOf<String, String>()
 
-    val savePath: String = Environment.getExternalStoragePublicDirectory(
-        Environment.DIRECTORY_DOWNLOADS
-    ).absolutePath + "/RuStream"
+    // Публичный Download если есть "доступ ко всем файлам", иначе папка приложения
+    val savePath: String
+        get() {
+            val allFiles = android.os.Build.VERSION.SDK_INT < 30 ||
+                Environment.isExternalStorageManager()
+            return if (allFiles) {
+                File(Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_DOWNLOADS), "RuStream").absolutePath
+            } else {
+                File(context.getExternalFilesDir(null), "RuStream").absolutePath
+            }
+        }
 
     fun start() {
         if (started) return
@@ -144,8 +153,7 @@ class TorrentEngine @Inject constructor(
         if (hash != null) synchronized(hashToId) { hashToId[hash] = item.id }
         scope.launch {
             try {
-                // null = не переопределять флаги, libtorrent применит свои дефолты
-                session.download(magnet, File(savePath), null)
+                session.download(magnet, File(savePath), org.libtorrent4j.swig.torrent_flags_t())
             } catch (e: Exception) {
                 Log.e(TAG, "addMagnet: " + e.message)
                 updateState(item.id, DownloadState.ERROR, error = "Не удалось добавить: " + (e.message ?: "?"))
