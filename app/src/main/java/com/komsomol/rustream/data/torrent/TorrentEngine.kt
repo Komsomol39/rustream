@@ -50,10 +50,19 @@ class TorrentEngine @Inject constructor(
     private val _dhtNodes = MutableStateFlow(0L)
     val dhtNodes: StateFlow<Long> = _dhtNodes.asStateFlow()
 
-    // id -> TorrentHandle
-    private val handles = mutableMapOf<String, TorrentHandle>()
     // infoHash -> id (для связи alert -> item)
     private val hashToId = mutableMapOf<String, String>()
+    // id -> infoHash. ВАЖНО: хэндлы из alert'ов хранить НЕЛЬЗЯ (их память
+    // переиспользуется движком -> use-after-free -> SIGSEGV). Берём свежий
+    // хэндл у сессии по хэшу каждый раз.
+    private val idToHash = mutableMapOf<String, String>()
+
+    private fun findHandle(id: String): TorrentHandle? {
+        val hash = synchronized(idToHash) { idToHash[id] } ?: return null
+        return try {
+            session.find(org.libtorrent4j.Sha1Hash.parseHex(hash))
+        } catch (_: Exception) { null }
+    }
 
     // Публичный Download если есть "доступ ко всем файлам", иначе папка приложения
     val savePath: String
@@ -97,18 +106,16 @@ class TorrentEngine @Inject constructor(
                 try {
                 when (alert.type()) {
                     AlertType.ADD_TORRENT -> {
-                        val h = (alert as AddTorrentAlert).handle()
-                        val hash = h.infoHash().toString()
+                        val hash = (alert as AddTorrentAlert).handle().infoHash().toString()
                         val id = synchronized(hashToId) { hashToId[hash] }
-                        if (id != null) synchronized(handles) { handles[id] = h }
+                        if (id != null) synchronized(idToHash) { idToHash[id] = hash }
                         dbg("alert ADD_TORRENT id=" + id)
                     }
                     AlertType.METADATA_RECEIVED -> {
-                        val h = (alert as MetadataReceivedAlert).handle()
-                        val hash = h.infoHash().toString()
+                        val hash = (alert as MetadataReceivedAlert).handle().infoHash().toString()
                         val id = synchronized(hashToId) { hashToId[hash] }
                         if (id != null) {
-                            synchronized(handles) { handles[id] = h }
+                            synchronized(idToHash) { idToHash[id] = hash }
                             // даже если успел сработать таймаут — оживляем загрузку
                             updateState(id, DownloadState.DOWNLOADING)
                         }
@@ -180,7 +187,10 @@ class TorrentEngine @Inject constructor(
         dbg("addMagnet id=" + item.id + " len=" + magnet.length)
         _downloads.update { it + (item.id to item.copy(state = DownloadState.FETCHING_META, errorMessage = null)) }
         val hash = extractHash(magnet)
-        if (hash != null) synchronized(hashToId) { hashToId[hash] = item.id }
+        if (hash != null) {
+            synchronized(hashToId) { hashToId[hash] = item.id }
+            synchronized(idToHash) { idToHash[item.id] = hash }
+        }
         scope.launch {
             try {
                 session.download(magnet, File(savePath), org.libtorrent4j.swig.torrent_flags_t())
@@ -210,6 +220,7 @@ class TorrentEngine @Inject constructor(
                 dbg("bdecode ok, files=" + ti.numFiles())
                 val hash = ti.infoHash().toString()
                 synchronized(hashToId) { hashToId[hash] = item.id }
+                synchronized(idToHash) { idToHash[item.id] = hash }
                 session.download(ti, File(savePath))
                 dbg("torrent added to session id=" + item.id)
             } catch (e: Exception) {
@@ -225,18 +236,19 @@ class TorrentEngine @Inject constructor(
     }
 
     fun pause(id: String) {
-        synchronized(handles) { handles[id] }?.pause()
+        findHandle(id)?.pause()
         updateState(id, DownloadState.PAUSED)
     }
 
     fun resume(id: String) {
-        synchronized(handles) { handles[id] }?.resume()
+        findHandle(id)?.resume()
         updateState(id, DownloadState.DOWNLOADING)
     }
 
     fun remove(id: String, deleteFiles: Boolean = false) {
-        val h = synchronized(handles) { handles.remove(id) }
+        val h = findHandle(id)
         if (h != null) try { session.remove(h) } catch (_: Exception) {}
+        synchronized(idToHash) { idToHash.remove(id) }
         _downloads.update { it - id }
     }
 
@@ -244,7 +256,7 @@ class TorrentEngine @Inject constructor(
         val current = _downloads.value
         current.forEach { (id, item) ->
             if (item.state == DownloadState.FINISHED || item.state == DownloadState.ERROR) return@forEach
-            val h = synchronized(handles) { handles[id] } ?: return@forEach
+            val h = findHandle(id) ?: return@forEach
             try {
                 if (!h.isValid) return@forEach
                 val s = h.status()
