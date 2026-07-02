@@ -63,5 +63,6 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.coroutines.android)
     implementation(libs.libtorrent4j.android.arm64)
+    implementation("com.iqiyi.xcrash:xcrash-android-lib:3.1.0")
     debugImplementation(libs.androidx.ui.tooling)
 }
