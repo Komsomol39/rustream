@@ -12,6 +12,14 @@ class RuStreamApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // xCrash ловит НАТИВНЫЕ падения (SIGSEGV/SIGBUS) и пишет tombstone в файл
+        try {
+            val crashDir = File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS), "RuStream/crashes")
+            crashDir.mkdirs()
+            xcrash.XCrash.init(this, xcrash.XCrash.InitParameters()
+                .setLogDir(crashDir.absolutePath))
+        } catch (_: Throwable) {}
         val prev = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, e ->
             try {
