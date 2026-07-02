@@ -13,7 +13,7 @@ navigation = "2.8.0"
 okhttp = "4.12.0"
 jsoup = "1.18.1"
 coroutines = "1.8.1"
-libtorrent4j = "1.2.19.0"
+libtorrent4j = "2.1.0-31"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
