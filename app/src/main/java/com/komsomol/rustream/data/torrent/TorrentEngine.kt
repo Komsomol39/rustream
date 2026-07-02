@@ -134,7 +134,11 @@ class TorrentEngine @Inject constructor(
         sp.listenInterfaces("0.0.0.0:6881,[::]:6881")
         sp.activeDownloads(8)
 
-        session.start(org.libtorrent4j.SessionParams(sp))
+        val params = org.libtorrent4j.SessionParams(sp)
+        // КРИТИЧНО: mmap-ввод/вывод libtorrent 2.x падает с SIGBUS на Android (FUSE).
+        // posix-бэкенд пишет файлы обычным способом — как libtorrent 1.2.
+        params.setPosixDiskIO()
+        session.start(params)
         session.startDht()
         File(savePath).mkdirs()
 
