@@ -32,7 +32,7 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
                 Text("Нажмите на раздачу в поиске чтобы скачать",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("DHT: " + dhtNodes + " узлов",
+                Text("DHT: " + dhtNodes + " узлов • dbg1",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -46,7 +46,7 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         item {
-            Text("DHT: " + dhtNodes + " узлов",
+            Text("DHT: " + dhtNodes + " узлов • dbg1",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
