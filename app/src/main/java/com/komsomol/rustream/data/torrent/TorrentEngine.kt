@@ -68,9 +68,23 @@ class TorrentEngine @Inject constructor(
             }
         }
 
+    // Лог шагов в файл: последняя строка перед вылетом укажет место падения
+    private fun dbg(msg: String) {
+        try {
+            Log.d(TAG, msg)
+            val f = File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS), "RuStream/debug-log.txt")
+            f.parentFile?.mkdirs()
+            val ts = java.text.SimpleDateFormat("HH:mm:ss.SSS", java.util.Locale.US)
+                .format(java.util.Date())
+            f.appendText(ts + " " + msg + System.lineSeparator())
+        } catch (_: Exception) {}
+    }
+
     fun start() {
         if (started) return
         started = true
+        dbg("engine.start()")
 
         session.addListener(object : AlertListener {
             override fun types(): IntArray = intArrayOf(
@@ -87,7 +101,7 @@ class TorrentEngine @Inject constructor(
                         val hash = h.infoHash().toString()
                         val id = synchronized(hashToId) { hashToId[hash] }
                         if (id != null) synchronized(handles) { handles[id] = h }
-                        Log.d(TAG, "ADD_TORRENT hash=" + hash + " id=" + id)
+                        dbg("alert ADD_TORRENT id=" + id)
                     }
                     AlertType.METADATA_RECEIVED -> {
                         val h = (alert as MetadataReceivedAlert).handle()
@@ -98,7 +112,7 @@ class TorrentEngine @Inject constructor(
                             // даже если успел сработать таймаут — оживляем загрузку
                             updateState(id, DownloadState.DOWNLOADING)
                         }
-                        Log.d(TAG, "METADATA hash=" + hash + " id=" + id)
+                        dbg("alert METADATA id=" + id)
                     }
                     AlertType.TORRENT_FINISHED -> {
                         val h = (alert as TorrentFinishedAlert).handle()
@@ -138,7 +152,9 @@ class TorrentEngine @Inject constructor(
         // КРИТИЧНО: mmap-ввод/вывод libtorrent 2.x падает с SIGBUS на Android (FUSE).
         // posix-бэкенд пишет файлы обычным способом — как libtorrent 1.2.
         params.setPosixDiskIO()
+        dbg("posix disk io set")
         session.start(params)
+        dbg("session started, savePath=" + savePath)
         session.startDht()
         File(savePath).mkdirs()
 
@@ -161,12 +177,14 @@ class TorrentEngine @Inject constructor(
 
     fun addMagnet(item: DownloadItem) {
         val magnet = item.magnetUri ?: return
+        dbg("addMagnet id=" + item.id + " len=" + magnet.length)
         _downloads.update { it + (item.id to item.copy(state = DownloadState.FETCHING_META, errorMessage = null)) }
         val hash = extractHash(magnet)
         if (hash != null) synchronized(hashToId) { hashToId[hash] = item.id }
         scope.launch {
             try {
                 session.download(magnet, File(savePath), org.libtorrent4j.swig.torrent_flags_t())
+                dbg("magnet added to session id=" + item.id)
             } catch (e: Exception) {
                 Log.e(TAG, "addMagnet: " + e.message)
                 updateState(item.id, DownloadState.ERROR, error = "Не удалось добавить: " + (e.message ?: "?"))
@@ -187,10 +205,13 @@ class TorrentEngine @Inject constructor(
         _downloads.update { it + (item.id to item.copy(state = DownloadState.DOWNLOADING, errorMessage = null)) }
         scope.launch {
             try {
+                dbg("addTorrentFile id=" + item.id + " bytes=" + bytes.size)
                 val ti = TorrentInfo.bdecode(bytes)
+                dbg("bdecode ok, files=" + ti.numFiles())
                 val hash = ti.infoHash().toString()
                 synchronized(hashToId) { hashToId[hash] = item.id }
                 session.download(ti, File(savePath))
+                dbg("torrent added to session id=" + item.id)
             } catch (e: Exception) {
                 Log.e(TAG, "addTorrentFile: " + e.message)
                 updateState(item.id, DownloadState.ERROR, error = "Битый .torrent: " + (e.message ?: "?"))
