@@ -2,6 +2,7 @@ package com.komsomol.rustream.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.komsomol.rustream.data.search.KinozalCookieStore
 import com.komsomol.rustream.data.search.NnmCookieStore
 import com.komsomol.rustream.data.search.RuTrackerCookieStore
 import com.komsomol.rustream.data.settings.SettingsRepository
@@ -18,7 +19,8 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val repo: SettingsRepository,
     private val rtCookies: RuTrackerCookieStore,
-    private val nnmCookies: NnmCookieStore
+    private val nnmCookies: NnmCookieStore,
+    private val kinozalCookies: KinozalCookieStore
 ) : ViewModel() {
 
     val darkTheme        = repo.darkTheme.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -33,6 +35,9 @@ class SettingsViewModel @Inject constructor(
 
     private val _nnmLoggedIn = MutableStateFlow(nnmCookies.isLoggedIn())
     val nnmLoggedIn: StateFlow<Boolean> = _nnmLoggedIn.asStateFlow()
+
+    private val _kinozalLoggedIn = MutableStateFlow(kinozalCookies.isLoggedIn())
+    val kinozalLoggedIn: StateFlow<Boolean> = _kinozalLoggedIn.asStateFlow()
 
     val nnmCookieDebug: StateFlow<String> = MutableStateFlow(run {
         val raw = nnmCookies.getRawCookies()
@@ -55,6 +60,8 @@ class SettingsViewModel @Inject constructor(
     fun setYtsEnabled(v: Boolean)       = viewModelScope.launch { repo.setYtsEnabled(v) }
 
     fun onRuTrackerLoginSuccess() { _rtLoggedIn.value = rtCookies.isLoggedIn() }
+    fun onKinozalLoginSuccess() { _kinozalLoggedIn.value = kinozalCookies.isLoggedIn() }
+    fun logoutKinozal() { kinozalCookies.clearCookies(); _kinozalLoggedIn.value = false }
     fun onNnmLoginSuccess()       { _nnmLoggedIn.value = nnmCookies.isLoggedIn() }
 
     fun logoutRuTracker() {
