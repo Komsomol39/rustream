@@ -30,6 +30,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val nnmEnabled        by viewModel.nnmEnabled.collectAsState()
     val ytsEnabled        by viewModel.ytsEnabled.collectAsState()
     val nnmLoggedIn       by viewModel.nnmLoggedIn.collectAsState()
+    val kinozalLoggedIn   by viewModel.kinozalLoggedIn.collectAsState()
     val rutorDebug        by viewModel.rutorDebug.collectAsState()
     val nnmDebugHtml      by viewModel.nnmDebugHtml.collectAsState()
 
@@ -38,6 +39,9 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     }
     val nnmLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_OK) viewModel.onNnmLoginSuccess()
+    }
+    val kinozalLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == Activity.RESULT_OK) viewModel.onKinozalLoginSuccess()
     }
 
     Column(
@@ -59,7 +63,9 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
                 SourceRow("YTS", "Фильмы 720p-4K, без авторизации", ytsEnabled, viewModel::setYtsEnabled)
                 HorizontalDivider()
-                SourceRow("Kinozal", "Без авторизации", kinozalEnabled, viewModel::setKinozalEnabled)
+                AuthSourceRow("Kinozal", kinozalLoggedIn, kinozalEnabled, viewModel::setKinozalEnabled,
+                    { kinozalLauncher.launch(Intent(context, KinozalLoginActivity::class.java)) },
+                    viewModel::logoutKinozal)
                 HorizontalDivider()
                 SourceRow("RuTor", "Требует VPN в РФ, есть магнет-ссылки", ruTorEnabled, viewModel::setRuTorEnabled)
                 HorizontalDivider()
