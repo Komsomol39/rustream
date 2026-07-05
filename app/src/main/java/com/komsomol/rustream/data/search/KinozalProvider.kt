@@ -13,12 +13,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class KinozalProvider @Inject constructor() {
+class KinozalProvider @Inject constructor(
+    private val cookies: KinozalCookieStore
+) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
+        .cookieJar(cookies)
         .build()
 
     private val BASE = "https://kinozal.tv"
