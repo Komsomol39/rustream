@@ -1,6 +1,7 @@
 package com.komsomol.rustream.data.torrent
 
 import android.util.Log
+import com.komsomol.rustream.data.search.KinozalCookieStore
 import com.komsomol.rustream.data.search.NnmCookieStore
 import com.komsomol.rustream.data.search.RuTrackerCookieStore
 import com.komsomol.rustream.domain.model.DownloadItem
@@ -20,7 +21,8 @@ import javax.inject.Singleton
 class DownloadRepository @Inject constructor(
     val engine: TorrentEngine,
     private val rtCookies: RuTrackerCookieStore,
-    private val nnmCookies: NnmCookieStore
+    private val nnmCookies: NnmCookieStore,
+    private val kinozalCookies: KinozalCookieStore
 ) {
     private val TAG = "DownloadRepo"
 
@@ -33,10 +35,12 @@ class DownloadRepository @Inject constructor(
     // .torrent с приватных трекеров нужно качать С КУКАМИ авторизации
     private val rtClient  = plainClient.newBuilder().cookieJar(rtCookies).build()
     private val nnmClient = plainClient.newBuilder().cookieJar(nnmCookies).build()
+    private val kinozalClient = plainClient.newBuilder().cookieJar(kinozalCookies).build()
 
     private fun clientFor(source: SearchSource): OkHttpClient = when (source) {
         SearchSource.RUTRACKER -> rtClient
         SearchSource.NNM       -> nnmClient
+        SearchSource.KINOZAL   -> kinozalClient
         else                   -> plainClient
     }
 
