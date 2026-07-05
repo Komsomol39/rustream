@@ -278,6 +278,7 @@ class TorrentEngine @Inject constructor(
             h.filePriority(index,
                 if (enabled) org.libtorrent4j.Priority.DEFAULT
                 else org.libtorrent4j.Priority.IGNORE)
+            if (enabled) h.resume()
         } catch (_: Exception) {}
     }
 
@@ -288,13 +289,14 @@ class TorrentEngine @Inject constructor(
             val p = if (enabled) org.libtorrent4j.Priority.DEFAULT
                     else org.libtorrent4j.Priority.IGNORE
             h.prioritizeFiles(Array(ti.numFiles()) { p })
+            if (enabled) h.resume()
         } catch (_: Exception) {}
     }
 
     private fun pollProgress() {
         val current = _downloads.value
         current.forEach { (id, item) ->
-            if (item.state == DownloadState.FINISHED || item.state == DownloadState.ERROR) return@forEach
+            if (item.state == DownloadState.ERROR) return@forEach
             val h = findHandle(id) ?: return@forEach
             try {
                 if (!h.isValid) return@forEach
