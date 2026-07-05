@@ -27,6 +27,7 @@ import androidx.navigation.compose.rememberNavController
 import com.komsomol.rustream.ui.screens.downloads.DownloadsScreen
 import com.komsomol.rustream.ui.screens.search.SearchScreen
 import com.komsomol.rustream.ui.screens.settings.SettingsScreen
+import com.komsomol.rustream.ui.screens.music.MusicScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 
@@ -78,7 +79,7 @@ fun AppNavGraph() {
             composable(Screen.Search.route)    { SearchScreen() }
             composable(Screen.Downloads.route) { DownloadsScreen() }
             composable(Screen.Video.route)     { PlaceholderScreen("Видео") }
-            composable(Screen.Music.route)     { PlaceholderScreen("Музыка") }
+            composable(Screen.Music.route)     { MusicScreen() }
             composable(Screen.Settings.route)  { SettingsScreen() }
         }
     }
