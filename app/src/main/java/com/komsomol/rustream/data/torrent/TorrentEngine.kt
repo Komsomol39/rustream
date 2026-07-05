@@ -252,6 +252,45 @@ class TorrentEngine @Inject constructor(
         _downloads.update { it - id }
     }
 
+    // Список файлов раздачи (доступен после метаданных)
+    fun getFiles(id: String): List<com.komsomol.rustream.domain.model.TorrentFileEntry> {
+        val h = findHandle(id) ?: return emptyList()
+        return try {
+            if (!h.isValid) return emptyList()
+            val ti = h.torrentFile() ?: return emptyList()
+            val fs = ti.files()
+            val progress = try { h.fileProgress() } catch (_: Exception) { LongArray(0) }
+            (0 until fs.numFiles()).map { i ->
+                com.komsomol.rustream.domain.model.TorrentFileEntry(
+                    index           = i,
+                    name            = fs.filePath(i),
+                    sizeBytes       = fs.fileSize(i),
+                    downloadedBytes = if (i < progress.size) progress[i] else 0L,
+                    enabled         = h.filePriority(i) != org.libtorrent4j.Priority.IGNORE
+                )
+            }
+        } catch (_: Exception) { emptyList() }
+    }
+
+    fun setFileEnabled(id: String, index: Int, enabled: Boolean) {
+        val h = findHandle(id) ?: return
+        try {
+            h.filePriority(index,
+                if (enabled) org.libtorrent4j.Priority.DEFAULT
+                else org.libtorrent4j.Priority.IGNORE)
+        } catch (_: Exception) {}
+    }
+
+    fun setAllFilesEnabled(id: String, enabled: Boolean) {
+        val h = findHandle(id) ?: return
+        try {
+            val ti = h.torrentFile() ?: return
+            val p = if (enabled) org.libtorrent4j.Priority.DEFAULT
+                    else org.libtorrent4j.Priority.IGNORE
+            h.prioritizeFiles(Array(ti.numFiles()) { p })
+        } catch (_: Exception) {}
+    }
+
     private fun pollProgress() {
         val current = _downloads.value
         current.forEach { (id, item) ->
