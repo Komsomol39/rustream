@@ -1,6 +1,7 @@
 package com.komsomol.rustream.di
 
 import android.content.Context
+import com.komsomol.rustream.data.search.KinozalCookieStore
 import com.komsomol.rustream.data.search.KinozalProvider
 import com.komsomol.rustream.data.search.NnmClubProvider
 import com.komsomol.rustream.data.search.NnmCookieStore
@@ -42,7 +43,10 @@ object AppModule {
     fun provideRuTorProvider(settings: SettingsRepository) = RuTorProvider(settings)
 
     @Provides @Singleton
-    fun provideKinozalProvider() = KinozalProvider()
+    fun provideKinozalCookieStore(@ApplicationContext ctx: Context) = KinozalCookieStore(ctx)
+
+    @Provides @Singleton
+    fun provideKinozalProvider(cookies: KinozalCookieStore) = KinozalProvider(cookies)
 
     @Provides @Singleton
     fun provideYtsProvider() = YtsProvider()
@@ -64,6 +68,7 @@ object AppModule {
     fun provideDownloadRepository(
         engine: TorrentEngine,
         rtCookies: RuTrackerCookieStore,
-        nnmCookies: NnmCookieStore
-    ) = DownloadRepository(engine, rtCookies, nnmCookies)
+        nnmCookies: NnmCookieStore,
+        kinozalCookies: KinozalCookieStore
+    ) = DownloadRepository(engine, rtCookies, nnmCookies, kinozalCookies)
 }
