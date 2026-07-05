@@ -134,6 +134,12 @@ class DownloadRepository @Inject constructor(
         }
     }
 
+    fun getFiles(id: String) = engine.getFiles(id)
+    fun setFileEnabled(id: String, index: Int, enabled: Boolean) =
+        engine.setFileEnabled(id, index, enabled)
+    fun setAllFilesEnabled(id: String, enabled: Boolean) =
+        engine.setAllFilesEnabled(id, enabled)
+
     fun pause(id: String)  = engine.pause(id)
     fun resume(id: String) = engine.resume(id)
     fun remove(id: String, deleteFiles: Boolean = false) = engine.remove(id, deleteFiles)
