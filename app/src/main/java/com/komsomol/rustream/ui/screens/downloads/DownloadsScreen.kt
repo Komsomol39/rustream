@@ -1,5 +1,6 @@
 package com.komsomol.rustream.ui.screens.downloads
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,7 +20,10 @@ import com.komsomol.rustream.domain.model.DownloadItem
 import com.komsomol.rustream.domain.model.DownloadState
 
 @Composable
-fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
+fun DownloadsScreen(
+    onOpen: (String) -> Unit = {},
+    viewModel: DownloadsViewModel = hiltViewModel()
+) {
     val downloads by viewModel.downloads.collectAsState(initial = emptyList())
     val dhtNodes by viewModel.dhtNodes.collectAsState(initial = 0L)
 
@@ -53,6 +57,7 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
         items(downloads, key = { it.id }) { item ->
             DownloadCard(
                 item     = item,
+                onClick  = { onOpen(item.id) },
                 onPause  = { viewModel.pause(item) },
                 onResume = { viewModel.resume(item) },
                 onRemove = { viewModel.remove(item) }
@@ -64,11 +69,12 @@ fun DownloadsScreen(viewModel: DownloadsViewModel = hiltViewModel()) {
 @Composable
 fun DownloadCard(
     item: DownloadItem,
+    onClick: () -> Unit = {},
     onPause: () -> Unit,
     onResume: () -> Unit,
     onRemove: () -> Unit
 ) {
-    Card(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Column(Modifier.padding(12.dp)) {
             // Заголовок + кнопки
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
