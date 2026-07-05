@@ -64,6 +64,8 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(libs.libtorrent4j.android.arm64)
     implementation("com.iqiyi.xcrash:xcrash-android-lib:3.1.0")
-    implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-exoplayer:1.6.1")
+    implementation("androidx.media3:media3-ui:1.6.1")
+    implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.6.1+2")
     debugImplementation(libs.androidx.ui.tooling)
 }
