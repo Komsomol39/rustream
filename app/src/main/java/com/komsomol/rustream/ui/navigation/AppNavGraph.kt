@@ -24,6 +24,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.komsomol.rustream.ui.screens.downloads.DownloadDetailScreen
 import com.komsomol.rustream.ui.screens.downloads.DownloadsScreen
 import com.komsomol.rustream.ui.screens.search.SearchScreen
 import com.komsomol.rustream.ui.screens.settings.SettingsScreen
@@ -78,7 +81,17 @@ fun AppNavGraph() {
             modifier         = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Search.route)    { SearchScreen() }
-            composable(Screen.Downloads.route) { DownloadsScreen() }
+            composable(Screen.Downloads.route) {
+                DownloadsScreen(onOpen = { id ->
+                    navController.navigate("download_detail/" + id)
+                })
+            }
+            composable(
+                "download_detail/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.StringType })
+            ) {
+                DownloadDetailScreen(onBack = { navController.popBackStack() })
+            }
             composable(Screen.Video.route)     { VideoScreen() }
             composable(Screen.Music.route)     { MusicScreen() }
             composable(Screen.Settings.route)  { SettingsScreen() }
