@@ -16,11 +16,13 @@ import java.io.File
 class PlayerActivity : ComponentActivity() {
 
     private var player: ExoPlayer? = null
+    private var videoPath: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val path = intent.getStringExtra(EXTRA_PATH)
         if (path == null) { finish(); return }
+        videoPath = path
 
         // FFmpeg-декодер (Jellyfin) подхватится как расширение:
         // аппаратные кодеки в приоритете, DTS/AC3 и прочее декодирует FFmpeg
@@ -43,20 +45,47 @@ class PlayerActivity : ComponentActivity() {
         insets.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-        p.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))))
+        // Продолжаем с места, где остановились в прошлый раз
+        val savedPos = positionPrefs().getLong(videoPath, 0L)
+        p.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))), savedPos)
         p.prepare()
         p.play()
     }
 
+    override fun onPause() {
+        super.onPause()
+        savePosition()
+    }
+
     override fun onStop() {
         super.onStop()
+        savePosition()
         player?.pause()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        savePosition()
         player?.release()
         player = null
+    }
+
+    private fun positionPrefs() =
+        getSharedPreferences("playback_positions", MODE_PRIVATE)
+
+    // Сохраняем позицию; если досмотрели почти до конца — сбрасываем,
+    // чтобы следующий запуск был с начала
+    private fun savePosition() {
+        val p = player ?: return
+        val dur = p.duration
+        val pos = p.currentPosition
+        if (dur <= 0) return
+        val prefs = positionPrefs()
+        if (pos > 10_000 && pos < dur - 30_000) {
+            prefs.edit().putLong(videoPath, pos).apply()
+        } else if (pos >= dur - 30_000) {
+            prefs.edit().remove(videoPath).apply()
+        }
     }
 
     companion object {
