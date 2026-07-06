@@ -96,17 +96,25 @@ class NnmLoginActivity : ComponentActivity() {
                     statusText.text = "Проверка авторизации..."
                 }
 
-                // Успех: ушли со страницы логина на любую другую страницу NNM
-                // И есть хоть какие-то куки
-                if (!url.contains("login.php") && url.contains("nnmclub") && rawCookies.isNotBlank()) {
-                    Log.d("NnmLogin", "Login detected! Cookies: $rawCookies")
-                    loginDetected = true
-                    cookieStore.saveCookies(rawCookies)
-                    runOnUiThread {
-                        Toast.makeText(this@NnmLoginActivity,
-                            "✓ NNM-Club: авторизация успешна!", Toast.LENGTH_SHORT).show()
-                        setResult(Activity.RESULT_OK)
-                        finish()
+                // Успех проверяем по содержимому страницы: у залогиненного
+                // пользователя phpBB показывает ссылку выхода. Просто "не login.php
+                // и есть куки" мало — phpBB раздаёт куки даже гостям.
+                if (url.contains("nnmclub") && rawCookies.isNotBlank()) {
+                    view.evaluateJavascript(
+                        "(function(){var h=document.body?document.body.innerHTML:'';" +
+                        "return h.indexOf('login.php?logout')!==-1||h.indexOf('Выход')!==-1;})()"
+                    ) { res ->
+                        if (res == "true" && !loginDetected) {
+                            Log.d("NnmLogin", "Login detected! Cookies: $rawCookies")
+                            loginDetected = true
+                            cookieStore.saveCookies(rawCookies)
+                            runOnUiThread {
+                                Toast.makeText(this@NnmLoginActivity,
+                                    "✓ NNM-Club: авторизация успешна!", Toast.LENGTH_SHORT).show()
+                                setResult(Activity.RESULT_OK)
+                                finish()
+                            }
+                        }
                     }
                 }
             }
@@ -118,7 +126,9 @@ class NnmLoginActivity : ComponentActivity() {
             }
         }
 
-        webView.loadUrl("https://nnmclub.to/forum/login.php")
+        CookieManager.getInstance().removeAllCookies {
+            webView.loadUrl("https://nnmclub.to/forum/login.php")
+        }
     }
 
     override fun onBackPressed() {
