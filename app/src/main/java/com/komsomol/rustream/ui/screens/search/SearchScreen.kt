@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.komsomol.rustream.domain.model.ContentCategory
 import com.komsomol.rustream.domain.model.SearchResult
 import com.komsomol.rustream.domain.model.SearchSource
 
@@ -23,7 +22,6 @@ import com.komsomol.rustream.domain.model.SearchSource
 fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
     val uiState        by viewModel.uiState.collectAsState()
     val query          by viewModel.query.collectAsState()
-    val category       by viewModel.category.collectAsState()
     val activeStatuses by viewModel.activeStatuses.collectAsState()
 
     var downloadDialogItem by remember { mutableStateOf<SearchResult?>(null) }
@@ -38,14 +36,7 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                 Icon(Icons.Default.Search, "Поиск") } },
             singleLine = true
         )
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ContentCategory.values().forEach { cat ->
-                FilterChip(selected = category == cat,
-                    onClick = { viewModel.onCategoryChange(cat) },
-                    label = { Text(cat.displayName) })
-            }
-        }
+
         if (activeStatuses.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
