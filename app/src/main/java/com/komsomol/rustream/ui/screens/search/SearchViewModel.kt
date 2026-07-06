@@ -43,9 +43,6 @@ class SearchViewModel @Inject constructor(
     private val _query    = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
-    private val _category = MutableStateFlow(ContentCategory.ALL)
-    val category: StateFlow<ContentCategory> = _category.asStateFlow()
-
     private val _activeStatuses = MutableStateFlow<List<SourceStatus>>(emptyList())
     val activeStatuses: StateFlow<List<SourceStatus>> = _activeStatuses.asStateFlow()
 
@@ -66,11 +63,6 @@ class SearchViewModel @Inject constructor(
 
     fun onQueryChange(q: String) { _query.value = q }
 
-    fun onCategoryChange(cat: ContentCategory) {
-        _category.value = cat
-        if (_query.value.isNotBlank()) search()
-    }
-
     fun search() {
         val q = _query.value.trim()
         if (q.isBlank()) return
@@ -79,7 +71,7 @@ class SearchViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             _uiState.value = SearchUiState.Loading
             try {
-                val results = repository.search(q, _category.value)
+                val results = repository.search(q, ContentCategory.ALL)
                 _uiState.value = if (results.isEmpty()) SearchUiState.Error("Ничего не найдено")
                                  else SearchUiState.Success(results)
             } catch (e: Exception) {
