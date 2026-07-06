@@ -54,6 +54,8 @@ class NnmLoginActivity : ComponentActivity() {
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            settings.javaScriptCanOpenWindowsAutomatically = false
+            settings.setSupportMultipleWindows(false)
             settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 Chrome/124.0 Mobile Safari/537.36"
         }
 
@@ -73,6 +75,13 @@ class NnmLoginActivity : ComponentActivity() {
         CookieManager.getInstance().flush()
 
         webView.webViewClient = object : WebViewClient() {
+            // Реклама пытается увести на сторонние сайты — не пускаем.
+            // Разрешена навигация только по доменам самого трекера.
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val host = request.url.host ?: return false
+                return !(host.contains("nnmclub") || host.contains("nnm-club"))
+            }
+
             override fun onPageFinished(view: WebView, url: String) {
                 progressBar.visibility = View.GONE
                 if (loginDetected) return
