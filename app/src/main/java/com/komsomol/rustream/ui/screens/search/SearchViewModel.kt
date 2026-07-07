@@ -74,6 +74,9 @@ class SearchViewModel @Inject constructor(
                 val results = repository.search(q, ContentCategory.ALL)
                 _uiState.value = if (results.isEmpty()) SearchUiState.Error("Ничего не найдено")
                                  else SearchUiState.Success(results)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Отмена — не ошибка: нас перезапустил новый поиск. Пробрасываем дальше.
+                throw e
             } catch (e: Exception) {
                 _uiState.value = SearchUiState.Error("Ошибка: ${e.message}")
             }
