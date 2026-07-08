@@ -19,10 +19,14 @@ import com.komsomol.rustream.domain.model.SearchResult
 import com.komsomol.rustream.domain.model.SearchSource
 
 @Composable
-fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
+fun SearchScreen(
+    onOpenGrab: () -> Unit = {},
+    viewModel: SearchViewModel = hiltViewModel()
+) {
     val uiState        by viewModel.uiState.collectAsState()
     val query          by viewModel.query.collectAsState()
     val activeStatuses by viewModel.activeStatuses.collectAsState()
+    val newpipeEnabled by viewModel.newpipeEnabled.collectAsState(initial = false)
 
     var downloadDialogItem by remember { mutableStateOf<SearchResult?>(null) }
 
@@ -36,6 +40,11 @@ fun SearchScreen(viewModel: SearchViewModel = hiltViewModel()) {
                 Icon(Icons.Default.Search, "Поиск") } },
             singleLine = true
         )
+        if (newpipeEnabled) {
+            TextButton(onClick = onOpenGrab) {
+                Text("🌐 Онлайн-поиск (YouTube, SoundCloud...)")
+            }
+        }
 
         if (activeStatuses.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
