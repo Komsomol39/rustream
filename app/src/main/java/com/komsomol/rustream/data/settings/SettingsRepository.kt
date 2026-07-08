@@ -27,6 +27,7 @@ class SettingsRepository @Inject constructor(
         val KEY_KINOZAL_ENABLED   = booleanPreferencesKey("kinozal_enabled")
         val KEY_NNM_ENABLED       = booleanPreferencesKey("nnm_enabled")
         val KEY_YTS_ENABLED       = booleanPreferencesKey("yts_enabled")
+        val KEY_NEWPIPE_ENABLED   = booleanPreferencesKey("newpipe_enabled")
         val KEY_RUTOR_DEBUG       = stringPreferencesKey("rutor_debug")
     }
 
@@ -37,6 +38,7 @@ class SettingsRepository @Inject constructor(
     val kinozalEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_KINOZAL_ENABLED] ?: true }
     val nnmEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_NNM_ENABLED] ?: false }
     val ytsEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_YTS_ENABLED] ?: true }
+    val newpipeEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_NEWPIPE_ENABLED] ?: false }
     val rutorDebug: Flow<String>        = context.dataStore.data.map { it[KEY_RUTOR_DEBUG] ?: "" }
 
     suspend fun setDarkTheme(v: Boolean)        = context.dataStore.edit { it[KEY_DARK_THEME] = v }
@@ -46,5 +48,6 @@ class SettingsRepository @Inject constructor(
     suspend fun setKinozalEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_KINOZAL_ENABLED] = v }
     suspend fun setNnmEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_NNM_ENABLED] = v }
     suspend fun setYtsEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_YTS_ENABLED] = v }
+    suspend fun setNewpipeEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_NEWPIPE_ENABLED] = v }
     suspend fun setRutorDebug(v: String)         = context.dataStore.edit { it[KEY_RUTOR_DEBUG] = v }
 }
