@@ -32,7 +32,15 @@ class GrabViewModel @Inject constructor(
 
     val downloads = repo.downloads
 
+    private val _engineMsg = MutableStateFlow<String?>(null)
+    val engineMsg: StateFlow<String?> = _engineMsg.asStateFlow()
+
     private var job: Job? = null
+
+    fun updateEngine() = viewModelScope.launch {
+        _engineMsg.value = "Обновляю yt-dlp..."
+        _engineMsg.value = repo.updateYtDlp()
+    }
 
     fun onQueryChange(q: String) { _query.value = q }
 
