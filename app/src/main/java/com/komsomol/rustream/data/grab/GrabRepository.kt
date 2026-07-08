@@ -95,16 +95,22 @@ class GrabRepository @Inject constructor(
                 ensureInit()
                 val service = NewPipe.getService(result.serviceId)
                 val info = StreamInfo.getInfo(service, result.url)
+                // Только прямые файлы. HLS/DASH — это плейлисты из кусочков,
+                // их нельзя сохранить как один файл без склейки
+                val direct = org.schabi.newpipe.extractor.stream.DeliveryMethod.PROGRESSIVE_HTTP
                 val stream = if (video) {
-                    info.videoStreams.filter { it.isUrl }
+                    info.videoStreams
+                        .filter { it.isUrl && it.deliveryMethod == direct }
                         .maxByOrNull { parseRes(it.getResolution()) }
                 } else {
-                    info.audioStreams.filter { it.isUrl }
+                    info.audioStreams
+                        .filter { it.isUrl && it.deliveryMethod == direct }
                         .maxByOrNull { it.averageBitrate }
                 }
                 if (stream == null) {
                     setDl(GrabDownload(dlId, result.title, video, 0f,
-                        GrabState.ERROR, "Нет прямого потока для скачивания"))
+                        GrabState.ERROR,
+                        "Сервис не отдаёт этот контент одним файлом (только HLS-поток)"))
                     return@launch
                 }
 
