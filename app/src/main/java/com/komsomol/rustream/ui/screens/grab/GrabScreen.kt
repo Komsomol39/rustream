@@ -26,6 +26,7 @@ fun GrabScreen(
     val uiState by viewModel.uiState.collectAsState()
     val query by viewModel.query.collectAsState()
     val downloads by viewModel.downloads.collectAsState()
+    val engineMsg by viewModel.engineMsg.collectAsState()
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -36,6 +37,14 @@ fun GrabScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
             }
             Text("Онлайн-поиск", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = { viewModel.updateEngine() }) { Text("⟳ yt-dlp") }
+        }
+        if (engineMsg != null) {
+            Text(engineMsg ?: "",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp))
         }
 
         OutlinedTextField(
