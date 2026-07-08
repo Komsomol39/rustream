@@ -136,6 +136,7 @@ class GrabRepository @Inject constructor(
                 setDl(GrabDownload(dlId, result.title, video, 1f, GrabState.DONE))
             } catch (e: Exception) {
                 Log.e(TAG, "yt-dlp failed: " + e)
+                rawLog(result.title, e)
                 setDl(GrabDownload(dlId, result.title, video, 0f,
                     GrabState.ERROR, humanError(e)))
             }
@@ -158,6 +159,19 @@ class GrabRepository @Inject constructor(
     fun dismiss(id: String) = _downloads.update { it - id }
 
     private fun setDl(d: GrabDownload) = _downloads.update { it + (d.id to d) }
+
+    // Полный текст ошибки yt-dlp в файл для диагностики
+    private fun rawLog(title: String, e: Exception) {
+        try {
+            val f = java.io.File(engine.savePath, "grab-log.txt")
+            f.parentFile?.mkdirs()
+            val ts = java.text.SimpleDateFormat("MM-dd HH:mm:ss", java.util.Locale.US)
+                .format(java.util.Date())
+            f.appendText(ts + " [" + title.take(50) + "]" + System.lineSeparator() +
+                (e.message ?: e.toString()) + System.lineSeparator() +
+                "----" + System.lineSeparator())
+        } catch (_: Exception) {}
+    }
 
     private fun humanError(e: Exception): String {
         val m = e.message ?: ""
