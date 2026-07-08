@@ -32,6 +32,7 @@ import com.komsomol.rustream.ui.screens.search.SearchScreen
 import com.komsomol.rustream.ui.screens.settings.SettingsScreen
 import com.komsomol.rustream.ui.screens.music.MusicScreen
 import com.komsomol.rustream.ui.screens.video.VideoScreen
+import com.komsomol.rustream.ui.screens.grab.GrabScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 
@@ -80,7 +81,7 @@ fun AppNavGraph() {
             startDestination = Screen.Search.route,
             modifier         = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Search.route)    { SearchScreen() }
+            composable(Screen.Search.route)    { SearchScreen(onOpenGrab = { navController.navigate("grab") }) }
             composable(Screen.Downloads.route) {
                 DownloadsScreen(onOpen = { id ->
                     navController.navigate("download_detail/" + id)
@@ -91,6 +92,9 @@ fun AppNavGraph() {
                 arguments = listOf(navArgument("id") { type = NavType.StringType })
             ) {
                 DownloadDetailScreen(onBack = { navController.popBackStack() })
+            }
+            composable("grab") {
+                GrabScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Video.route)     { VideoScreen() }
             composable(Screen.Music.route)     { MusicScreen() }
