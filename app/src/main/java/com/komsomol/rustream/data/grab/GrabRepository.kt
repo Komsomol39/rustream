@@ -1,10 +1,15 @@
 package com.komsomol.rustream.data.grab
 
+import android.content.Context
 import android.util.Log
 import com.komsomol.rustream.data.torrent.TorrentEngine
 import com.komsomol.rustream.domain.model.GrabDownload
 import com.komsomol.rustream.domain.model.GrabResult
 import com.komsomol.rustream.domain.model.GrabState
+import com.yausername.ffmpeg.FFmpeg
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLRequest
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,15 +28,14 @@ import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
 import org.schabi.newpipe.extractor.search.SearchInfo
-import org.schabi.newpipe.extractor.stream.StreamInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
-import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class GrabRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val engine: TorrentEngine
 ) {
     private val TAG = "GrabRepo"
@@ -45,20 +49,21 @@ class GrabRepository @Inject constructor(
     private val _downloads = MutableStateFlow<Map<String, GrabDownload>>(emptyMap())
     val downloads: StateFlow<Map<String, GrabDownload>> = _downloads.asStateFlow()
 
-    @Volatile private var initialized = false
-    private fun ensureInit() {
-        if (initialized) return
+    // ---------- Поиск: NewPipe (быстрый, все сервисы параллельно) ----------
+
+    @Volatile private var newpipeReady = false
+    private fun ensureNewPipe() {
+        if (newpipeReady) return
         synchronized(this) {
-            if (initialized) return
+            if (newpipeReady) return
             NewPipe.init(NewPipeDownloaderImpl(client),
                 Localization("ru", "RU"), ContentCountry("RU"))
-            initialized = true
+            newpipeReady = true
         }
     }
 
-    // Поиск по всем сервисам NewPipe параллельно (YouTube, SoundCloud, PeerTube...)
     suspend fun search(query: String): List<GrabResult> = withContext(Dispatchers.IO) {
-        ensureInit()
+        ensureNewPipe()
         val out = java.util.Collections.synchronizedList(mutableListOf<GrabResult>())
         coroutineScope {
             ServiceList.all().map { service ->
@@ -86,87 +91,67 @@ class GrabRepository @Inject constructor(
         out.toList()
     }
 
-    // video=true: лучший видеопоток одним файлом; video=false: лучший аудиопоток
+    // ---------- Скачивание: yt-dlp + ffmpeg (надёжно, HLS, лучшее качество) ----------
+
+    @Volatile private var ytdlReady = false
+    private fun ensureYtdl() {
+        if (ytdlReady) return
+        synchronized(this) {
+            if (ytdlReady) return
+            YoutubeDL.getInstance().init(context)
+            FFmpeg.getInstance().init(context)
+            ytdlReady = true
+        }
+    }
+
     fun startDownload(result: GrabResult, video: Boolean) {
         val dlId = result.url + (if (video) "#v" else "#a")
         setDl(GrabDownload(dlId, result.title, video, 0f, GrabState.RESOLVING))
         scope.launch {
             try {
-                ensureInit()
-                val service = NewPipe.getService(result.serviceId)
-                val info = StreamInfo.getInfo(service, result.url)
-                // Только прямые файлы. HLS/DASH — это плейлисты из кусочков,
-                // их нельзя сохранить как один файл без склейки
-                val direct = org.schabi.newpipe.extractor.stream.DeliveryMethod.PROGRESSIVE_HTTP
-                val stream = if (video) {
-                    info.videoStreams
-                        .filter { it.isUrl && it.deliveryMethod == direct }
-                        .maxByOrNull { parseRes(it.getResolution()) }
-                } else {
-                    info.audioStreams
-                        .filter { it.isUrl && it.deliveryMethod == direct }
-                        .maxByOrNull { it.averageBitrate }
-                }
-                if (stream == null) {
-                    setDl(GrabDownload(dlId, result.title, video, 0f,
-                        GrabState.ERROR,
-                        "Сервис не отдаёт этот контент одним файлом (только HLS-поток)"))
-                    return@launch
-                }
+                ensureYtdl() // первый запуск распаковывает Python, ~10-20 сек
 
-                val suffix = try { stream.format?.suffix ?: defExt(video) }
-                             catch (_: Exception) { defExt(video) }
-                val safe = sanitize(result.title)
-                val fileName = safe + (if (video) "" else " [audio]") + "." + suffix
-                val target = File(engine.savePath, fileName)
-                target.parentFile?.mkdirs()
+                val req = YoutubeDLRequest(result.url)
+                req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
+                req.addOption("--no-mtime")
+                req.addOption("--no-playlist")
+                if (video) {
+                    // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
+                    req.addOption("-f", "bestvideo+bestaudio/best")
+                    req.addOption("--merge-output-format", "mp4")
+                } else {
+                    // Извлечь аудио и конвертировать в настоящий mp3
+                    req.addOption("-x")
+                    req.addOption("--audio-format", "mp3")
+                    req.addOption("--audio-quality", "0")
+                }
 
                 setDl(GrabDownload(dlId, result.title, video, 0f, GrabState.DOWNLOADING))
-
-                val req = okhttp3.Request.Builder().url(stream.content)
-                    .addHeader("User-Agent", NewPipeDownloaderImpl.USER_AGENT)
-                    .build()
-                client.newCall(req).execute().use { resp ->
-                    if (!resp.isSuccessful) {
-                        setDl(GrabDownload(dlId, result.title, video, 0f,
-                            GrabState.ERROR, "HTTP " + resp.code))
-                        return@launch
-                    }
-                    val bodyStream = resp.body
-                    if (bodyStream == null) {
-                        setDl(GrabDownload(dlId, result.title, video, 0f,
-                            GrabState.ERROR, "Пустой ответ"))
-                        return@launch
-                    }
-                    val total = bodyStream.contentLength()
-                    var lastPct = -1
-                    bodyStream.byteStream().use { input ->
-                        target.outputStream().use { outS ->
-                            val buf = ByteArray(65536)
-                            var done = 0L
-                            while (true) {
-                                val n = input.read(buf)
-                                if (n < 0) break
-                                outS.write(buf, 0, n)
-                                done += n
-                                if (total > 0) {
-                                    val pct = (done * 100 / total).toInt()
-                                    if (pct != lastPct) {
-                                        lastPct = pct
-                                        setDl(GrabDownload(dlId, result.title, video,
-                                            done.toFloat() / total, GrabState.DOWNLOADING))
-                                    }
-                                }
-                            }
-                        }
+                YoutubeDL.getInstance().execute(req, dlId) { progress, _, _ ->
+                    if (progress >= 0f) {
+                        setDl(GrabDownload(dlId, result.title, video,
+                            progress / 100f, GrabState.DOWNLOADING))
                     }
                 }
                 setDl(GrabDownload(dlId, result.title, video, 1f, GrabState.DONE))
             } catch (e: Exception) {
-                Log.e(TAG, "download failed: " + e)
+                Log.e(TAG, "yt-dlp failed: " + e)
                 setDl(GrabDownload(dlId, result.title, video, 0f,
                     GrabState.ERROR, humanError(e)))
             }
+        }
+    }
+
+    // Обновить yt-dlp без пересборки приложения (когда YouTube что-то сломает)
+    suspend fun updateYtDlp(): String = withContext(Dispatchers.IO) {
+        try {
+            ensureYtdl()
+            val status = YoutubeDL.getInstance()
+                .updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+            if (status == YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE)
+                "yt-dlp уже актуален" else "✓ yt-dlp обновлён"
+        } catch (e: Exception) {
+            "Ошибка обновления: " + (e.message ?: "?").take(120)
         }
     }
 
@@ -177,29 +162,15 @@ class GrabRepository @Inject constructor(
     private fun humanError(e: Exception): String {
         val m = e.message ?: ""
         return when {
-            e is javax.net.ssl.SSLHandshakeException || m.contains("Trust anchor") ->
+            e is javax.net.ssl.SSLHandshakeException || m.contains("Trust anchor") ||
+            m.contains("CERTIFICATE_VERIFY_FAILED") ->
                 "Провайдер вмешивается в соединение (подмена сертификата) — " +
                 "так обычно блокируют YouTube. Попробуй с VPN"
-            e is java.net.SocketTimeoutException ->
+            e is java.net.SocketTimeoutException || m.contains("timed out") ->
                 "Соединение оборвалось по таймауту — сервис может замедляться провайдером"
             e is java.net.UnknownHostException ->
                 "Сервер не найден — проверь интернет или включи VPN"
-            else -> m.ifBlank { "неизвестная ошибка" }
+            else -> m.take(200).ifBlank { "неизвестная ошибка" }
         }
-    }
-
-    private fun defExt(video: Boolean) = if (video) "mp4" else "m4a"
-
-    private fun sanitize(title: String): String = buildString {
-        for (c in title) {
-            if (c.isLetterOrDigit() || c == ' ' || c == '.' || c == '-' || c == '_') append(c)
-        }
-    }.trim().take(80).ifBlank { "media" }
-
-    private fun parseRes(r: String?): Int {
-        if (r == null) return 0
-        var v = 0
-        for (c in r) { if (c.isDigit()) v = v * 10 + (c - '0') else break }
-        return v
     }
 }
