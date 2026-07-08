@@ -29,6 +29,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val kinozalEnabled    by viewModel.kinozalEnabled.collectAsState()
     val nnmEnabled        by viewModel.nnmEnabled.collectAsState()
     val ytsEnabled        by viewModel.ytsEnabled.collectAsState()
+    val newpipeEnabled    by viewModel.newpipeEnabled.collectAsState()
     val nnmLoggedIn       by viewModel.nnmLoggedIn.collectAsState()
     val kinozalLoggedIn   by viewModel.kinozalLoggedIn.collectAsState()
     val rutorDebug        by viewModel.rutorDebug.collectAsState()
@@ -62,6 +63,9 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 Text("Источники поиска", style = MaterialTheme.typography.titleMedium)
 
                 SourceRow("YTS", "Фильмы 720p-4K, без авторизации", ytsEnabled, viewModel::setYtsEnabled)
+                HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                SourceRow("Онлайн (NewPipe)", "YouTube, SoundCloud и др. — скачивание видео/аудио",
+                    newpipeEnabled, viewModel::setNewpipeEnabled)
                 HorizontalDivider()
                 AuthSourceRow("Kinozal", kinozalLoggedIn, kinozalEnabled, viewModel::setKinozalEnabled,
                     { kinozalLauncher.launch(Intent(context, KinozalLoginActivity::class.java)) },
