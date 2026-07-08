@@ -165,7 +165,7 @@ class GrabRepository @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "download failed: " + e)
                 setDl(GrabDownload(dlId, result.title, video, 0f,
-                    GrabState.ERROR, e.message ?: "ошибка"))
+                    GrabState.ERROR, humanError(e)))
             }
         }
     }
@@ -173,6 +173,20 @@ class GrabRepository @Inject constructor(
     fun dismiss(id: String) = _downloads.update { it - id }
 
     private fun setDl(d: GrabDownload) = _downloads.update { it + (d.id to d) }
+
+    private fun humanError(e: Exception): String {
+        val m = e.message ?: ""
+        return when {
+            e is javax.net.ssl.SSLHandshakeException || m.contains("Trust anchor") ->
+                "Провайдер вмешивается в соединение (подмена сертификата) — " +
+                "так обычно блокируют YouTube. Попробуй с VPN"
+            e is java.net.SocketTimeoutException ->
+                "Соединение оборвалось по таймауту — сервис может замедляться провайдером"
+            e is java.net.UnknownHostException ->
+                "Сервер не найден — проверь интернет или включи VPN"
+            else -> m.ifBlank { "неизвестная ошибка" }
+        }
+    }
 
     private fun defExt(video: Boolean) = if (video) "mp4" else "m4a"
 
