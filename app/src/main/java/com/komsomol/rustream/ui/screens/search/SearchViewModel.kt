@@ -46,6 +46,8 @@ class SearchViewModel @Inject constructor(
     private val _activeStatuses = MutableStateFlow<List<SourceStatus>>(emptyList())
     val activeStatuses: StateFlow<List<SourceStatus>> = _activeStatuses.asStateFlow()
 
+    val newpipeEnabled = settings.newpipeEnabled
+
     private var searchJob: Job? = null
 
     init { refreshStatuses() }
