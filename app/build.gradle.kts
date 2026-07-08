@@ -16,6 +16,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        ndk { abiFilters += "arm64-v8a" }
     }
 
     buildTypes {
@@ -68,6 +69,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.6.1")
     implementation("androidx.media3:media3-ui:1.6.1")
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.3")
+    implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.2")
     implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.6.1+2")
     debugImplementation(libs.androidx.ui.tooling)
