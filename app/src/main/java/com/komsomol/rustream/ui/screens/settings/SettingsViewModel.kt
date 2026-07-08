@@ -29,6 +29,7 @@ class SettingsViewModel @Inject constructor(
     val kinozalEnabled   = repo.kinozalEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val nnmEnabled       = repo.nnmEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val ytsEnabled       = repo.ytsEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val newpipeEnabled   = repo.newpipeEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _rtLoggedIn = MutableStateFlow(rtCookies.isLoggedIn())
     val ruTrackerLoggedIn: StateFlow<Boolean> = _rtLoggedIn.asStateFlow()
@@ -58,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     fun setKinozalEnabled(v: Boolean)   = viewModelScope.launch { repo.setKinozalEnabled(v) }
     fun setNnmEnabled(v: Boolean)       = viewModelScope.launch { repo.setNnmEnabled(v) }
     fun setYtsEnabled(v: Boolean)       = viewModelScope.launch { repo.setYtsEnabled(v) }
+    fun setNewpipeEnabled(v: Boolean)   = viewModelScope.launch { repo.setNewpipeEnabled(v) }
 
     fun onRuTrackerLoginSuccess() { _rtLoggedIn.value = rtCookies.isLoggedIn() }
     fun onKinozalLoginSuccess() { _kinozalLoggedIn.value = kinozalCookies.isLoggedIn() }
