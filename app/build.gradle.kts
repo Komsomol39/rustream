@@ -67,7 +67,7 @@ dependencies {
     implementation("com.iqiyi.xcrash:xcrash-android-lib:3.1.0")
     implementation("androidx.media3:media3-exoplayer:1.6.1")
     implementation("androidx.media3:media3-ui:1.6.1")
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.8")
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.3")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.2")
     implementation("org.jellyfin.media3:media3-ffmpeg-decoder:1.6.1+2")
     debugImplementation(libs.androidx.ui.tooling)
