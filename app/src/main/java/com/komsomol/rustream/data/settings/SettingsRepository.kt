@@ -29,6 +29,7 @@ class SettingsRepository @Inject constructor(
         val KEY_YTS_ENABLED       = booleanPreferencesKey("yts_enabled")
         val KEY_NEWPIPE_ENABLED   = booleanPreferencesKey("newpipe_enabled")
         val KEY_RUTOR_DEBUG       = stringPreferencesKey("rutor_debug")
+        val KEY_MEDIA_FOLDERS     = stringPreferencesKey("media_folders")
     }
 
     val darkTheme: Flow<Boolean>        = context.dataStore.data.map { it[KEY_DARK_THEME] ?: true }
@@ -41,6 +42,10 @@ class SettingsRepository @Inject constructor(
     val newpipeEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_NEWPIPE_ENABLED] ?: false }
     val rutorDebug: Flow<String>        = context.dataStore.data.map { it[KEY_RUTOR_DEBUG] ?: "" }
 
+    val mediaFolders: Flow<List<String>> = context.dataStore.data.map { prefs ->
+        prefs[KEY_MEDIA_FOLDERS]?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
+    }
+
     suspend fun setDarkTheme(v: Boolean)        = context.dataStore.edit { it[KEY_DARK_THEME] = v }
     suspend fun setDownloadPath(v: String)       = context.dataStore.edit { it[KEY_DOWNLOAD_PATH] = v }
     suspend fun setRuTorEnabled(v: Boolean)      = context.dataStore.edit { it[KEY_RUTOR_ENABLED] = v }
@@ -50,4 +55,16 @@ class SettingsRepository @Inject constructor(
     suspend fun setYtsEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_YTS_ENABLED] = v }
     suspend fun setNewpipeEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_NEWPIPE_ENABLED] = v }
     suspend fun setRutorDebug(v: String)         = context.dataStore.edit { it[KEY_RUTOR_DEBUG] = v }
+
+    suspend fun addMediaFolder(path: String) = context.dataStore.edit { prefs ->
+        val cur = prefs[KEY_MEDIA_FOLDERS]?.split("|")?.filter { it.isNotBlank() }?.toMutableList()
+            ?: mutableListOf()
+        if (!cur.contains(path)) { cur.add(path); prefs[KEY_MEDIA_FOLDERS] = cur.joinToString("|") }
+    }
+
+    suspend fun removeMediaFolder(path: String) = context.dataStore.edit { prefs ->
+        val cur = prefs[KEY_MEDIA_FOLDERS]?.split("|")?.filter { it.isNotBlank() && it != path }
+            ?: emptyList()
+        prefs[KEY_MEDIA_FOLDERS] = cur.joinToString("|")
+    }
 }
