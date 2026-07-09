@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
@@ -114,6 +116,37 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
+                Text("Папки с медиа", style = MaterialTheme.typography.titleMedium)
+                Text("Откуда играть видео и музыку. Стандартная папка загрузок уже включена.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(8.dp))
+                mediaFolders.forEach { folder ->
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                        Text(folder, style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        IconButton(onClick = { viewModel.removeMediaFolder(folder) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Убрать папку",
+                                tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+                OutlinedButton(
+                    onClick = { folderPicker.launch(null) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(4.dp))
+                    Text("Добавить папку")
+                }
+            }
+        }
+
+        Card(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp)) {
                 Text("О приложении", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
                 Text("RuStream v1.0", style = MaterialTheme.typography.bodyMedium)
@@ -178,4 +211,18 @@ private fun AuthSourceRow(
             }
         }
     }
+}
+
+// content://.../tree/primary:Music -> /storage/emulated/0/Music
+private fun treeUriToPath(uri: android.net.Uri): String? {
+    return try {
+        val docId = android.provider.DocumentsContract.getTreeDocumentId(uri)
+        val parts = docId.split(":")
+        val type = parts[0]
+        val rel = if (parts.size > 1) parts[1] else ""
+        when (type) {
+            "primary" -> "/storage/emulated/0/" + rel
+            else -> "/storage/" + type + "/" + rel  // SD-карта и пр.
+        }.trimEnd('/')
+    } catch (_: Exception) { null }
 }
