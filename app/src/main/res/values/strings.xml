@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">RuStream</string>
+    <string name="playback_channel">Воспроизведение музыки</string>
 </resources>
