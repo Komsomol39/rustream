@@ -68,6 +68,7 @@ dependencies {
     implementation("com.iqiyi.xcrash:xcrash-android-lib:3.1.0")
     implementation("androidx.media3:media3-exoplayer:1.6.1")
     implementation("androidx.media3:media3-ui:1.6.1")
+    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.3")
     implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
