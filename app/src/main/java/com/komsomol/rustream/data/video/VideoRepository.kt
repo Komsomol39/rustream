@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -18,7 +19,8 @@ import javax.inject.Singleton
 @Singleton
 class VideoRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val engine: TorrentEngine
+    private val engine: TorrentEngine,
+    private val settings: com.komsomol.rustream.data.settings.SettingsRepository
 ) {
     private val _videos = MutableStateFlow<List<VideoItem>>(emptyList())
     val videos: StateFlow<List<VideoItem>> = _videos.asStateFlow()
@@ -33,8 +35,14 @@ class VideoRepository @Inject constructor(
         _scanning.value = true
         try {
             val files = mutableListOf<File>()
-            val root = File(engine.savePath)
-            if (root.exists()) collectVideo(root, files)
+            val roots = mutableListOf(engine.savePath)
+            roots.addAll(kotlinx.coroutines.flow.first(settings.mediaFolders))
+            roots.distinct().forEach { path ->
+                val root = File(path)
+                if (root.exists()) collectVideo(root, files)
+            }
+            val seen = HashSet<String>()
+            files.retainAll { seen.add(it.absolutePath) }
             files.sortBy { it.name.lowercase() }
 
             val quick = files.map { f ->
