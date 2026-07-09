@@ -7,6 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -60,6 +64,12 @@ fun MusicScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.weight(1f))
+                if (artists.isNotEmpty()) {
+                    TextButton(onClick = { viewModel.playAll() }) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Text("Все")
+                    }
+                }
                 IconButton(onClick = { viewModel.refresh() }) {
                     Icon(Icons.Default.Refresh, contentDescription = "Обновить")
                 }
@@ -99,10 +109,14 @@ fun MusicScreen(
             }
         }
 
+        val shuffle by viewModel.shuffle.collectAsState()
+        val repeatMode by viewModel.repeatMode.collectAsState()
         if (current != null) {
             SharedMiniPlayer(current!!, playing, positionMs, durationMs,
+                shuffle, repeatMode,
                 { viewModel.toggle() }, { viewModel.next() },
                 { viewModel.prev() }, { viewModel.seekTo(it) },
+                { viewModel.toggleShuffle() }, { viewModel.cycleRepeat() },
                 { viewModel.stopPlayback() })
         }
     }
@@ -141,7 +155,9 @@ private fun ArtistRow(
 @Composable
 fun SharedMiniPlayer(
     track: Track, playing: Boolean, positionMs: Long, durationMs: Long,
+    shuffle: Boolean, repeatMode: Int,
     onToggle: () -> Unit, onNext: () -> Unit, onPrev: () -> Unit, onSeek: (Long) -> Unit,
+    onShuffle: () -> Unit, onRepeat: () -> Unit,
     onClose: () -> Unit
 ) {
     Surface(tonalElevation = 4.dp) {
@@ -162,6 +178,11 @@ fun SharedMiniPlayer(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(fmt(positionMs), style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.weight(1f))
+                IconButton(onClick = onShuffle) {
+                    Icon(Icons.Default.Shuffle, contentDescription = "Перемешать",
+                        tint = if (shuffle) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 IconButton(onClick = onPrev) {
                     Icon(Icons.Default.SkipPrevious, contentDescription = "Назад") }
                 FilledIconButton(onClick = onToggle) {
@@ -169,6 +190,13 @@ fun SharedMiniPlayer(
                         contentDescription = "Играть/пауза") }
                 IconButton(onClick = onNext) {
                     Icon(Icons.Default.SkipNext, contentDescription = "Дальше") }
+                IconButton(onClick = onRepeat) {
+                    Icon(
+                        if (repeatMode == 2) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                        contentDescription = "Повтор",
+                        tint = if (repeatMode != 0) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 Spacer(Modifier.weight(1f))
                 Text(fmt(durationMs), style = MaterialTheme.typography.labelSmall)
             }
