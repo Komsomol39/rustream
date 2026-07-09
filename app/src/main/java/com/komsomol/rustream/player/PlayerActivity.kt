@@ -36,7 +36,31 @@ class PlayerActivity : ComponentActivity() {
         view.player = p
         view.keepScreenOn = true
         view.setShowSubtitleButton(true)
-        setContentView(view)
+
+        // Полупрозрачная кнопка "назад" поверх видео, видна вместе с контролами
+        val backBtn = android.widget.ImageButton(this).apply {
+            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+            background = null
+            alpha = 0.6f
+            setColorFilter(android.graphics.Color.WHITE)
+            setOnClickListener { finish() }
+        }
+        val root = android.widget.FrameLayout(this)
+        root.addView(view, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT))
+        val d = (resources.displayMetrics.density * 12).toInt()
+        val sz = (resources.displayMetrics.density * 40).toInt()
+        root.addView(backBtn, android.widget.FrameLayout.LayoutParams(sz, sz).apply {
+            leftMargin = d; topMargin = d
+        })
+        setContentView(root)
+
+        // Кнопка появляется/прячется вместе с панелью управления
+        view.setControllerVisibilityListener(
+            androidx.media3.ui.PlayerView.ControllerVisibilityListener { visibility ->
+                backBtn.visibility = visibility
+            })
 
         // Полноэкранный режим
         WindowCompat.setDecorFitsSystemWindows(window, false)
