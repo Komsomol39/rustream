@@ -1,20 +1,15 @@
 package com.komsomol.rustream.player
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Intent
-import android.os.Build
-import androidx.core.app.NotificationCompat
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import androidx.media3.session.MediaStyleNotificationHelper
 import com.komsomol.rustream.data.music.PlayerController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
-// MediaSession вокруг общего ExoPlayer: уведомление под шторкой,
-// управление с локскрина и наушников
+// MediaSession вокруг общего ExoPlayer. media3 сам держит foreground-уведомление,
+// пока идёт воспроизведение — и показывает его на локскрине.
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
 
@@ -24,6 +19,15 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Провайдер уведомления с нашим каналом
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .setChannelId(CHANNEL_ID)
+                .setChannelName(R_CHANNEL_NAME)
+                .build()
+        )
+
         val player = controller.obtainPlayer()
         val launch = packageManager.getLaunchIntentForPackage(packageName)
         val sessionActivity = PendingIntent.getActivity(
@@ -32,30 +36,18 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player)
             .setSessionActivity(sessionActivity)
             .build()
-        ensureChannel()
-    }
-
-    // Пришёл startForegroundService — обязаны сразу уйти в foreground,
-    // иначе система убьёт сервис (и уведомления не будет вовсе)
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val session = mediaSession
-        if (session != null) {
-            val notif = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_media_play)
-                .setStyle(MediaStyleNotificationHelper.MediaStyle(session))
-                .setContentTitle(session.player.mediaMetadata.title ?: "RuStream")
-                .setContentText(session.player.mediaMetadata.artist ?: "")
-                .setContentIntent(session.sessionActivity)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // локскрин
-                .setOngoing(true)
-                .build()
-            startForeground(NOTIF_ID, notif)
-        }
-        return super.onStartCommand(intent, flags, startId)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
+
+    // При смахивании приложения из недавних — если не играет, гасим сервис
+    override fun onTaskRemoved(rootIntent: android.content.Intent?) {
+        val p = mediaSession?.player
+        if (p == null || !p.playWhenReady || p.mediaItemCount == 0) {
+            stopSelf()
+        }
+    }
 
     override fun onDestroy() {
         mediaSession?.release()
@@ -63,17 +55,8 @@ class PlaybackService : MediaSessionService() {
         super.onDestroy()
     }
 
-    private fun ensureChannel() {
-        if (Build.VERSION.SDK_INT >= 26) {
-            val nm = getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(NotificationChannel(
-                CHANNEL_ID, "Воспроизведение музыки",
-                NotificationManager.IMPORTANCE_LOW))
-        }
-    }
-
     companion object {
         private const val CHANNEL_ID = "playback"
-        private const val NOTIF_ID = 4242
+        private const val R_CHANNEL_NAME = 0 // строковый ресурс не нужен, media3 стерпит 0? -> заменим ниже
     }
 }
