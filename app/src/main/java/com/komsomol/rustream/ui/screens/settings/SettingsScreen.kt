@@ -94,23 +94,28 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             }
         }
 
-        // --- Источники поиска ---
+        // --- Онлайн-загрузки (не торренты) ---
         SettingsCard {
-            SectionLabel("Источники поиска")
+            SectionLabel("Онлайн-загрузки")
+            SourceRow(Icons.Default.Public, "NewPipe / yt-dlp",
+                "YouTube, SoundCloud, VK и ещё сотни сайтов",
+                newpipeEnabled, viewModel::setNewpipeEnabled)
+        }
+
+        // --- Торрент-трекеры ---
+        SettingsCard {
+            SectionLabel("Торрент-трекеры")
 
             SourceRow(Icons.Default.Movie, "YTS", "Фильмы 720p–4K, без входа",
                 ytsEnabled, viewModel::setYtsEnabled)
             RowDivider()
-            SourceRow(Icons.Default.Public, "Онлайн (NewPipe)",
-                "YouTube, SoundCloud и др.", newpipeEnabled, viewModel::setNewpipeEnabled)
+            SourceRow(Icons.Default.Language, "RuTor", "Нужен VPN в РФ • магнет-ссылки",
+                ruTorEnabled, viewModel::setRuTorEnabled)
             RowDivider()
             AuthSourceRow(Icons.Default.Lock, "Kinozal", kinozalLoggedIn, kinozalEnabled,
                 viewModel::setKinozalEnabled,
                 { kinozalLauncher.launch(Intent(context, KinozalLoginActivity::class.java)) },
                 viewModel::logoutKinozal)
-            RowDivider()
-            SourceRow(Icons.Default.Language, "RuTor", "Нужен VPN в РФ • магнет-ссылки",
-                ruTorEnabled, viewModel::setRuTorEnabled)
             RowDivider()
             AuthSourceRow(Icons.Default.Lock, "RuTracker", rtLoggedIn, ruTrackerEnabled,
                 viewModel::setRuTrackerEnabled,
