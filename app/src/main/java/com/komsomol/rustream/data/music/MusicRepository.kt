@@ -14,10 +14,34 @@ import javax.inject.Singleton
 
 @Singleton
 class MusicRepository @Inject constructor(
-    private val engine: TorrentEngine
+    private val engine: TorrentEngine,
+    private val mergeStore: ArtistMergeStore
 ) {
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())
     val tracks: StateFlow<List<Track>> = _tracks.asStateFlow()
+
+    // Список исполнителей с учётом правил объединения
+    val artists: kotlinx.coroutines.flow.Flow<List<com.komsomol.rustream.domain.model.ArtistGroup>> =
+        kotlinx.coroutines.flow.combine(_tracks, mergeStore.mergeMap) { tracks, merge ->
+            val byCanonical = LinkedHashMap<String, MutableList<Track>>()
+            val members = LinkedHashMap<String, LinkedHashSet<String>>()
+            for (t in tracks.sortedBy { it.title.lowercase() }) {
+                val raw = t.artist?.takeIf { it.isNotBlank() } ?: "Неизвестный исполнитель"
+                val canonical = merge[raw] ?: raw
+                byCanonical.getOrPut(canonical) { mutableListOf() }.add(t)
+                members.getOrPut(canonical) { LinkedHashSet() }.add(raw)
+            }
+            byCanonical.map { (name, ts) ->
+                com.komsomol.rustream.domain.model.ArtistGroup(
+                    displayName = name,
+                    memberNames = members[name]?.toList() ?: listOf(name),
+                    tracks = ts
+                )
+            }.sortedBy { it.displayName.lowercase() }
+        }
+
+    suspend fun mergeArtists(names: List<String>) = mergeStore.merge(names)
+    suspend fun unmergeArtist(name: String) = mergeStore.unmerge(name)
 
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
