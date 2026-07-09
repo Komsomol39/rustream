@@ -100,14 +100,13 @@ class PlayerController @Inject constructor(
         p.prepare()
         p.play()
         _current.value = track
-        // Сервис с MediaSession: уведомление под шторкой и на локскрине.
-        // startForegroundService — иначе на Android 12+ сервис не поднимется
+        // Сервис с MediaSession. Именно обычный startService: мы запускаем его
+        // только из открытого UI (это разрешено), а в foreground с уведомлением
+        // его выведет сам media3, когда начнётся воспроизведение.
+        // startForegroundService здесь нельзя — он требует немедленный
+        // startForeground от нас, и это роняло приложение.
         try {
-            if (android.os.Build.VERSION.SDK_INT >= 26) {
-                context.startForegroundService(Intent(context, PlaybackService::class.java))
-            } else {
-                context.startService(Intent(context, PlaybackService::class.java))
-            }
+            context.startService(Intent(context, PlaybackService::class.java))
         } catch (_: Exception) {}
     }
 
