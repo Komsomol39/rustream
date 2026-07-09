@@ -1,1 +1,35 @@
-BUILD SUCCESSFUL
+BUILD FAILED
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/music/MusicRepository.kt:59:50 Unresolved reference 'first'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/video/VideoRepository.kt:39:50 Unresolved reference 'first'.
+--- LAST 30 LINES ---
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libffmpeg.so, libffmpeg.zip.so, libffmpegJNI.so, libffprobe.so, libpython.so, libpython.zip.so, libqjs.so, libtorrent4j.so, libxcrash.so, libxcrash_dumper.so.
+
+> Task :app:kspDebugKotlin
+e: The daemon has terminated unexpectedly on startup attempt #1 with error code: 0. The daemon process output:
+    1. Kotlin compile daemon is ready
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/music/MusicRepository.kt:59:50 Unresolved reference 'first'.
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/video/VideoRepository.kt:39:50 Unresolved reference 'first'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 4m 1s
+31 actionable tasks: 31 executed
