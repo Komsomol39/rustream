@@ -1,6 +1,7 @@
 package com.komsomol.rustream.ui.screens.music
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.komsomol.rustream.domain.model.Track
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ArtistDetailScreen(
     artistName: String,
@@ -25,6 +27,22 @@ fun ArtistDetailScreen(
 ) {
     val artists by viewModel.artists.collectAsState()
     val group = artists.find { it.displayName == artistName }
+    var toDelete by remember { mutableStateOf<Track?>(null) }
+
+    if (toDelete != null) {
+        val t = toDelete!!
+        AlertDialog(
+            onDismissRequest = { toDelete = null },
+            title = { Text("Удалить трек?") },
+            text = { Text(t.title + "\n\nФайл будет удалён с устройства безвозвратно.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.deleteTrack(t.path); toDelete = null }) {
+                    Text("Удалить", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Отмена") } }
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -69,7 +87,10 @@ fun ArtistDetailScreen(
             items(group.tracks, key = { it.path }) { t ->
                 Column(
                     Modifier.fillMaxWidth()
-                        .clickable { viewModel.playFrom(t, group.tracks) }
+                        .combinedClickable(
+                            onClick = { viewModel.playFrom(t, group.tracks) },
+                            onLongClick = { toDelete = t }
+                        )
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                 ) {
                     Text(t.title, style = MaterialTheme.typography.bodyLarge,
