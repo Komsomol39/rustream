@@ -61,6 +61,7 @@ class MusicViewModel @Inject constructor(
     fun deleteTrack(path: String) = viewModelScope.launch { repo.deleteFile(path) }
 
     fun playFrom(t: Track, all: List<Track>) = player.play(t, all)
+    fun stopPlayback() = player.stopAndClear()
     fun toggle() = player.toggle()
     fun next() = player.next()
     fun prev() = player.prev()
