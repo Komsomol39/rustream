@@ -142,6 +142,8 @@ class PlayerController @Inject constructor(
         _durationMs.value = 0L
     }
 
+    fun pauseForExternal() { controller?.pause() }
+
     fun toggle() {
         val c = controller ?: return
         if (c.isPlaying) c.pause() else c.play()
