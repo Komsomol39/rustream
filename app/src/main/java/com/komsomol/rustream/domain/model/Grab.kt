@@ -6,7 +6,8 @@ data class GrabResult(
     val url: String,
     val title: String,
     val uploader: String? = null,
-    val durationSec: Long = 0L
+    val durationSec: Long = 0L,
+    val thumbnailUrl: String? = null
 )
 
 enum class GrabState { RESOLVING, DOWNLOADING, DONE, ERROR }
