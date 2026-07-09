@@ -14,6 +14,8 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @javax.inject.Inject lateinit var grabRepo: com.komsomol.rustream.data.grab.GrabRepository
+
     private val notifPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* запускаем сервис в любом случае */ startTorrentService() }
@@ -41,6 +43,9 @@ class MainActivity : ComponentActivity() {
         } else {
             startTorrentService()
         }
+
+        // Тихо обновляем yt-dlp при каждом запуске
+        grabRepo.autoUpdateSilently()
 
         setContent {
             RuStreamTheme {
