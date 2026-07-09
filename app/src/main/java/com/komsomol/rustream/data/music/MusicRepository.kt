@@ -56,7 +56,7 @@ class MusicRepository @Inject constructor(
         try {
             val files = mutableListOf<File>()
             val roots = mutableListOf(engine.savePath)
-            roots.addAll(kotlinx.coroutines.flow.first(settings.mediaFolders))
+            roots.addAll(settings.mediaFolders.first())
             roots.distinct().forEach { path ->
                 val root = File(path)
                 if (root.exists()) collectAudio(root, files)
