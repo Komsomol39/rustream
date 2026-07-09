@@ -58,6 +58,8 @@ class MusicViewModel @Inject constructor(
 
     fun unmerge(name: String) = viewModelScope.launch { repo.unmergeArtist(name) }
 
+    fun deleteTrack(path: String) = viewModelScope.launch { repo.deleteFile(path) }
+
     fun playFrom(t: Track, all: List<Track>) = player.play(t, all)
     fun toggle() = player.toggle()
     fun next() = player.next()
