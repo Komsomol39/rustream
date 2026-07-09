@@ -93,9 +93,14 @@ class PlayerController @Inject constructor(
         p.prepare()
         p.play()
         _current.value = track
-        // Сервис с MediaSession: уведомление под шторкой и на локскрине
+        // Сервис с MediaSession: уведомление под шторкой и на локскрине.
+        // startForegroundService — иначе на Android 12+ сервис не поднимется
         try {
-            context.startService(Intent(context, PlaybackService::class.java))
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                context.startForegroundService(Intent(context, PlaybackService::class.java))
+            } else {
+                context.startService(Intent(context, PlaybackService::class.java))
+            }
         } catch (_: Exception) {}
     }
 
