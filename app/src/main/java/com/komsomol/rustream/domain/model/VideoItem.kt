@@ -5,5 +5,6 @@ data class VideoItem(
     val fileName: String,
     val title: String,
     val sizeBytes: Long = 0L,
-    val durationMs: Long = 0L
+    val durationMs: Long = 0L,
+    val thumbPath: String? = null
 )
