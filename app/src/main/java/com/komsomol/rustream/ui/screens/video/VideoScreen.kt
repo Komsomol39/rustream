@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -105,8 +106,19 @@ private fun VideoRow(video: VideoItem, onClick: () -> Unit, onLongClick: () -> U
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.PlayCircle, contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary)
+        if (video.thumbPath != null) {
+            coil.compose.AsyncImage(
+                model = java.io.File(video.thumbPath),
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .size(width = 112.dp, height = 63.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            )
+        } else {
+            Icon(Icons.Default.PlayCircle, contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary)
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(video.title, style = MaterialTheme.typography.bodyLarge,
