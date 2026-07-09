@@ -75,6 +75,11 @@ class MusicRepository @Inject constructor(
         }
     }
 
+    fun deleteFile(path: String) {
+        try { File(path).delete() } catch (_: Exception) {}
+        _tracks.value = _tracks.value.filterNot { it.path == path }
+    }
+
     private fun collectAudio(dir: File, out: MutableList<File>) {
         dir.listFiles()?.forEach { f ->
             if (f.isDirectory) collectAudio(f, out)
