@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.komsomol.rustream.R
 import com.komsomol.rustream.data.music.PlayerController
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -24,7 +25,7 @@ class PlaybackService : MediaSessionService() {
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider.Builder(this)
                 .setChannelId(CHANNEL_ID)
-                .setChannelName(R_CHANNEL_NAME)
+                .setChannelName(R.string.playback_channel)
                 .build()
         )
 
@@ -57,6 +58,5 @@ class PlaybackService : MediaSessionService() {
 
     companion object {
         private const val CHANNEL_ID = "playback"
-        private const val R_CHANNEL_NAME = 0 // строковый ресурс не нужен, media3 стерпит 0? -> заменим ниже
     }
 }
