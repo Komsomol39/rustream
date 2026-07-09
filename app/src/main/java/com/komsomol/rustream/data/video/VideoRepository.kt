@@ -48,6 +48,11 @@ class VideoRepository @Inject constructor(
         }
     }
 
+    fun deleteFile(path: String) {
+        try { File(path).delete() } catch (_: Exception) {}
+        _videos.value = _videos.value.filterNot { it.path == path }
+    }
+
     private fun collectVideo(dir: File, out: MutableList<File>) {
         dir.listFiles()?.forEach { f ->
             if (f.isDirectory) collectVideo(f, out)
