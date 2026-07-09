@@ -1,35 +1,25 @@
 package com.komsomol.rustream.player
 
 import android.app.PendingIntent
-import androidx.media3.session.DefaultMediaNotificationProvider
+import android.content.Intent
+import androidx.media3.common.AudioAttributes
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
-import com.komsomol.rustream.R
-import com.komsomol.rustream.data.music.PlayerController
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
-// MediaSession вокруг общего ExoPlayer. media3 сам держит foreground-уведомление,
-// пока идёт воспроизведение — и показывает его на локскрине.
-@AndroidEntryPoint
+// Канонический паттерн media3: плеер живёт ВНУТРИ сервиса,
+// UI управляет им через MediaController. Уведомление, локскрин,
+// foreground — всё media3 делает сам.
 class PlaybackService : MediaSessionService() {
-
-    @Inject lateinit var controller: PlayerController
 
     private var mediaSession: MediaSession? = null
 
     override fun onCreate() {
         super.onCreate()
-
-        // Провайдер уведомления с нашим каналом
-        setMediaNotificationProvider(
-            DefaultMediaNotificationProvider.Builder(this)
-                .setChannelId(CHANNEL_ID)
-                .setChannelName(R.string.playback_channel)
-                .build()
-        )
-
-        val player = controller.obtainPlayer()
+        val player = ExoPlayer.Builder(this)
+            .setAudioAttributes(AudioAttributes.DEFAULT, true) // аудиофокус
+            .setHandleAudioBecomingNoisy(true)                 // пауза без наушников
+            .build()
         val launch = packageManager.getLaunchIntentForPackage(packageName)
         val sessionActivity = PendingIntent.getActivity(
             this, 0, launch,
@@ -39,25 +29,10 @@ class PlaybackService : MediaSessionService() {
             .build()
     }
 
-    // Воспроизведение обычно стартует ДО создания сервиса, и media3 пропускает
-    // событие, по которому строит уведомление. Дёргаем обновление явно.
-    override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
-        val res = super.onStartCommand(intent, flags, startId)
-        mediaSession?.let { s ->
-            try {
-                onUpdateNotification(s, s.player.playWhenReady)
-            } catch (e: Exception) {
-                android.util.Log.w("PlaybackService", "notif update: " + e.message)
-            }
-        }
-        return res
-    }
-
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
 
-    // При смахивании приложения из недавних — если не играет, гасим сервис
-    override fun onTaskRemoved(rootIntent: android.content.Intent?) {
+    override fun onTaskRemoved(rootIntent: Intent?) {
         val p = mediaSession?.player
         if (p == null || !p.playWhenReady || p.mediaItemCount == 0) {
             stopSelf()
@@ -65,12 +40,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
-        mediaSession?.release()
+        mediaSession?.run {
+            player.release()
+            release()
+        }
         mediaSession = null
         super.onDestroy()
-    }
-
-    companion object {
-        private const val CHANNEL_ID = "playback"
     }
 }
