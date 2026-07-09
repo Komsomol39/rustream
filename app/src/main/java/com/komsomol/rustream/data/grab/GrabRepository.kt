@@ -115,6 +115,12 @@ class GrabRepository @Inject constructor(
                 req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
                 req.addOption("--no-mtime")
                 req.addOption("--no-playlist")
+                // Python внутри приложения не видит системные/VPN CA — иначе
+                // self-signed certificate in chain при туннелировании трафика
+                req.addOption("--no-check-certificates")
+                // Клиенты android/ios не требуют решения n-challenge через JS,
+                // который ломается на новых плеерах YouTube (found 0 n function)
+                req.addOption("--extractor-args", "youtube:player_client=android,ios,web")
                 if (video) {
                     // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
                     req.addOption("-f", "bestvideo+bestaudio/best")
