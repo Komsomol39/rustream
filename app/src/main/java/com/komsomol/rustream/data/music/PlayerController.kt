@@ -1,13 +1,17 @@
 package com.komsomol.rustream.data.music
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.komsomol.rustream.domain.model.Track
+import com.komsomol.rustream.player.PlaybackService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +20,7 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// Все методы должны вызываться с главного потока (из ViewModel так и происходит)
+// Все методы вызывать с главного потока
 @Singleton
 class PlayerController @Inject constructor(
     @ApplicationContext private val context: Context
@@ -48,9 +52,16 @@ class PlayerController @Inject constructor(
         }
     }
 
+    // Для MediaSession в PlaybackService
+    fun obtainPlayer(): ExoPlayer = ensurePlayer()
+
     private fun ensurePlayer(): ExoPlayer {
         player?.let { return it }
-        val p = ExoPlayer.Builder(context).build()
+        val p = ExoPlayer.Builder(context)
+            // Аудиофокус (пауза при звонке) и пауза при отключении наушников
+            .setAudioAttributes(AudioAttributes.DEFAULT, true)
+            .setHandleAudioBecomingNoisy(true)
+            .build()
         p.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _playing.value = isPlaying
@@ -68,10 +79,37 @@ class PlayerController @Inject constructor(
         val p = ensurePlayer()
         queue = all
         val idx = all.indexOfFirst { it.path == track.path }.coerceAtLeast(0)
-        p.setMediaItems(all.map { MediaItem.fromUri(Uri.fromFile(File(it.path))) }, idx, 0L)
+        val items = all.map { t ->
+            MediaItem.Builder()
+                .setUri(Uri.fromFile(File(t.path)))
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(t.title)
+                        .setArtist(t.artist ?: "RuStream")
+                        .build())
+                .build()
+        }
+        p.setMediaItems(items, idx, 0L)
         p.prepare()
         p.play()
         _current.value = track
+        // Сервис с MediaSession: уведомление под шторкой и на локскрине
+        try {
+            context.startService(Intent(context, PlaybackService::class.java))
+        } catch (_: Exception) {}
+    }
+
+    // Полностью закрыть плеер: убрать мини-плеер и уведомление
+    fun stopAndClear() {
+        player?.stop()
+        player?.clearMediaItems()
+        _current.value = null
+        _playing.value = false
+        _positionMs.value = 0L
+        _durationMs.value = 0L
+        try {
+            context.stopService(Intent(context, PlaybackService::class.java))
+        } catch (_: Exception) {}
     }
 
     fun toggle() {
