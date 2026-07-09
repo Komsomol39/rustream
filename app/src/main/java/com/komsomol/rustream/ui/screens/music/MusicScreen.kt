@@ -100,7 +100,7 @@ fun MusicScreen(
         }
 
         if (current != null) {
-            MiniPlayer(current!!, playing, positionMs, durationMs,
+            SharedMiniPlayer(current!!, playing, positionMs, durationMs,
                 { viewModel.toggle() }, { viewModel.next() },
                 { viewModel.prev() }, { viewModel.seekTo(it) },
                 { viewModel.stopPlayback() })
@@ -139,7 +139,7 @@ private fun ArtistRow(
 }
 
 @Composable
-private fun MiniPlayer(
+fun SharedMiniPlayer(
     track: Track, playing: Boolean, positionMs: Long, durationMs: Long,
     onToggle: () -> Unit, onNext: () -> Unit, onPrev: () -> Unit, onSeek: (Long) -> Unit,
     onClose: () -> Unit
