@@ -33,6 +33,9 @@ import com.komsomol.rustream.ui.screens.settings.SettingsScreen
 import com.komsomol.rustream.ui.screens.music.MusicScreen
 import com.komsomol.rustream.ui.screens.video.VideoScreen
 import com.komsomol.rustream.ui.screens.grab.GrabScreen
+import com.komsomol.rustream.ui.screens.music.ArtistDetailScreen
+import java.net.URLEncoder
+import java.net.URLDecoder
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 
@@ -97,7 +100,18 @@ fun AppNavGraph() {
                 GrabScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Video.route)     { VideoScreen() }
-            composable(Screen.Music.route)     { MusicScreen() }
+            composable(Screen.Music.route) {
+                MusicScreen(onOpenArtist = { name ->
+                    navController.navigate("artist/" + URLEncoder.encode(name, "UTF-8"))
+                })
+            }
+            composable(
+                "artist/{name}",
+                arguments = listOf(navArgument("name") { type = NavType.StringType })
+            ) { entry ->
+                val name = URLDecoder.decode(entry.arguments?.getString("name") ?: "", "UTF-8")
+                ArtistDetailScreen(artistName = name, onBack = { navController.popBackStack() })
+            }
             composable(Screen.Settings.route)  { SettingsScreen() }
         }
     }
