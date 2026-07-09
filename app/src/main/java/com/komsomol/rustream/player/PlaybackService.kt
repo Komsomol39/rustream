@@ -39,6 +39,20 @@ class PlaybackService : MediaSessionService() {
             .build()
     }
 
+    // Воспроизведение обычно стартует ДО создания сервиса, и media3 пропускает
+    // событие, по которому строит уведомление. Дёргаем обновление явно.
+    override fun onStartCommand(intent: android.content.Intent?, flags: Int, startId: Int): Int {
+        val res = super.onStartCommand(intent, flags, startId)
+        mediaSession?.let { s ->
+            try {
+                onUpdateNotification(s, s.player.playWhenReady)
+            } catch (e: Exception) {
+                android.util.Log.w("PlaybackService", "notif update: " + e.message)
+            }
+        }
+        return res
+    }
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
 
