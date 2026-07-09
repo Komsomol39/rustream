@@ -1,7 +1,10 @@
 package com.komsomol.rustream.data.video
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import com.komsomol.rustream.data.torrent.TorrentEngine
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.komsomol.rustream.domain.model.VideoItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +17,7 @@ import javax.inject.Singleton
 
 @Singleton
 class VideoRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val engine: TorrentEngine
 ) {
     private val _videos = MutableStateFlow<List<VideoItem>>(emptyList())
@@ -40,8 +44,11 @@ class VideoRepository @Inject constructor(
             _videos.value = quick.toList()
 
             for (i in files.indices) {
-                quick[i] = quick[i].copy(durationMs = readDuration(files[i]))
-                if (i % 5 == 4 || i == files.size - 1) _videos.value = quick.toList()
+                quick[i] = quick[i].copy(
+                    durationMs = readDuration(files[i]),
+                    thumbPath  = thumbFor(files[i])
+                )
+                if (i % 3 == 2 || i == files.size - 1) _videos.value = quick.toList()
             }
         } finally {
             _scanning.value = false
@@ -59,6 +66,33 @@ class VideoRepository @Inject constructor(
             else if (f.extension.lowercase() in videoExt) out.add(f)
         }
     }
+
+    // Кадр из видео -> jpg в кеше приложения. Ключ включает размер файла,
+    // чтобы превью пересоздалось, если файл докачался/заменился.
+    private fun thumbFor(f: File): String? = try {
+        val dir = File(context.cacheDir, "video_thumbs").apply { mkdirs() }
+        val out = File(dir, f.absolutePath.hashCode().toString() + "_" + f.length() + ".jpg")
+        if (out.exists()) {
+            out.absolutePath
+        } else {
+            val m = MediaMetadataRetriever()
+            m.setDataSource(f.absolutePath)
+            // кадр с 10-й секунды (титры/чёрный экран в начале пропускаем)
+            val bmp = m.getFrameAtTime(10_000_000L)
+                ?: m.getFrameAtTime(0L)
+            m.release()
+            if (bmp == null) null
+            else {
+                val w = 320
+                val h = (w.toFloat() * bmp.height / bmp.width).toInt().coerceAtLeast(1)
+                val scaled = Bitmap.createScaledBitmap(bmp, w, h, true)
+                out.outputStream().use {
+                    scaled.compress(Bitmap.CompressFormat.JPEG, 80, it)
+                }
+                out.absolutePath
+            }
+        }
+    } catch (_: Exception) { null }
 
     private fun readDuration(f: File): Long = try {
         val m = MediaMetadataRetriever()
