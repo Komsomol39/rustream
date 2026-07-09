@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.komsomol.rustream.data.settings.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
 import javax.inject.Inject
@@ -30,26 +31,22 @@ class ArtistMergeStore @Inject constructor(
         } catch (_: Exception) { emptyMap() }
     }
 
+    private suspend fun readNow(): Map<String, String> =
+        parse(context.dataStore.data.first()[KEY])
+
     private suspend fun save(map: Map<String, String>) {
         val o = JSONObject()
         map.forEach { (k, v) -> o.put(k, v) }
         context.dataStore.edit { it[KEY] = o.toString() }
     }
 
-    // Объединить несколько имён под одним каноничным (берём первое как имя группы)
+    // Объединить несколько имён под одним каноничным (первое имя = имя группы)
     suspend fun merge(names: List<String>) {
         if (names.size < 2) return
-        val canonical = names.first()
-        val current = parse(context.dataStore.data.map { it[KEY] }.let {
-            var r: Map<String, String> = emptyMap()
-            kotlinx.coroutines.flow.first(it) { true }.let { p -> r = parse(p) }
-            r
-        }.toString())
-        // проще: перечитать напрямую
         val map = readNow().toMutableMap()
-        // если canonical сам был участником другой группы — используем его группу
-        val realCanonical = map[canonical] ?: canonical
-        names.forEach { map[it] = realCanonical }
+        // если первое имя уже входит в группу — используем её каноничное имя
+        val canonical = map[names.first()] ?: names.first()
+        names.forEach { map[it] = canonical }
         save(map)
     }
 
@@ -58,13 +55,5 @@ class ArtistMergeStore @Inject constructor(
         val map = readNow().toMutableMap()
         map.remove(name)
         save(map)
-    }
-
-    private suspend fun readNow(): Map<String, String> {
-        var result: Map<String, String> = emptyMap()
-        kotlinx.coroutines.flow.collect(
-            kotlinx.coroutines.flow.take(context.dataStore.data, 1)
-        ) { result = parse(it[KEY]) }
-        return result
     }
 }
