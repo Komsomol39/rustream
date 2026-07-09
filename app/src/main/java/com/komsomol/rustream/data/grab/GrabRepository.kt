@@ -164,6 +164,18 @@ class GrabRepository @Inject constructor(
         }
     }
 
+    // Скачивание по произвольной ссылке (любой из ~1800 сайтов yt-dlp).
+    // title подтянет сам yt-dlp через шаблон %(title)s.
+    fun startFromUrl(url: String, video: Boolean) {
+        val clean = url.trim()
+        val fake = GrabResult(
+            serviceId = -1, serviceName = "URL",
+            url = clean,
+            title = clean.take(60)
+        )
+        startDownload(fake, video)
+    }
+
     fun dismiss(id: String) = _downloads.update { it - id }
 
     private fun setDl(d: GrabDownload) = _downloads.update { it + (d.id to d) }
