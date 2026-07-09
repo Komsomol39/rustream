@@ -22,6 +22,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val context           = LocalContext.current
+    val folderPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            val path = treeUriToPath(uri)
+            if (path != null) viewModel.addMediaFolder(path)
+        }
+    }
     val darkTheme         by viewModel.darkTheme.collectAsState()
     val ruTorEnabled      by viewModel.ruTorEnabled.collectAsState()
     val ruTrackerEnabled  by viewModel.ruTrackerEnabled.collectAsState()
@@ -30,6 +38,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val nnmEnabled        by viewModel.nnmEnabled.collectAsState()
     val ytsEnabled        by viewModel.ytsEnabled.collectAsState()
     val newpipeEnabled    by viewModel.newpipeEnabled.collectAsState()
+    val mediaFolders      by viewModel.mediaFolders.collectAsState()
     val nnmLoggedIn       by viewModel.nnmLoggedIn.collectAsState()
     val kinozalLoggedIn   by viewModel.kinozalLoggedIn.collectAsState()
     val rutorDebug        by viewModel.rutorDebug.collectAsState()
