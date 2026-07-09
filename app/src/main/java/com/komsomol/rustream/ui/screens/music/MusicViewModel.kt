@@ -61,6 +61,19 @@ class MusicViewModel @Inject constructor(
     fun deleteTrack(path: String) = viewModelScope.launch { repo.deleteFile(path) }
 
     fun playFrom(t: Track, all: List<Track>) = player.play(t, all)
+    val shuffle    = player.shuffle
+    val repeatMode = player.repeatMode
+
+    fun toggleShuffle() = player.toggleShuffle()
+    fun cycleRepeat()   = player.cycleRepeat()
+
+    // Играть всю библиотеку с первого трека
+    fun playAll() {
+        val all = artists.value.flatMap { it.tracks }
+        val first = all.firstOrNull() ?: return
+        player.play(first, all)
+    }
+
     fun stopPlayback() = player.stopAndClear()
     fun toggle() = player.toggle()
     fun next() = player.next()
