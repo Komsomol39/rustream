@@ -2,6 +2,8 @@ package com.komsomol.rustream.player
 
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -18,14 +20,29 @@ class PlayerActivity : ComponentActivity() {
     private var player: ExoPlayer? = null
     private var videoPath: String = ""
 
+    // Последняя валидная позиция и длительность, обновляются во время игры.
+    // Нужны потому, что при finish() ExoPlayer может успеть сброситься в 0.
+    private var lastPos: Long = 0L
+    private var lastDur: Long = 0L
+    private val handler = Handler(Looper.getMainLooper())
+    private val ticker = object : Runnable {
+        override fun run() {
+            player?.let {
+                val pos = it.currentPosition
+                val dur = it.duration
+                if (pos > 0) lastPos = pos
+                if (dur > 0) lastDur = dur
+            }
+            handler.postDelayed(this, 1000)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val path = intent.getStringExtra(EXTRA_PATH)
         if (path == null) { finish(); return }
         videoPath = path
 
-        // FFmpeg-декодер (Jellyfin) подхватится как расширение:
-        // аппаратные кодеки в приоритете, DTS/AC3 и прочее декодирует FFmpeg
         val renderers = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
@@ -37,13 +54,13 @@ class PlayerActivity : ComponentActivity() {
         view.keepScreenOn = true
         view.setShowSubtitleButton(true)
 
-        // Полупрозрачная кнопка "назад" поверх видео, видна вместе с контролами
         val backBtn = android.widget.ImageButton(this).apply {
             setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
             background = null
             alpha = 0.6f
             setColorFilter(android.graphics.Color.WHITE)
-            setOnClickListener { finish() }
+            // Сохраняем ДО finish(), пока плеер ещё жив
+            setOnClickListener { savePosition(); finish() }
         }
         val root = android.widget.FrameLayout(this)
         root.addView(view, android.widget.FrameLayout.LayoutParams(
@@ -56,24 +73,22 @@ class PlayerActivity : ComponentActivity() {
         })
         setContentView(root)
 
-        // Кнопка появляется/прячется вместе с панелью управления
         view.setControllerVisibilityListener(
             androidx.media3.ui.PlayerView.ControllerVisibilityListener { visibility ->
                 backBtn.visibility = visibility
             })
 
-        // Полноэкранный режим
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val insets = WindowInsetsControllerCompat(window, view)
         insets.hide(WindowInsetsCompat.Type.systemBars())
         insets.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-        // Продолжаем с места, где остановились в прошлый раз
         val savedPos = positionPrefs().getLong(videoPath, 0L)
         p.setMediaItem(MediaItem.fromUri(Uri.fromFile(File(path))), savedPos)
         p.prepare()
         p.play()
+        handler.post(ticker)
     }
 
     override fun onPause() {
@@ -89,6 +104,7 @@ class PlayerActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        handler.removeCallbacks(ticker)
         savePosition()
         player?.release()
         player = null
@@ -97,17 +113,21 @@ class PlayerActivity : ComponentActivity() {
     private fun positionPrefs() =
         getSharedPreferences("playback_positions", MODE_PRIVATE)
 
-    // Сохраняем позицию; если досмотрели почти до конца — сбрасываем,
-    // чтобы следующий запуск был с начала
+    // Используем последнюю валидную позицию из тикера, а не мгновенное чтение
+    // (которое при закрытии может уже вернуть 0)
     private fun savePosition() {
-        val p = player ?: return
-        val dur = p.duration
-        val pos = p.currentPosition
-        if (dur <= 0) return
+        // подхватить самое свежее значение, если плеер ещё жив
+        player?.let {
+            val pos = it.currentPosition
+            val dur = it.duration
+            if (pos > 0) lastPos = pos
+            if (dur > 0) lastDur = dur
+        }
+        if (lastDur <= 0 || lastPos <= 0) return
         val prefs = positionPrefs()
-        if (pos > 10_000 && pos < dur - 30_000) {
-            prefs.edit().putLong(videoPath, pos).apply()
-        } else if (pos >= dur - 30_000) {
+        if (lastPos > 10_000 && lastPos < lastDur - 30_000) {
+            prefs.edit().putLong(videoPath, lastPos).apply()
+        } else if (lastPos >= lastDur - 30_000) {
             prefs.edit().remove(videoPath).apply()
         }
     }
