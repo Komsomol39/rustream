@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import com.komsomol.rustream.service.TorrentService
 import com.komsomol.rustream.ui.navigation.AppNavGraph
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.komsomol.rustream.ui.theme.RuStreamTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -15,6 +17,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     @javax.inject.Inject lateinit var grabRepo: com.komsomol.rustream.data.grab.GrabRepository
+    @javax.inject.Inject lateinit var settingsRepo: com.komsomol.rustream.data.settings.SettingsRepository
 
     private val notifPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -48,7 +51,9 @@ class MainActivity : ComponentActivity() {
         grabRepo.autoUpdateSilently()
 
         setContent {
-            RuStreamTheme {
+            val dark by settingsRepo.darkTheme
+                .collectAsState(initial = true)
+            RuStreamTheme(darkTheme = dark) {
                 AppNavGraph()
             }
         }
