@@ -40,6 +40,13 @@ class PlayerController @Inject constructor(
     private val _durationMs = MutableStateFlow(0L)
     val durationMs: StateFlow<Long> = _durationMs.asStateFlow()
 
+    private val _shuffle = MutableStateFlow(false)
+    val shuffle: StateFlow<Boolean> = _shuffle.asStateFlow()
+
+    // 0 = выкл, 1 = весь плейлист, 2 = один трек (как Player.REPEAT_MODE_*)
+    private val _repeatMode = MutableStateFlow(0)
+    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
+
     private val handler = Handler(Looper.getMainLooper())
     private val ticker = object : Runnable {
         override fun run() {
@@ -120,6 +127,25 @@ class PlayerController @Inject constructor(
     fun toggle() {
         val p = player ?: return
         if (p.isPlaying) p.pause() else p.play()
+    }
+
+    fun toggleShuffle() {
+        val p = ensurePlayer()
+        val v = !_shuffle.value
+        p.shuffleModeEnabled = v
+        _shuffle.value = v
+    }
+
+    // выкл -> весь плейлист -> один трек -> выкл
+    fun cycleRepeat() {
+        val p = ensurePlayer()
+        val next = when (_repeatMode.value) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            else -> Player.REPEAT_MODE_OFF
+        }
+        p.repeatMode = next
+        _repeatMode.value = next
     }
 
     fun next() = player?.seekToNextMediaItem() ?: Unit
