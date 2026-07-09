@@ -151,6 +151,20 @@ class GrabRepository @Inject constructor(
         }
     }
 
+    // Тихое автообновление при старте приложения (не блокирует ничего)
+    fun autoUpdateSilently() {
+        scope.launch {
+            try {
+                ensureYtdl()
+                YoutubeDL.getInstance()
+                    .updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+                Log.d(TAG, "yt-dlp auto-update done")
+            } catch (e: Exception) {
+                Log.w(TAG, "yt-dlp auto-update skipped: " + e.message)
+            }
+        }
+    }
+
     // Обновить yt-dlp без пересборки приложения (когда YouTube что-то сломает)
     suspend fun updateYtDlp(): String = withContext(Dispatchers.IO) {
         try {
