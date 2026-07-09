@@ -22,6 +22,7 @@ import com.komsomol.rustream.domain.model.GrabState
 @Composable
 fun GrabScreen(
     onBack: () -> Unit,
+    onOpenPaste: () -> Unit = {},
     viewModel: GrabViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -39,7 +40,8 @@ fun GrabScreen(
             }
             Text("Онлайн-поиск", style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = { viewModel.updateEngine() }) { Text("⟳ yt-dlp") }
+            TextButton(onClick = onOpenPaste) { Text("🔗 Ссылка") }
+            TextButton(onClick = { viewModel.updateEngine() }) { Text("⟳") }
         }
         if (engineMsg != null) {
             Text(engineMsg ?: "",
