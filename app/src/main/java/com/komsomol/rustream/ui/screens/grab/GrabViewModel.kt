@@ -65,5 +65,9 @@ class GrabViewModel @Inject constructor(
 
     fun downloadVideo(r: GrabResult) = repo.startDownload(r, video = true)
     fun downloadAudio(r: GrabResult) = repo.startDownload(r, video = false)
+
+    fun downloadUrlVideo(url: String) = repo.startFromUrl(url, video = true)
+    fun downloadUrlAudio(url: String) = repo.startFromUrl(url, video = false)
+
     fun dismiss(id: String) = repo.dismiss(id)
 }
