@@ -33,11 +33,11 @@ class SettingsRepository @Inject constructor(
 
     val darkTheme: Flow<Boolean>        = context.dataStore.data.map { it[KEY_DARK_THEME] ?: true }
     val downloadPath: Flow<String>      = context.dataStore.data.map { it[KEY_DOWNLOAD_PATH] ?: "/sdcard/RuStream" }
-    val ruTorEnabled: Flow<Boolean>     = context.dataStore.data.map { it[KEY_RUTOR_ENABLED] ?: false }
+    val ruTorEnabled: Flow<Boolean>     = context.dataStore.data.map { it[KEY_RUTOR_ENABLED] ?: true }
     val ruTrackerEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_RUTRACKER_ENABLED] ?: false }
     val kinozalEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_KINOZAL_ENABLED] ?: true }
     val nnmEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_NNM_ENABLED] ?: false }
-    val ytsEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_YTS_ENABLED] ?: true }
+    val ytsEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_YTS_ENABLED] ?: false }
     val newpipeEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_NEWPIPE_ENABLED] ?: false }
     val rutorDebug: Flow<String>        = context.dataStore.data.map { it[KEY_RUTOR_DEBUG] ?: "" }
 
