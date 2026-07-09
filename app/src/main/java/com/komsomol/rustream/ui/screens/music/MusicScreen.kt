@@ -1,10 +1,11 @@
 package com.komsomol.rustream.ui.screens.music
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -12,163 +13,161 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.komsomol.rustream.domain.model.ArtistGroup
 import com.komsomol.rustream.domain.model.Track
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun MusicScreen(viewModel: MusicViewModel = hiltViewModel()) {
-    val tracks by viewModel.tracks.collectAsState()
+fun MusicScreen(
+    onOpenArtist: (String) -> Unit = {},
+    viewModel: MusicViewModel = hiltViewModel()
+) {
+    val artists by viewModel.artists.collectAsState()
     val scanning by viewModel.scanning.collectAsState()
     val current by viewModel.current.collectAsState()
     val playing by viewModel.playing.collectAsState()
     val positionMs by viewModel.positionMs.collectAsState()
     val durationMs by viewModel.durationMs.collectAsState()
+    val selectMode by viewModel.selectMode.collectAsState()
+    val selected by viewModel.selected.collectAsState()
 
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Музыка", style = MaterialTheme.typography.headlineSmall)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                if (scanning) "сканирую..." else tracks.size.toString() + " треков",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { viewModel.refresh() }) {
-                Icon(Icons.Default.Refresh, contentDescription = "Обновить")
+            if (selectMode) {
+                Text("Выбрано: " + selected.size, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.weight(1f))
+                TextButton(
+                    onClick = { viewModel.mergeSelected() },
+                    enabled = selected.size >= 2
+                ) { Text("Объединить") }
+                TextButton(onClick = { viewModel.cancelSelect() }) { Text("Отмена") }
+            } else {
+                Text("Музыка", style = MaterialTheme.typography.headlineSmall)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (scanning) "сканирую..." else artists.size.toString() + " исполн.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { viewModel.refresh() }) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Обновить")
+                }
             }
         }
 
-        if (tracks.isEmpty()) {
+        if (!selectMode) {
+            Text("Долгое нажатие — выбрать для объединения",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp))
+        }
+
+        if (artists.isEmpty()) {
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.MusicNote, contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
                     Text("Пока пусто", style = MaterialTheme.typography.bodyLarge)
-                    Text("Скачанная музыка появится здесь",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
             LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
-                items(tracks, key = { it.path }) { t ->
-                    TrackRow(
-                        track = t,
-                        isCurrent = current?.path == t.path,
-                        onClick = { viewModel.play(t) }
+                items(artists, key = { it.displayName }) { a ->
+                    ArtistRow(
+                        artist = a,
+                        selectMode = selectMode,
+                        isSelected = selected.contains(a.displayName),
+                        onClick = {
+                            if (selectMode) viewModel.toggleSelect(a.displayName)
+                            else onOpenArtist(a.displayName)
+                        },
+                        onLongClick = { if (!selectMode) viewModel.enterSelect(a.displayName) }
                     )
                 }
             }
         }
 
         if (current != null) {
-            MiniPlayer(
-                track = current!!,
-                playing = playing,
-                positionMs = positionMs,
-                durationMs = durationMs,
-                onToggle = { viewModel.toggle() },
-                onNext = { viewModel.next() },
-                onPrev = { viewModel.prev() },
-                onSeek = { viewModel.seekTo(it) }
-            )
+            MiniPlayer(current!!, playing, positionMs, durationMs,
+                { viewModel.toggle() }, { viewModel.next() },
+                { viewModel.prev() }, { viewModel.seekTo(it) })
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun TrackRow(track: Track, isCurrent: Boolean, onClick: () -> Unit) {
+private fun ArtistRow(
+    artist: ArtistGroup,
+    selectMode: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(
-                track.title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (isCurrent) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface,
-                maxLines = 1, overflow = TextOverflow.Ellipsis
-            )
-            val sub = listOfNotNull(
-                track.artist?.takeIf { it.isNotBlank() },
-                formatMs(track.durationMs).takeIf { track.durationMs > 0 }
-            ).joinToString(" • ")
-            if (sub.isNotBlank()) {
-                Text(sub, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+        if (selectMode) {
+            Checkbox(checked = isSelected, onCheckedChange = { onClick() })
+            Spacer(Modifier.width(8.dp))
         }
-        if (isCurrent) {
-            Icon(Icons.Default.MusicNote, contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f)) {
+            Text(artist.displayName, style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val sub = artist.tracks.size.toString() + " треков" +
+                (if (artist.memberNames.size > 1) " • объединено " + artist.memberNames.size else "")
+            Text(sub, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
 private fun MiniPlayer(
-    track: Track,
-    playing: Boolean,
-    positionMs: Long,
-    durationMs: Long,
-    onToggle: () -> Unit,
-    onNext: () -> Unit,
-    onPrev: () -> Unit,
-    onSeek: (Long) -> Unit
+    track: Track, playing: Boolean, positionMs: Long, durationMs: Long,
+    onToggle: () -> Unit, onNext: () -> Unit, onPrev: () -> Unit, onSeek: (Long) -> Unit
 ) {
     Surface(tonalElevation = 4.dp) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(track.title, style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-
             Slider(
                 value = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f,
                 onValueChange = { if (durationMs > 0) onSeek((it * durationMs).toLong()) },
                 modifier = Modifier.fillMaxWidth()
             )
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(formatMs(positionMs), style = MaterialTheme.typography.labelSmall)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(fmt(positionMs), style = MaterialTheme.typography.labelSmall)
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = onPrev) {
-                    Icon(Icons.Default.SkipPrevious, contentDescription = "Назад")
-                }
+                    Icon(Icons.Default.SkipPrevious, contentDescription = "Назад") }
                 FilledIconButton(onClick = onToggle) {
-                    Icon(
-                        if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Играть/пауза"
-                    )
-                }
+                    Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "Играть/пауза") }
                 IconButton(onClick = onNext) {
-                    Icon(Icons.Default.SkipNext, contentDescription = "Дальше")
-                }
+                    Icon(Icons.Default.SkipNext, contentDescription = "Дальше") }
                 Spacer(Modifier.weight(1f))
-                Text(formatMs(durationMs), style = MaterialTheme.typography.labelSmall)
+                Text(fmt(durationMs), style = MaterialTheme.typography.labelSmall)
             }
         }
     }
 }
 
-private fun formatMs(ms: Long): String {
-    val totalSec = ms / 1000
-    val min = totalSec / 60
-    val sec = totalSec % 60
-    return min.toString() + ":" + sec.toString().padStart(2, '0')
+private fun fmt(ms: Long): String {
+    val s = ms / 1000
+    return (s / 60).toString() + ":" + (s % 60).toString().padStart(2, '0')
 }
