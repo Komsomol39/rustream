@@ -1,7 +1,8 @@
 package com.komsomol.rustream.ui.screens.video
 
 import android.content.Intent
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +11,10 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -26,6 +31,22 @@ fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
     val videos by viewModel.videos.collectAsState()
     val scanning by viewModel.scanning.collectAsState()
     val context = LocalContext.current
+    var toDelete by remember { mutableStateOf<VideoItem?>(null) }
+
+    if (toDelete != null) {
+        val item = toDelete!!
+        AlertDialog(
+            onDismissRequest = { toDelete = null },
+            title = { Text("Удалить файл?") },
+            text = { Text(item.title + "\n\nФайл будет удалён с устройства безвозвратно.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.delete(item.path); toDelete = null }) {
+                    Text("Удалить", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = { TextButton(onClick = { toDelete = null }) { Text("Отмена") } }
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -60,21 +81,27 @@ fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
         } else {
             LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
                 items(videos, key = { it.path }) { v ->
-                    VideoRow(v) {
-                        val i = Intent(context, PlayerActivity::class.java)
-                        i.putExtra(PlayerActivity.EXTRA_PATH, v.path)
-                        context.startActivity(i)
-                    }
+                    VideoRow(
+                        video = v,
+                        onClick = {
+                            val i = Intent(context, PlayerActivity::class.java)
+                            i.putExtra(PlayerActivity.EXTRA_PATH, v.path)
+                            context.startActivity(i)
+                        },
+                        onLongClick = { toDelete = v }
+                    )
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun VideoRow(video: VideoItem, onClick: () -> Unit) {
+private fun VideoRow(video: VideoItem, onClick: () -> Unit, onLongClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick)
+        Modifier.fillMaxWidth()
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
