@@ -79,7 +79,9 @@ class GrabRepository @Inject constructor(
                                     url         = item.url ?: return@forEach,
                                     title       = item.name ?: "Без названия",
                                     uploader    = item.uploaderName,
-                                    durationSec = item.duration
+                                    durationSec = item.duration,
+                                    thumbnailUrl = item.thumbnails
+                                        ?.maxByOrNull { it.width }?.url
                                 ))
                             }
                     } catch (e: Exception) {
