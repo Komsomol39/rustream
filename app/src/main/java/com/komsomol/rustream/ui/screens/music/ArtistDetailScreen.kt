@@ -108,10 +108,14 @@ fun ArtistDetailScreen(
         val playing by viewModel.playing.collectAsState()
         val positionMs by viewModel.positionMs.collectAsState()
         val durationMs by viewModel.durationMs.collectAsState()
+        val shuffle by viewModel.shuffle.collectAsState()
+        val repeatMode by viewModel.repeatMode.collectAsState()
         if (current != null) {
             SharedMiniPlayer(current!!, playing, positionMs, durationMs,
+                shuffle, repeatMode,
                 { viewModel.toggle() }, { viewModel.next() },
                 { viewModel.prev() }, { viewModel.seekTo(it) },
+                { viewModel.toggleShuffle() }, { viewModel.cycleRepeat() },
                 { viewModel.stopPlayback() })
         }
     }
