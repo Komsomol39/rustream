@@ -102,7 +102,8 @@ fun MusicScreen(
         if (current != null) {
             MiniPlayer(current!!, playing, positionMs, durationMs,
                 { viewModel.toggle() }, { viewModel.next() },
-                { viewModel.prev() }, { viewModel.seekTo(it) })
+                { viewModel.prev() }, { viewModel.seekTo(it) },
+                { viewModel.stopPlayback() })
         }
     }
 }
@@ -140,12 +141,19 @@ private fun ArtistRow(
 @Composable
 private fun MiniPlayer(
     track: Track, playing: Boolean, positionMs: Long, durationMs: Long,
-    onToggle: () -> Unit, onNext: () -> Unit, onPrev: () -> Unit, onSeek: (Long) -> Unit
+    onToggle: () -> Unit, onNext: () -> Unit, onPrev: () -> Unit, onSeek: (Long) -> Unit,
+    onClose: () -> Unit
 ) {
     Surface(tonalElevation = 4.dp) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Text(track.title, style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(track.title, style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f))
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.Close, contentDescription = "Закрыть плеер")
+                }
+            }
             Slider(
                 value = if (durationMs > 0) positionMs.toFloat() / durationMs else 0f,
                 onValueChange = { if (durationMs > 0) onSeek((it * durationMs).toLong()) },
