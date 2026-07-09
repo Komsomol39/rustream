@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
@@ -15,7 +16,8 @@ import javax.inject.Singleton
 @Singleton
 class MusicRepository @Inject constructor(
     private val engine: TorrentEngine,
-    private val mergeStore: ArtistMergeStore
+    private val mergeStore: ArtistMergeStore,
+    private val settings: com.komsomol.rustream.data.settings.SettingsRepository
 ) {
     private val _tracks = MutableStateFlow<List<Track>>(emptyList())
     val tracks: StateFlow<List<Track>> = _tracks.asStateFlow()
@@ -53,8 +55,15 @@ class MusicRepository @Inject constructor(
         _scanning.value = true
         try {
             val files = mutableListOf<File>()
-            val root = File(engine.savePath)
-            if (root.exists()) collectAudio(root, files)
+            val roots = mutableListOf(engine.savePath)
+            roots.addAll(kotlinx.coroutines.flow.first(settings.mediaFolders))
+            roots.distinct().forEach { path ->
+                val root = File(path)
+                if (root.exists()) collectAudio(root, files)
+            }
+            // убрать дубли по пути (папки могут пересекаться)
+            val seen = HashSet<String>()
+            files.retainAll { seen.add(it.absolutePath) }
             files.sortBy { it.name.lowercase() }
 
             // Мгновенно показываем список по именам файлов
