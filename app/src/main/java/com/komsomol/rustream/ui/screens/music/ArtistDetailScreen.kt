@@ -83,7 +83,7 @@ fun ArtistDetailScreen(
             HorizontalDivider(Modifier.padding(vertical = 4.dp))
         }
 
-        LazyColumn(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
             items(group.tracks, key = { it.path }) { t ->
                 Column(
                     Modifier.fillMaxWidth()
@@ -102,6 +102,17 @@ fun ArtistDetailScreen(
                     }
                 }
             }
+        }
+
+        val current by viewModel.current.collectAsState()
+        val playing by viewModel.playing.collectAsState()
+        val positionMs by viewModel.positionMs.collectAsState()
+        val durationMs by viewModel.durationMs.collectAsState()
+        if (current != null) {
+            SharedMiniPlayer(current!!, playing, positionMs, durationMs,
+                { viewModel.toggle() }, { viewModel.next() },
+                { viewModel.prev() }, { viewModel.seekTo(it) },
+                { viewModel.stopPlayback() })
         }
     }
 }
