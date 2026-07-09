@@ -18,4 +18,5 @@ class VideoViewModel @Inject constructor(
     init { refresh() }
 
     fun refresh() = viewModelScope.launch { repo.scan() }
+    fun delete(path: String) = repo.deleteFile(path)
 }
