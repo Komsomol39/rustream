@@ -14,8 +14,12 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import java.io.File
 
+@dagger.hilt.android.AndroidEntryPoint
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerActivity : ComponentActivity() {
+
+    @javax.inject.Inject
+    lateinit var musicPlayer: com.komsomol.rustream.data.music.PlayerController
 
     private var player: ExoPlayer? = null
     private var videoPath: String = ""
@@ -42,6 +46,9 @@ class PlayerActivity : ComponentActivity() {
         val path = intent.getStringExtra(EXTRA_PATH)
         if (path == null) { finish(); return }
         videoPath = path
+
+        // Видео и музыка не должны играть одновременно — глушим музыку
+        try { musicPlayer.pauseForExternal() } catch (_: Exception) {}
 
         val renderers = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
