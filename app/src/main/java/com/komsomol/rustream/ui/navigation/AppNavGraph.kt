@@ -33,6 +33,7 @@ import com.komsomol.rustream.ui.screens.settings.SettingsScreen
 import com.komsomol.rustream.ui.screens.music.MusicScreen
 import com.komsomol.rustream.ui.screens.video.VideoScreen
 import com.komsomol.rustream.ui.screens.grab.GrabScreen
+import com.komsomol.rustream.ui.screens.grab.PasteUrlScreen
 import com.komsomol.rustream.ui.screens.music.ArtistDetailScreen
 import java.net.URLEncoder
 import java.net.URLDecoder
@@ -97,7 +98,13 @@ fun AppNavGraph() {
                 DownloadDetailScreen(onBack = { navController.popBackStack() })
             }
             composable("grab") {
-                GrabScreen(onBack = { navController.popBackStack() })
+                GrabScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenPaste = { navController.navigate("paste_url") }
+                )
+            }
+            composable("paste_url") {
+                PasteUrlScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Video.route)     { VideoScreen() }
             composable(Screen.Music.route) {
