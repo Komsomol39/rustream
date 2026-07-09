@@ -1,15 +1,17 @@
 package com.komsomol.rustream.data.music
 
+import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import androidx.media3.common.AudioAttributes
+import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import com.komsomol.rustream.domain.model.Track
 import com.komsomol.rustream.player.PlaybackService
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,12 +22,16 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// Все методы вызывать с главного потока
+// Фасад над MediaController: тот же API, что и раньше,
+// но плеером владеет PlaybackService (канон media3)
 @Singleton
 class PlayerController @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private var player: ExoPlayer? = null
+    private val TAG = "PlayerController"
+    private var controller: MediaController? = null
+    private var connecting = false
+    private val pending = mutableListOf<(MediaController) -> Unit>()
     private var queue: List<Track> = emptyList()
 
     private val _current = MutableStateFlow<Track?>(null)
@@ -43,14 +49,13 @@ class PlayerController @Inject constructor(
     private val _shuffle = MutableStateFlow(false)
     val shuffle: StateFlow<Boolean> = _shuffle.asStateFlow()
 
-    // 0 = выкл, 1 = весь плейлист, 2 = один трек (как Player.REPEAT_MODE_*)
     private val _repeatMode = MutableStateFlow(0)
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
 
     private val handler = Handler(Looper.getMainLooper())
     private val ticker = object : Runnable {
         override fun run() {
-            player?.let {
+            controller?.let {
                 _positionMs.value = it.currentPosition
                 val d = it.duration
                 _durationMs.value = if (d > 0) d else 0L
@@ -59,95 +64,105 @@ class PlayerController @Inject constructor(
         }
     }
 
-    // Для MediaSession в PlaybackService
-    fun obtainPlayer(): ExoPlayer = ensurePlayer()
+    private val listener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            _playing.value = isPlaying
+        }
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val idx = controller?.currentMediaItemIndex ?: return
+            _current.value = queue.getOrNull(idx)
+        }
+        override fun onShuffleModeEnabledChanged(enabled: Boolean) {
+            _shuffle.value = enabled
+        }
+        override fun onRepeatModeChanged(mode: Int) {
+            _repeatMode.value = mode
+        }
+    }
 
-    private fun ensurePlayer(): ExoPlayer {
-        player?.let { return it }
-        val p = ExoPlayer.Builder(context)
-            // Аудиофокус (пауза при звонке) и пауза при отключении наушников
-            .setAudioAttributes(AudioAttributes.DEFAULT, true)
-            .setHandleAudioBecomingNoisy(true)
-            .build()
-        p.addListener(object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _playing.value = isPlaying
+    // Выполнить действие на контроллере; при необходимости — подключиться.
+    // Само создание MediaController поднимает PlaybackService.
+    private fun withController(action: (MediaController) -> Unit) {
+        val c = controller
+        if (c != null && c.isConnected) { action(c); return }
+        synchronized(pending) { pending.add(action) }
+        if (connecting) return
+        connecting = true
+        val token = SessionToken(context,
+            ComponentName(context, PlaybackService::class.java))
+        val future = MediaController.Builder(context, token).buildAsync()
+        future.addListener({
+            try {
+                val ctl = future.get()
+                controller = ctl
+                ctl.addListener(listener)
+                handler.removeCallbacks(ticker)
+                handler.post(ticker)
+                val actions = synchronized(pending) {
+                    val copy = pending.toList(); pending.clear(); copy
+                }
+                actions.forEach { it(ctl) }
+            } catch (e: Exception) {
+                Log.e(TAG, "controller connect failed: " + e)
+                synchronized(pending) { pending.clear() }
             }
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                _current.value = queue.getOrNull(p.currentMediaItemIndex)
-            }
-        })
-        player = p
-        handler.post(ticker)
-        return p
+            connecting = false
+        }, ContextCompat.getMainExecutor(context))
     }
 
     fun play(track: Track, all: List<Track>) {
-        val p = ensurePlayer()
-        queue = all
-        val idx = all.indexOfFirst { it.path == track.path }.coerceAtLeast(0)
-        val items = all.map { t ->
-            MediaItem.Builder()
-                .setUri(Uri.fromFile(File(t.path)))
-                .setMediaMetadata(
-                    MediaMetadata.Builder()
-                        .setTitle(t.title)
-                        .setArtist(t.artist ?: "RuStream")
-                        .build())
-                .build()
+        withController { c ->
+            queue = all
+            val idx = all.indexOfFirst { it.path == track.path }.coerceAtLeast(0)
+            val items = all.map { t ->
+                MediaItem.Builder()
+                    .setUri(Uri.fromFile(File(t.path)))
+                    .setMediaMetadata(
+                        MediaMetadata.Builder()
+                            .setTitle(t.title)
+                            .setArtist(t.artist ?: "RuStream")
+                            .build())
+                    .build()
+            }
+            c.setMediaItems(items, idx, 0L)
+            c.prepare()
+            c.play()
+            _current.value = track
         }
-        p.setMediaItems(items, idx, 0L)
-        p.prepare()
-        p.play()
-        _current.value = track
-        // Сервис с MediaSession. Именно обычный startService: мы запускаем его
-        // только из открытого UI (это разрешено), а в foreground с уведомлением
-        // его выведет сам media3, когда начнётся воспроизведение.
-        // startForegroundService здесь нельзя — он требует немедленный
-        // startForeground от нас, и это роняло приложение.
-        try {
-            context.startService(Intent(context, PlaybackService::class.java))
-        } catch (_: Exception) {}
     }
 
-    // Полностью закрыть плеер: убрать мини-плеер и уведомление
     fun stopAndClear() {
-        player?.stop()
-        player?.clearMediaItems()
+        controller?.let {
+            it.stop()
+            it.clearMediaItems()
+        }
         _current.value = null
         _playing.value = false
         _positionMs.value = 0L
         _durationMs.value = 0L
-        try {
-            context.stopService(Intent(context, PlaybackService::class.java))
-        } catch (_: Exception) {}
     }
 
     fun toggle() {
-        val p = player ?: return
-        if (p.isPlaying) p.pause() else p.play()
+        val c = controller ?: return
+        if (c.isPlaying) c.pause() else c.play()
     }
 
-    fun toggleShuffle() {
-        val p = ensurePlayer()
-        val v = !_shuffle.value
-        p.shuffleModeEnabled = v
-        _shuffle.value = v
+    fun toggleShuffle() = withController { c ->
+        c.shuffleModeEnabled = !c.shuffleModeEnabled
+        _shuffle.value = c.shuffleModeEnabled
     }
 
-    // выкл -> весь плейлист -> один трек -> выкл
-    fun cycleRepeat() {
-        val p = ensurePlayer()
-        val next = when (_repeatMode.value) {
+    fun cycleRepeat() = withController { c ->
+        val next = when (c.repeatMode) {
             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
             Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
             else -> Player.REPEAT_MODE_OFF
         }
-        p.repeatMode = next
+        c.repeatMode = next
         _repeatMode.value = next
     }
 
-    fun next() = player?.seekToNextMediaItem() ?: Unit
-    fun prev() = player?.seekToPreviousMediaItem() ?: Unit
-    fun seekTo(ms: Long) = player?.seekTo(ms) ?: Unit
+    fun next() = controller?.seekToNextMediaItem() ?: Unit
+    fun prev() = controller?.seekToPreviousMediaItem() ?: Unit
+    fun seekTo(ms: Long) = controller?.seekTo(ms) ?: Unit
 }
