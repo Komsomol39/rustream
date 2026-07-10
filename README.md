@@ -1,5 +1,7 @@
 # RuStream
 
+[![Скачать APK](https://img.shields.io/badge/⬇_Скачать_APK-latest-6750A4?style=for-the-badge)](https://github.com/Komsomol39/rustream/releases/latest/download/app-debug.apk)
+
 Android-приложение «всё в одном» для поиска, скачивания и воспроизведения медиа: торрент-трекеры, онлайн-сервисы (YouTube, SoundCloud, VK и сотни других через yt-dlp), встроенные плееры видео и музыки с фоновым воспроизведением.
 
 > Личный проект. APK собирается автоматически через GitHub Actions.
