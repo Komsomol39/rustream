@@ -192,7 +192,7 @@ fun SharedMiniPlayer(
                     Icon(Icons.Default.SkipNext, contentDescription = "Дальше") }
                 IconButton(onClick = onRepeat) {
                     Icon(
-                        if (repeatMode == 2) Icons.Default.RepeatOne else Icons.Default.Repeat,
+                        if (repeatMode == 1) Icons.Default.RepeatOne else Icons.Default.Repeat,
                         contentDescription = "Повтор",
                         tint = if (repeatMode != 0) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.onSurfaceVariant)
