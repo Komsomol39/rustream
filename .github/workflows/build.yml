@@ -55,3 +55,15 @@ jobs:
           name: RuStream-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
+
+      - name: Publish APK to "latest" release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: RuStream (latest build)
+          body: |
+            Автоматическая сборка debug APK из ветки main.
+            Обновляется при каждом успешном билде.
+          files: app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true
