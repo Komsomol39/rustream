@@ -1,6 +1,5 @@
 package com.komsomol.rustream.ui.navigation
 
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -15,7 +14,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -37,8 +35,6 @@ import com.komsomol.rustream.ui.screens.grab.PasteUrlScreen
 import com.komsomol.rustream.ui.screens.music.ArtistDetailScreen
 import java.net.URLEncoder
 import java.net.URLDecoder
-import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.MaterialTheme
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Search    : Screen("search",    "Поиск",     Icons.Default.Search)
@@ -121,12 +117,5 @@ fun AppNavGraph() {
             }
             composable(Screen.Settings.route)  { SettingsScreen() }
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(name: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(name, style = MaterialTheme.typography.headlineMedium)
     }
 }

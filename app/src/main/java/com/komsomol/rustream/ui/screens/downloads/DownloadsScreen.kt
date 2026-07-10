@@ -26,6 +26,36 @@ fun DownloadsScreen(
 ) {
     val downloads by viewModel.downloads.collectAsState(initial = emptyList())
     val dhtNodes by viewModel.dhtNodes.collectAsState(initial = 0L)
+    var confirmRemove by remember { mutableStateOf<DownloadItem?>(null) }
+
+    confirmRemove?.let { target ->
+        var deleteFiles by remember(target.id) { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { confirmRemove = null },
+            title = { Text("Удалить раздачу?") },
+            text = {
+                Column {
+                    Text(target.title, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(12.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { deleteFiles = !deleteFiles }) {
+                        Checkbox(checked = deleteFiles, onCheckedChange = { deleteFiles = it })
+                        Text("Удалить скачанные файлы с устройства")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.remove(target, deleteFiles)
+                    confirmRemove = null
+                }) { Text("Удалить", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemove = null }) { Text("Отмена") }
+            }
+        )
+    }
 
     if (downloads.isEmpty()) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -36,7 +66,7 @@ fun DownloadsScreen(
                 Text("Нажмите на раздачу в поиске чтобы скачать",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("DHT: " + dhtNodes + " узлов • dbg2",
+                Text("DHT: " + dhtNodes + " узлов",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -50,7 +80,7 @@ fun DownloadsScreen(
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
         item {
-            Text("DHT: " + dhtNodes + " узлов • dbg2",
+            Text("DHT: " + dhtNodes + " узлов",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -60,7 +90,7 @@ fun DownloadsScreen(
                 onClick  = { onOpen(item.id) },
                 onPause  = { viewModel.pause(item) },
                 onResume = { viewModel.resume(item) },
-                onRemove = { viewModel.remove(item) }
+                onRemove = { confirmRemove = item }
             )
         }
     }

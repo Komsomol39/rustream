@@ -51,13 +51,9 @@ object CategoryDetector {
         // но дополнительно проверяем что результат не противоречит
         val text = (title + " " + category).lowercase()
 
-        // Явные исключения — это точно не медиа-контент
-        val isExcluded = EXCLUDE_PATTERNS.any { text.contains(it) }
-        if (isExcluded) {
-            // Если пользователь просит музыку/видео — не показываем
-            return if (requested == ContentCategory.ALL) ContentCategory.ALL
-            else return ContentCategory.ALL  // вернём ALL чтобы SearchRepository отфильтровал
-        }
+        // Явные исключения — точно не медиа. Возвращаем ALL: при запросе
+        // конкретной категории SearchRepository отфильтрует такой результат.
+        if (EXCLUDE_PATTERNS.any { text.contains(it) }) return ContentCategory.ALL
 
         val isMusic = MUSIC_PATTERNS.any { text.contains(it) }
         val isVideo = VIDEO_PATTERNS.any { text.contains(it) }

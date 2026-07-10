@@ -1,7 +1,6 @@
 package com.komsomol.rustream.data.search
 
 import android.util.Log
-import com.komsomol.rustream.data.settings.SettingsRepository
 import com.komsomol.rustream.domain.model.ContentCategory
 import com.komsomol.rustream.domain.model.SearchResult
 import com.komsomol.rustream.domain.model.SearchSource
@@ -15,14 +14,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class RuTorProvider @Inject constructor(
-    private val settings: SettingsRepository
-) {
+class RuTorProvider @Inject constructor() {
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
-
         .build()
 
     private val mirrors = listOf("https://rutor.info", "https://rutor.is")
@@ -30,8 +27,6 @@ class RuTorProvider @Inject constructor(
 
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> =
         withContext(Dispatchers.IO) {
-            val debugLines = mutableListOf<String>()
-
             for (mirror in mirrors) {
                 try {
                     val catCode = when (category) {
@@ -42,42 +37,18 @@ class RuTorProvider @Inject constructor(
                     val encoded = java.net.URLEncoder.encode(query, "UTF-8")
                     val url = "$mirror/search/0/$catCode/000/0/$encoded"
 
-                    debugLines += "URL: $url"
-
                     val resp = client.newCall(
                         Request.Builder().url(url)
-                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+                            .header("User-Agent", UA)
                             .build()
                     ).execute()
 
                     val html = resp.use { it.body?.string() ?: "" }
-                    val finalUrl = resp.request.url.toString()
-
-                    debugLines += "status=${resp.code} len=${html.length}"
-                    debugLines += "finalUrl=$finalUrl"
-                    debugLines += "hasBlocked=${html.contains("Вечная блокировка")}"
-                    debugLines += "hasNewAddr=${html.contains("Новый Адрес")}"
-
                     val doc = Jsoup.parse(html)
-                    val trGai = doc.select("tr.gai").size
-                    val magnets = doc.select("a[href^='magnet:']").size
-                    val trClasses = doc.select("tr").map { it.className() }
-                        .filter { it.isNotBlank() }.distinct().take(8)
-                    val tables = doc.select("table").map { "id=${it.id()} cls=${it.className()}" }.take(5)
 
-                    debugLines += "tr.gai=$trGai magnets=$magnets"
-                    debugLines += "TR classes: $trClasses"
-                    debugLines += "Tables: $tables"
-                    debugLines += "HTML300: " + html.take(300).replace("\n", " ")
-
-                    settings.setRutorDebug(debugLines.joinToString("\n"))
-
-                    // Проверяем по длине — заглушка блокировки ~9895 байт
-                    // НЕ проверяем по тексту — "Вечная блокировка" есть и на реальных страницах
-                    if (html.length < 15000 && !html.contains("tr class=\"gai\"")) {
-                        debugLines += "BLOCKED (short page, no results) - skipping"
-                        continue
-                    }
+                    // Заглушка блокировки — короткая страница без строк результатов.
+                    // По тексту не проверяем: «Вечная блокировка» есть и на живых страницах.
+                    if (html.length < 15000 && !html.contains("tr class=\"gai\"")) continue
 
                     val results = mutableListOf<SearchResult>()
                     doc.select("tr.gai").take(50).forEach { row ->
@@ -116,14 +87,9 @@ class RuTorProvider @Inject constructor(
                         } catch (_: Exception) {}
                     }
 
-                    debugLines += "RESULTS: ${results.size}"
-                    settings.setRutorDebug(debugLines.joinToString("\n"))
-
                     if (results.isNotEmpty()) return@withContext results
 
                 } catch (e: Exception) {
-                    debugLines += "$mirror ERROR: ${e.message}"
-                    settings.setRutorDebug(debugLines.joinToString("\n"))
                     Log.e(TAG, "$mirror: ${e.message}")
                 }
             }
@@ -150,5 +116,9 @@ class RuTorProvider @Inject constructor(
             lower.contains("kb") || lower.contains("кб") -> (num * 1024).toLong()
             else -> 0L
         }
+    }
+
+    companion object {
+        private const val UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
 }

@@ -65,7 +65,6 @@ dependencies {
     implementation(libs.jsoup)
     implementation(libs.coroutines.android)
     implementation(libs.libtorrent4j.android.arm64)
-    implementation("com.iqiyi.xcrash:xcrash-android-lib:3.1.0")
     implementation("androidx.media3:media3-exoplayer:1.6.1")
     implementation("androidx.media3:media3-ui:1.6.1")
     implementation("androidx.media3:media3-session:1.6.1")

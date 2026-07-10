@@ -26,9 +26,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Доступ ко всем файлам (Android 11+): чтобы libtorrent мог писать в Download
+        // Доступ ко всем файлам (Android 11+): чтобы libtorrent мог писать в Download.
+        // Просим один раз — без разрешения приложение работает в своей папке.
+        val prefs = getSharedPreferences("onboarding", MODE_PRIVATE)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-            !android.os.Environment.isExternalStorageManager()) {
+            !android.os.Environment.isExternalStorageManager() &&
+            !prefs.getBoolean("asked_all_files", false)) {
+            prefs.edit().putBoolean("asked_all_files", true).apply()
             try {
                 val i = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
                 i.data = android.net.Uri.parse("package:" + packageName)

@@ -28,7 +28,6 @@ class SettingsRepository @Inject constructor(
         val KEY_NNM_ENABLED       = booleanPreferencesKey("nnm_enabled")
         val KEY_YTS_ENABLED       = booleanPreferencesKey("yts_enabled")
         val KEY_NEWPIPE_ENABLED   = booleanPreferencesKey("newpipe_enabled")
-        val KEY_RUTOR_DEBUG       = stringPreferencesKey("rutor_debug")
         val KEY_MEDIA_FOLDERS     = stringPreferencesKey("media_folders")
     }
 
@@ -40,7 +39,6 @@ class SettingsRepository @Inject constructor(
     val nnmEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_NNM_ENABLED] ?: false }
     val ytsEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_YTS_ENABLED] ?: false }
     val newpipeEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_NEWPIPE_ENABLED] ?: false }
-    val rutorDebug: Flow<String>        = context.dataStore.data.map { it[KEY_RUTOR_DEBUG] ?: "" }
 
     val mediaFolders: Flow<List<String>> = context.dataStore.data.map { prefs ->
         prefs[KEY_MEDIA_FOLDERS]?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
@@ -54,7 +52,6 @@ class SettingsRepository @Inject constructor(
     suspend fun setNnmEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_NNM_ENABLED] = v }
     suspend fun setYtsEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_YTS_ENABLED] = v }
     suspend fun setNewpipeEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_NEWPIPE_ENABLED] = v }
-    suspend fun setRutorDebug(v: String)         = context.dataStore.edit { it[KEY_RUTOR_DEBUG] = v }
 
     suspend fun addMediaFolder(path: String) = context.dataStore.edit { prefs ->
         val cur = prefs[KEY_MEDIA_FOLDERS]?.split("|")?.filter { it.isNotBlank() }?.toMutableList()

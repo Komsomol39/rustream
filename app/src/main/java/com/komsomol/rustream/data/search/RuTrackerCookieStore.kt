@@ -19,6 +19,11 @@ class RuTrackerCookieStore @Inject constructor(
     @ApplicationContext private val context: Context
 ) : CookieJar {
 
+    // Кэш в памяти: куки читаются на каждый HTTP-запрос,
+    // блокирующее чтение DataStore каждый раз — лишнее
+    @Volatile private var cachedCookies: String? = null
+    @Volatile private var cachedMirror: String? = null
+
     companion object {
         private val KEY_COOKIES = stringPreferencesKey("rutracker_webview_cookies")
         private val KEY_MIRROR  = stringPreferencesKey("rutracker_active_mirror")
@@ -31,20 +36,27 @@ class RuTrackerCookieStore @Inject constructor(
                 it[KEY_MIRROR]  = mirror
             }
         }
+        cachedCookies = rawCookies
+        cachedMirror  = mirror
     }
 
-    fun getActiveMirror(): String = runBlocking {
-        context.dataStore.data.map { it[KEY_MIRROR] ?: "https://rutracker.net" }.first()
+    fun getActiveMirror(): String =
+        cachedMirror ?: runBlocking {
+            context.dataStore.data.map { it[KEY_MIRROR] ?: "https://rutracker.net" }.first()
+        }.also { cachedMirror = it }
+
+    fun isLoggedIn(): Boolean = isValidSession(rawCookies())
+
+    fun clearCookies() {
+        runBlocking { context.dataStore.edit { it[KEY_COOKIES] = ""; it[KEY_MIRROR] = "" } }
+        cachedCookies = ""
+        cachedMirror  = null
     }
 
-    fun isLoggedIn(): Boolean {
-        val raw = runBlocking { context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first() }
-        return isValidSession(raw)
-    }
-
-    fun clearCookies() = runBlocking {
-        context.dataStore.edit { it[KEY_COOKIES] = ""; it[KEY_MIRROR] = "" }
-    }
+    private fun rawCookies(): String =
+        cachedCookies ?: runBlocking {
+            context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first()
+        }.also { cachedCookies = it }
 
     private fun isValidSession(raw: String): Boolean {
         val bbSession = parseCookies(raw)["bb_session"] ?: return false
@@ -63,7 +75,7 @@ class RuTrackerCookieStore @Inject constructor(
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> {
         if (!url.host.contains("rutracker")) return emptyList()
-        val raw = runBlocking { context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first() }
+        val raw = rawCookies()
         if (raw.isBlank()) return emptyList()
         return parseCookies(raw).mapNotNull { (name, value) ->
             try { Cookie.Builder().name(name).value(value).domain("rutracker.net").build() }

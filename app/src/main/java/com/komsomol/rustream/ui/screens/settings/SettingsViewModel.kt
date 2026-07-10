@@ -43,19 +43,6 @@ class SettingsViewModel @Inject constructor(
     private val _kinozalLoggedIn = MutableStateFlow(kinozalCookies.isLoggedIn())
     val kinozalLoggedIn: StateFlow<Boolean> = _kinozalLoggedIn.asStateFlow()
 
-    val nnmCookieDebug: StateFlow<String> = MutableStateFlow(run {
-        val raw = nnmCookies.getRawCookies()
-        if (raw.isBlank()) "(нет куков)"
-        else nnmCookies.parseCookies(raw).keys.joinToString(", ")
-    }).asStateFlow()
-
-    val nnmDebugHtml = nnmCookies.debugHtml
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-
-    // RuTor debug
-    val rutorDebug = repo.rutorDebug
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-
     fun setDarkTheme(v: Boolean)        = viewModelScope.launch { repo.setDarkTheme(v) }
     fun setRuTorEnabled(v: Boolean)     = viewModelScope.launch { repo.setRuTorEnabled(v) }
     fun setRuTrackerEnabled(v: Boolean) = viewModelScope.launch { repo.setRuTrackerEnabled(v) }

@@ -99,7 +99,6 @@ class NnmClubProvider @Inject constructor(
         }
 
         Log.d(TAG, "NNM results: ${results.size}")
-        cookieStore.saveDebugHtml("OK: ${results.size} results for last query")
         return results.take(50)
     }
 

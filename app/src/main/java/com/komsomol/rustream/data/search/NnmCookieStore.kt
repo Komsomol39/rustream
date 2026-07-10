@@ -1,12 +1,10 @@
 package com.komsomol.rustream.data.search
 
 import android.content.Context
-import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.komsomol.rustream.data.settings.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -21,28 +19,24 @@ class NnmCookieStore @Inject constructor(
     @ApplicationContext private val context: Context
 ) : CookieJar {
 
+    // Кэш в памяти: куки читаются на каждый HTTP-запрос,
+    // блокирующее чтение DataStore каждый раз — лишнее
+    @Volatile private var cachedCookies: String? = null
+
     companion object {
         private val KEY_COOKIES    = stringPreferencesKey("nnm_webview_cookies")
-        private val KEY_DEBUG_HTML = stringPreferencesKey("nnm_debug_html")
         private const val HOST = "nnmclub.to"
-        private const val TAG  = "NnmCookieStore"
     }
 
-    fun saveCookies(rawCookies: String) = runBlocking {
-        Log.d(TAG, "Saving: $rawCookies")
-        context.dataStore.edit { it[KEY_COOKIES] = rawCookies }
+    fun saveCookies(rawCookies: String) {
+        runBlocking { context.dataStore.edit { it[KEY_COOKIES] = rawCookies } }
+        cachedCookies = rawCookies
     }
 
-    fun saveDebugHtml(html: String) = runBlocking {
-        // Сохраняем: залогинен?, TR классы, первые 500 символов body
-        context.dataStore.edit { it[KEY_DEBUG_HTML] = html }
-    }
-
-    val debugHtml: Flow<String> = context.dataStore.data.map { it[KEY_DEBUG_HTML] ?: "" }
-
-    fun getRawCookies(): String = runBlocking {
-        context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first()
-    }
+    fun getRawCookies(): String =
+        cachedCookies ?: runBlocking {
+            context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first()
+        }.also { cachedCookies = it }
 
     fun isLoggedIn(): Boolean {
         val raw = getRawCookies()
@@ -53,8 +47,9 @@ class NnmCookieStore @Inject constructor(
         }
     }
 
-    fun clearCookies() = runBlocking {
-        context.dataStore.edit { it[KEY_COOKIES] = ""; it[KEY_DEBUG_HTML] = "" }
+    fun clearCookies() {
+        runBlocking { context.dataStore.edit { it[KEY_COOKIES] = "" } }
+        cachedCookies = ""
     }
 
     fun parseCookies(raw: String): Map<String, String> =

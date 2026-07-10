@@ -1,7 +1,6 @@
 package com.komsomol.rustream.data.search
 
 import android.content.Context
-import android.util.Log
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.komsomol.rustream.data.settings.dataStore
@@ -20,20 +19,24 @@ class KinozalCookieStore @Inject constructor(
     @ApplicationContext private val context: Context
 ) : CookieJar {
 
+    // Кэш в памяти: куки читаются на каждый HTTP-запрос,
+    // блокирующее чтение DataStore каждый раз — лишнее
+    @Volatile private var cachedCookies: String? = null
+
     companion object {
         private val KEY_COOKIES = stringPreferencesKey("kinozal_webview_cookies")
         private const val HOST = "kinozal.tv"
-        private const val TAG  = "KinozalCookieStore"
     }
 
-    fun saveCookies(rawCookies: String) = runBlocking {
-        Log.d(TAG, "Saving: " + rawCookies)
-        context.dataStore.edit { it[KEY_COOKIES] = rawCookies }
+    fun saveCookies(rawCookies: String) {
+        runBlocking { context.dataStore.edit { it[KEY_COOKIES] = rawCookies } }
+        cachedCookies = rawCookies
     }
 
-    fun getRawCookies(): String = runBlocking {
-        context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first()
-    }
+    fun getRawCookies(): String =
+        cachedCookies ?: runBlocking {
+            context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first()
+        }.also { cachedCookies = it }
 
     fun isLoggedIn(): Boolean {
         val cookies = parseCookies(getRawCookies())
@@ -41,8 +44,9 @@ class KinozalCookieStore @Inject constructor(
         return cookies["uid"].isNullOrBlank().not() && cookies["pass"].isNullOrBlank().not()
     }
 
-    fun clearCookies() = runBlocking {
-        context.dataStore.edit { it[KEY_COOKIES] = "" }
+    fun clearCookies() {
+        runBlocking { context.dataStore.edit { it[KEY_COOKIES] = "" } }
+        cachedCookies = ""
     }
 
     fun parseCookies(raw: String): Map<String, String> =

@@ -17,5 +17,5 @@ class DownloadsViewModel @Inject constructor(
 
     fun pause(item: DownloadItem)  = repo.pause(item.id)
     fun resume(item: DownloadItem) = repo.resume(item.id)
-    fun remove(item: DownloadItem) = repo.remove(item.id, deleteFiles = false)
+    fun remove(item: DownloadItem, deleteFiles: Boolean = false) = repo.remove(item.id, deleteFiles)
 }
