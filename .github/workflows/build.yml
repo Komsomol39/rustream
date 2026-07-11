@@ -28,13 +28,20 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug 2>&1 | tee build-log.txt || true
+      - name: Restore keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > /tmp/release.jks
+
+      - name: Build Debug + Release APK
+        env:
+          KEYSTORE_PATH: /tmp/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: ./gradlew assembleDebug assembleRelease 2>&1 | tee build-log.txt || true
 
       - name: Save errors to repo
         if: always()
         run: |
-          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ] && [ -f app/build/outputs/apk/release/app-release.apk ]; then
             echo "BUILD SUCCESSFUL" > build-errors.txt
           else
             echo "BUILD FAILED" > build-errors.txt
@@ -53,7 +60,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RuStream-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release.apk
           retention-days: 7
 
       - name: Publish APK to "latest" release
@@ -63,7 +72,10 @@ jobs:
           tag_name: latest
           name: RuStream (latest build)
           body: |
-            Автоматическая сборка debug APK из ветки main.
-            Обновляется при каждом успешном билде.
-          files: app/build/outputs/apk/debug/app-debug.apk
+            Автоматическая сборка из ветки main. Обновляется при каждом успешном билде.
+            - `app-release.apk` — подписанный, для установки
+            - `app-debug.apk` — отладочный
+          files: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release.apk
           make_latest: true
