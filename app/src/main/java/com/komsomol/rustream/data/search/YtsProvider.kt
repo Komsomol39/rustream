@@ -22,8 +22,10 @@ class YtsProvider @Inject constructor() {
         .followRedirects(true)
         .build()
 
-    // YTS зеркала
-    private val mirrors = listOf("https://yts.lt", "https://yts.mx", "https://yts.do")
+    // Только оригинальный YTS. Клоны (yts.bz, yts.lt, yts.do, yts.rs и др.)
+    // отдают через API фейковые хэши: за ними раздача с одной рекламой
+    // (картинка + txt про прокси/TOR), без самого фильма.
+    private val mirrors = listOf("https://yts.mx")
     private val TAG = "YTS"
 
     // YTS — только фильмы
@@ -76,7 +78,6 @@ class YtsProvider @Inject constructor() {
                 val peers   = torrent.optInt("peers")
                 val size    = torrent.optString("size")    // "1.62 GB"
                 val sizeB   = torrent.optLong("size_bytes")
-                val dlUrl   = torrent.optString("url")
 
                 if (hash.isBlank()) continue
 
@@ -94,7 +95,9 @@ class YtsProvider @Inject constructor() {
                     seeders    = seeds,
                     leechers   = peers,
                     magnetUri  = magnet,
-                    torrentUrl = dlUrl,
+                    // .torrent строим по хэшу на оригинальном сайте —
+                    // url из ответа API у зеркал часто отдаёт 404
+                    torrentUrl = "$base/torrent/download/$hash",
                     detailUrl  = movieUrl,
                     uploadDate = year.toString()
                 ))
@@ -107,10 +110,18 @@ class YtsProvider @Inject constructor() {
 
     private fun buildMagnet(hash: String, name: String): String {
         val enc = java.net.URLEncoder.encode(name, "UTF-8")
-        return "magnet:?xt=urn:btih:$hash&dn=$enc" +
-            "&tr=udp://open.tracker.cl:1337/announce" +
-            "&tr=udp://tracker.opentrackr.org:1337/announce" +
-            "&tr=udp://9.rarbg.to:2710/announce"
+        // Живые публичные трекеры: у YTS-хэшей пиры часто находятся только
+        // с явными трекерами (dead-трекеры YTS давно не отвечают)
+        val trackers = listOf(
+            "udp://tracker.opentrackr.org:1337/announce",
+            "udp://open.tracker.cl:1337/announce",
+            "udp://open.demonii.com:1337/announce",
+            "udp://tracker.torrent.eu.org:451/announce",
+            "udp://exodus.desync.com:6969/announce",
+            "udp://tracker.openbittorrent.com:6969/announce"
+        )
+        val tr = trackers.joinToString("") { "&tr=" + java.net.URLEncoder.encode(it, "UTF-8") }
+        return "magnet:?xt=urn:btih:$hash&dn=$enc$tr"
     }
 
     private fun parseSize(text: String): Long {
