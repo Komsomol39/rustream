@@ -37,7 +37,11 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           VERSION_CODE: ${{ github.run_number }}
-        run: ./gradlew assembleDebug assembleRelease 2>&1 | tee build-log.txt || true
+        run: |
+          set -o pipefail
+          # Пишем лог, но НЕ маскируем провал: exit-код сохраняем в файл,
+          # чтобы шаг «Save errors» успел выполниться (if: always), а затем упасть
+          ./gradlew assembleDebug assembleRelease 2>&1 | tee build-log.txt || echo "$?" > .gradle-exit
 
       - name: Create version.json
         if: success()
@@ -66,6 +70,10 @@ jobs:
           git add build-errors.txt
           git diff --staged --quiet || git commit -m "build result [skip ci]"
           git push || true
+          # Если сборка упала — валим workflow (лог уже сохранён и запушен)
+          if [ -f .gradle-exit ]; then
+            echo "gradle failed with exit $(cat .gradle-exit)"; exit 1
+          fi
 
       - name: Upload APK
         if: success()

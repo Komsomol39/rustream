@@ -9,3 +9,4 @@
 .cxx/
 *.apk
 *.keystore
+.gradle-exit
