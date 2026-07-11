@@ -14,6 +14,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.komsomol.rustream.domain.model.GrabState
+import com.komsomol.rustream.domain.model.GrabFormat
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.MusicNote
 
 @Composable
 fun PasteUrlScreen(
@@ -21,6 +26,7 @@ fun PasteUrlScreen(
     viewModel: GrabViewModel = hiltViewModel()
 ) {
     val downloads by viewModel.downloads.collectAsState()
+    val formatQuery by viewModel.formatQuery.collectAsState()
     var url by remember { mutableStateOf("") }
     val clipboard = LocalClipboardManager.current
 
@@ -53,21 +59,30 @@ fun PasteUrlScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
 
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Button(
-                onClick = { viewModel.downloadUrlVideo(url) },
-                enabled = url.isNotBlank(),
-                modifier = Modifier.weight(1f)
-            ) { Text("⬇ Видео") }
-            Spacer(Modifier.width(12.dp))
-            OutlinedButton(
-                onClick = { viewModel.downloadUrlAudio(url) },
-                enabled = url.isNotBlank(),
-                modifier = Modifier.weight(1f)
-            ) { Text("⬇ Аудио (mp3)") }
-        }
+        Button(
+            onClick = { viewModel.queryFormats(url) },
+            enabled = url.isNotBlank() && formatQuery == null,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+        ) { Text("Показать варианты") }
 
         HorizontalDivider()
+
+        // Панель выбора качества
+        formatQuery?.let { q ->
+            FormatPicker(
+                title    = q.title,
+                loading  = q.loading,
+                error    = q.error,
+                formats  = q.formats,
+                onPick   = { fmt ->
+                    viewModel.downloadFormat(q.url, q.title, fmt)
+                    viewModel.dismissFormats()
+                    url = ""
+                },
+                onClose  = { viewModel.dismissFormats() }
+            )
+            HorizontalDivider()
+        }
 
         if (downloads.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -97,6 +112,13 @@ fun PasteUrlScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.padding(top = 2.dp))
                                     }
+                                    GrabState.PROCESSING -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                        LinearProgressIndicator(
+                                            modifier = Modifier.weight(1f).padding(top = 4.dp, end = 8.dp))
+                                        Text("Обработка...",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
                                     GrabState.DONE -> Text("✓ Готово — смотри в библиотеке",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.tertiary)
@@ -116,6 +138,70 @@ fun PasteUrlScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FormatPicker(
+    title: String,
+    loading: Boolean,
+    error: String?,
+    formats: List<GrabFormat>,
+    onPick: (GrabFormat) -> Unit,
+    onClose: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(title, style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f))
+            IconButton(onClick = onClose) {
+                Icon(Icons.Default.Close, contentDescription = "Закрыть")
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+
+        when {
+            loading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(12.dp))
+                Text("Ищем доступные варианты...",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            error != null -> Text(error,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                formats.forEach { fmt -> FormatTile(fmt, onClick = { onPick(fmt) }) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FormatTile(fmt: GrabFormat, onClick: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                if (fmt.video) Icons.Default.Videocam else Icons.Default.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(fmt.label, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f))
+            if (fmt.detail != null) {
+                Text(fmt.detail, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

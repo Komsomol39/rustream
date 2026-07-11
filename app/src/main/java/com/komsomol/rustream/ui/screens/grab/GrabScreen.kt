@@ -18,6 +18,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.komsomol.rustream.domain.model.GrabDownload
 import com.komsomol.rustream.domain.model.GrabResult
 import com.komsomol.rustream.domain.model.GrabState
+import com.komsomol.rustream.domain.model.GrabFormat
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.MusicNote
 
 @Composable
 fun GrabScreen(
@@ -29,6 +34,38 @@ fun GrabScreen(
     val query by viewModel.query.collectAsState()
     val downloads by viewModel.downloads.collectAsState()
     val engineMsg by viewModel.engineMsg.collectAsState()
+    val formatQuery by viewModel.formatQuery.collectAsState()
+
+    formatQuery?.let { q ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissFormats() },
+            title = { Text(q.title, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleSmall) },
+            text = {
+                when {
+                    q.loading -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Ищем варианты...", style = MaterialTheme.typography.bodySmall)
+                    }
+                    q.error != null -> Text(q.error!!, color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall)
+                    else -> Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        q.formats.forEach { fmt ->
+                            FormatTile(fmt, onClick = {
+                                viewModel.downloadFormat(q.url, q.title, fmt)
+                                viewModel.dismissFormats()
+                            })
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissFormats() }) { Text("Отмена") }
+            }
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -87,8 +124,7 @@ fun GrabScreen(
             is GrabUiState.Success -> LazyColumn(Modifier.fillMaxSize()) {
                 items(state.results, key = { it.url + it.serviceId }) { r ->
                     GrabResultRow(r,
-                        onVideo = { viewModel.downloadVideo(r) },
-                        onAudio = { viewModel.downloadAudio(r) })
+                        onDownload = { viewModel.queryFormats(r.url) })
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                 }
             }
@@ -97,7 +133,7 @@ fun GrabScreen(
 }
 
 @Composable
-private fun GrabResultRow(r: GrabResult, onVideo: () -> Unit, onAudio: () -> Unit) {
+private fun GrabResultRow(r: GrabResult, onDownload: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         if (r.thumbnailUrl != null) {
             coil.compose.AsyncImage(
@@ -121,10 +157,7 @@ private fun GrabResultRow(r: GrabResult, onVideo: () -> Unit, onAudio: () -> Uni
             Text(sub, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Row {
-                TextButton(onClick = onVideo) { Text("⬇ Видео") }
-                TextButton(onClick = onAudio) { Text("⬇ Аудио") }
-            }
+            TextButton(onClick = onDownload) { Text("⬇ Скачать") }
         }
     }
 }
@@ -150,6 +183,13 @@ private fun GrabDownloadRow(d: GrabDownload, onDismiss: () -> Unit, onCancel: ()
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 2.dp))
                     }
+                    GrabState.PROCESSING -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        LinearProgressIndicator(
+                            modifier = Modifier.weight(1f).padding(top = 4.dp, end = 8.dp))
+                        Text("Обработка...",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     GrabState.DONE -> Text("✓ Готово — смотри в библиотеке",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary)
@@ -171,4 +211,31 @@ private fun fmtDur(sec: Long): String {
     val m = sec / 60
     val s = sec % 60
     return m.toString() + ":" + s.toString().padStart(2, '0')
+}
+
+@Composable
+private fun FormatTile(fmt: GrabFormat, onClick: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                if (fmt.video) Icons.Default.Videocam else Icons.Default.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(fmt.label, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f))
+            if (fmt.detail != null) {
+                Text(fmt.detail, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
 }

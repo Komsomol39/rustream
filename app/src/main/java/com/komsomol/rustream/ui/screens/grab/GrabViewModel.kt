@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.komsomol.rustream.data.grab.GrabRepository
 import com.komsomol.rustream.domain.model.GrabResult
+import com.komsomol.rustream.domain.model.GrabFormat
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +32,7 @@ class GrabViewModel @Inject constructor(
     val query: StateFlow<String> = _query.asStateFlow()
 
     val downloads = repo.downloads
+    val formatQuery = repo.formatQuery
 
     private val _engineMsg = MutableStateFlow<String?>(null)
     val engineMsg: StateFlow<String?> = _engineMsg.asStateFlow()
@@ -63,11 +65,11 @@ class GrabViewModel @Inject constructor(
         }
     }
 
-    fun downloadVideo(r: GrabResult) = repo.startDownload(r, video = true)
-    fun downloadAudio(r: GrabResult) = repo.startDownload(r, video = false)
-
-    fun downloadUrlVideo(url: String) = repo.startFromUrl(url, video = true)
-    fun downloadUrlAudio(url: String) = repo.startFromUrl(url, video = false)
+    // Показать варианты качества для вставленной ссылки
+    fun queryFormats(url: String) = repo.queryFormats(url)
+    fun dismissFormats() = repo.dismissFormats()
+    fun downloadFormat(url: String, title: String, fmt: GrabFormat) =
+        repo.startFormat(url, title, fmt)
 
     fun dismiss(id: String) = repo.dismiss(id)
     fun cancel(id: String)  = repo.cancel(id)
