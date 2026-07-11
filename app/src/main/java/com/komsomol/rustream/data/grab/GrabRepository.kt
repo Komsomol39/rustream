@@ -49,6 +49,10 @@ class GrabRepository @Inject constructor(
     private val _downloads = MutableStateFlow<Map<String, GrabDownload>>(emptyMap())
     val downloads: StateFlow<Map<String, GrabDownload>> = _downloads.asStateFlow()
 
+    // id загрузок, отменённых пользователем: kill процесса yt-dlp бросает
+    // исключение в execute(), и по этому набору мы отличаем отмену от ошибки
+    private val cancelled = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+
     // ---------- Поиск: NewPipe (быстрый, все сервисы параллельно) ----------
 
     @Volatile private var newpipeReady = false
@@ -135,14 +139,16 @@ class GrabRepository @Inject constructor(
                 }
 
                 setDl(GrabDownload(dlId, result.title, video, 0f, GrabState.DOWNLOADING))
-                YoutubeDL.getInstance().execute(req, dlId) { progress, _, _ ->
+                YoutubeDL.getInstance().execute(req, dlId) { progress, etaSec, line ->
                     if (progress >= 0f) {
                         setDl(GrabDownload(dlId, result.title, video,
-                            progress / 100f, GrabState.DOWNLOADING))
+                            progress / 100f, GrabState.DOWNLOADING,
+                            detail = formatDetail(progress, etaSec, line)))
                     }
                 }
                 setDl(GrabDownload(dlId, result.title, video, 1f, GrabState.DONE))
             } catch (e: Exception) {
+                if (cancelled.remove(dlId)) return@launch  // отменено пользователем
                 Log.e(TAG, "yt-dlp failed: " + e)
                 rawLog(result.title, e)
                 setDl(GrabDownload(dlId, result.title, video, 0f,
@@ -191,6 +197,41 @@ class GrabRepository @Inject constructor(
     }
 
     fun dismiss(id: String) = _downloads.update { it - id }
+
+    /** Отмена активной загрузки: убиваем процесс yt-dlp и убираем карточку */
+    fun cancel(id: String) {
+        cancelled.add(id)
+        _downloads.update { it - id }
+        try { YoutubeDL.getInstance().destroyProcessById(id) } catch (_: Exception) {}
+    }
+
+    // «42% • 120,5 МБ • 2,3 МБ/с • осталось 0:42» из строки статуса yt-dlp:
+    // "[download]  42.3% of ~120.50MiB at 2.31MiB/s ETA 00:42"
+    private fun formatDetail(progressPct: Float, etaSec: Long, line: String?): String {
+        val sb = StringBuilder("%.0f%%".format(progressPct))
+        if (line != null) {
+            Regex("of ~?([0-9.]+)(K|M|G)iB").find(line)?.let {
+                sb.append(" • ").append(ruSize(it.groupValues[1], it.groupValues[2]))
+            }
+            Regex("at ([0-9.]+)(K|M|G)iB/s").find(line)?.let {
+                sb.append(" • ").append(ruSize(it.groupValues[1], it.groupValues[2])).append("/с")
+            }
+        }
+        if (etaSec > 0) sb.append(" • осталось ").append(fmtEta(etaSec))
+        return sb.toString()
+    }
+
+    private fun ruSize(num: String, unit: String): String {
+        val n = num.toDoubleOrNull() ?: return num
+        val u = when (unit) { "K" -> "КБ"; "M" -> "МБ"; else -> "ГБ" }
+        return (if (n >= 100) "%.0f" else "%.1f").format(n).replace('.', ',') + " " + u
+    }
+
+    private fun fmtEta(sec: Long): String {
+        val m = sec / 60; val s = sec % 60
+        return if (m >= 60) "%d:%02d:%02d".format(m / 60, m % 60, s)
+               else "%d:%02d".format(m, s)
+    }
 
     private fun setDl(d: GrabDownload) = _downloads.update { it + (d.id to d) }
 

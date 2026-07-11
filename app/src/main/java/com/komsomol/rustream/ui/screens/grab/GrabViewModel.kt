@@ -70,4 +70,5 @@ class GrabViewModel @Inject constructor(
     fun downloadUrlAudio(url: String) = repo.startFromUrl(url, video = false)
 
     fun dismiss(id: String) = repo.dismiss(id)
+    fun cancel(id: String)  = repo.cancel(id)
 }

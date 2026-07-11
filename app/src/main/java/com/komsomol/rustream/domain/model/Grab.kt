@@ -18,5 +18,6 @@ data class GrabDownload(
     val video: Boolean,
     val progress: Float = 0f,
     val state: GrabState = GrabState.RESOLVING,
-    val message: String? = null
+    val message: String? = null,
+    val detail: String? = null   // «42% • 120,5 МБ • 2,3 МБ/с • осталось 0:42»
 )

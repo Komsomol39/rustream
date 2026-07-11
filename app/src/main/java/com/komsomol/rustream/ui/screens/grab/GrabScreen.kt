@@ -63,7 +63,9 @@ fun GrabScreen(
         if (downloads.isNotEmpty()) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
                 downloads.values.sortedBy { it.title }.forEach { d ->
-                    GrabDownloadRow(d, onDismiss = { viewModel.dismiss(d.id) })
+                    GrabDownloadRow(d,
+                        onDismiss = { viewModel.dismiss(d.id) },
+                        onCancel  = { viewModel.cancel(d.id) })
                 }
             }
         }
@@ -128,7 +130,7 @@ private fun GrabResultRow(r: GrabResult, onVideo: () -> Unit, onAudio: () -> Uni
 }
 
 @Composable
-private fun GrabDownloadRow(d: GrabDownload, onDismiss: () -> Unit) {
+private fun GrabDownloadRow(d: GrabDownload, onDismiss: () -> Unit, onCancel: () -> Unit) {
     Card(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Row(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -139,9 +141,15 @@ private fun GrabDownloadRow(d: GrabDownload, onDismiss: () -> Unit) {
                 when (d.state) {
                     GrabState.RESOLVING -> Text("Получаем ссылку...",
                         style = MaterialTheme.typography.labelSmall)
-                    GrabState.DOWNLOADING -> LinearProgressIndicator(
-                        progress = { d.progress },
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, end = 8.dp))
+                    GrabState.DOWNLOADING -> Column {
+                        LinearProgressIndicator(
+                            progress = { d.progress },
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp, end = 8.dp))
+                        Text(d.detail ?: "Начинаем...",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp))
+                    }
                     GrabState.DONE -> Text("✓ Готово — смотри в библиотеке",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary)
@@ -150,10 +158,10 @@ private fun GrabDownloadRow(d: GrabDownload, onDismiss: () -> Unit) {
                         color = MaterialTheme.colorScheme.error)
                 }
             }
-            if (d.state == GrabState.DONE || d.state == GrabState.ERROR) {
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "Убрать")
-                }
+            val finished = d.state == GrabState.DONE || d.state == GrabState.ERROR
+            IconButton(onClick = if (finished) onDismiss else onCancel) {
+                Icon(Icons.Default.Close,
+                    contentDescription = if (finished) "Убрать" else "Отменить")
             }
         }
     }

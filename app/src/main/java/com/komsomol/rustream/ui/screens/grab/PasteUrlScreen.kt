@@ -88,9 +88,15 @@ fun PasteUrlScreen(
                                 when (d.state) {
                                     GrabState.RESOLVING -> Text("Получаем ссылку...",
                                         style = MaterialTheme.typography.labelSmall)
-                                    GrabState.DOWNLOADING -> LinearProgressIndicator(
-                                        progress = { d.progress },
-                                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp, end = 8.dp))
+                                    GrabState.DOWNLOADING -> Column {
+                                        LinearProgressIndicator(
+                                            progress = { d.progress },
+                                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp, end = 8.dp))
+                                        Text(d.detail ?: "Начинаем...",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(top = 2.dp))
+                                    }
                                     GrabState.DONE -> Text("✓ Готово — смотри в библиотеке",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.tertiary)
@@ -99,10 +105,13 @@ fun PasteUrlScreen(
                                         color = MaterialTheme.colorScheme.error)
                                 }
                             }
-                            if (d.state == GrabState.DONE || d.state == GrabState.ERROR) {
-                                IconButton(onClick = { viewModel.dismiss(d.id) }) {
-                                    Icon(Icons.Default.Close, contentDescription = "Убрать")
-                                }
+                            IconButton(onClick = {
+                                if (d.state == GrabState.DONE || d.state == GrabState.ERROR)
+                                    viewModel.dismiss(d.id) else viewModel.cancel(d.id)
+                            }) {
+                                Icon(Icons.Default.Close,
+                                    contentDescription = if (d.state == GrabState.DONE ||
+                                        d.state == GrabState.ERROR) "Убрать" else "Отменить")
                             }
                         }
                     }
