@@ -102,7 +102,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         SettingsCard {
             SectionLabel("Онлайн-загрузки")
             SourceRow(Icons.Default.Public, "NewPipe / yt-dlp",
-                "YouTube, SoundCloud, VK и ещё сотни сайтов",
+                "YouTube, SoundCloud и ещё сотни сайтов",
                 newpipeEnabled, viewModel::setNewpipeEnabled)
         }
 

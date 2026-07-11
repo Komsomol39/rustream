@@ -5,7 +5,7 @@
 # RuStream
 
 **Поиск, скачивание и воспроизведение медиа — в одном приложении.**
-Торрент-трекеры, YouTube/SoundCloud/VK и сотни других сайтов, встроенные плееры видео и музыки.
+Торрент-трекеры, YouTube/SoundCloud и сотни других сайтов, встроенные плееры видео и музыки.
 
 [![Build APK](https://github.com/Komsomol39/rustream/actions/workflows/build.yml/badge.svg)](https://github.com/Komsomol39/rustream/actions/workflows/build.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
@@ -28,7 +28,7 @@
 - Выбор отдельных файлов внутри раздачи — можно качать только нужные серии
 - Докачка поверх уже имеющихся файлов с фоновой проверкой хэшей и видимым прогрессом
 - Онлайн-загрузки через NewPipe (поиск) + yt-dlp (скачивание): видео в лучшем качестве или аудио в mp3
-- Скачивание по прямой ссылке с сотен сайтов (YouTube, VK, TikTok, Instagram и др.)
+- Скачивание по прямой ссылке с сотен сайтов (YouTube, RuTube, TikTok, Instagram и др.)
 
 **Плеер и библиотека**
 - Видеоплеер на Media3/ExoPlayer с FFmpeg-декодером (DTS, AC3 и другие дорожки), запоминает позицию просмотра

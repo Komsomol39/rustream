@@ -48,7 +48,7 @@ fun PasteUrlScreen(
             singleLine = true
         )
 
-        Text("Работает с YouTube, VK, RuTube, TikTok, Instagram и сотнями других сайтов",
+        Text("Работает с YouTube, RuTube, TikTok, Instagram и сотнями других сайтов",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
