@@ -233,10 +233,11 @@ class GrabRepository @Inject constructor(
     /** Скачивание конкретного выбранного варианта */
     fun startFormat(url: String, title: String, fmt: GrabFormat) {
         val dlId = url + "#" + fmt.formatId
-        setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.DOWNLOADING))
+        setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.RESOLVING))
         scope.launch {
             try {
                 ensureYtdl()
+                setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.DOWNLOADING))
                 val req = YoutubeDLRequest(url)
                 req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
                 req.addOption("--no-mtime")
@@ -277,6 +278,29 @@ class GrabRepository @Inject constructor(
             }
         }
         setDl(GrabDownload(dlId, title, video, 1f, GrabState.DONE))
+        notifyDone(title, video)
+    }
+
+    // Уведомление «скачано» — чтобы не сидеть в приложении во время долгой загрузки
+    private fun notifyDone(title: String, video: Boolean) {
+        try {
+            val nm = context.getSystemService(android.app.NotificationManager::class.java)
+            nm.createNotificationChannel(android.app.NotificationChannel(
+                "grab", "Загрузки", android.app.NotificationManager.IMPORTANCE_LOW))
+            val open = android.app.PendingIntent.getActivity(
+                context, 0,
+                android.content.Intent(context, com.komsomol.rustream.MainActivity::class.java)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                android.app.PendingIntent.FLAG_IMMUTABLE)
+            nm.notify(title.hashCode() and 0xffff,
+                androidx.core.app.NotificationCompat.Builder(context, "grab")
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentTitle(if (video) "Видео скачано" else "Аудио скачано")
+                    .setContentText(title)
+                    .setContentIntent(open)
+                    .setAutoCancel(true)
+                    .build())
+        } catch (_: Exception) {}
     }
 
     // Тихое автообновление при старте приложения (не блокирует ничего)
@@ -320,11 +344,23 @@ class GrabRepository @Inject constructor(
 
     fun dismiss(id: String) = _downloads.update { it - id }
 
-    /** Отмена активной загрузки: убиваем процесс yt-dlp и убираем карточку */
+    /** Отмена активной загрузки: убиваем процесс yt-dlp, чистим недокачанное, убираем карточку */
     fun cancel(id: String) {
         cancelled.add(id)
         _downloads.update { it - id }
         try { YoutubeDL.getInstance().destroyProcessById(id) } catch (_: Exception) {}
+        // yt-dlp оставляет частичные файлы (*.part, *.ytdl, *.f<id>.*) —
+        // убираем их с небольшой задержкой, после того как процесс отпустит файл
+        scope.launch {
+            delay(1500)
+            try {
+                java.io.File(engine.savePath).listFiles()?.forEach { f ->
+                    val n = f.name
+                    if (n.endsWith(".part") || n.endsWith(".ytdl") ||
+                        n.contains(".part-") || n.endsWith(".temp")) f.delete()
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     // «42% • 120,5 МБ • 2,3 МБ/с • осталось 0:42» из строки статуса yt-dlp:
