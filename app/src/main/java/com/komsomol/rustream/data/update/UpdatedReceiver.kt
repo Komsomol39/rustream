@@ -38,7 +38,16 @@ class UpdatedReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_IMMUTABLE)
 
         nm.notify(1001, NotificationCompat.Builder(context, CHANNEL)
-            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setSmallIcon(com.komsomol.rustream.R.drawable.ic_notification)
+            .setLargeIcon(run {
+                try {
+                    val d = context.packageManager.getApplicationIcon(context.packageName)
+                    val bmp = android.graphics.Bitmap.createBitmap(
+                        192, 192, android.graphics.Bitmap.Config.ARGB_8888)
+                    val cv = android.graphics.Canvas(bmp)
+                    d.setBounds(0, 0, cv.width, cv.height); d.draw(cv); bmp
+                } catch (_: Exception) { null }
+            })
             .setContentTitle("RuStream обновлён" + if (version != null) " до $version" else "")
             .setContentText("Нажмите, чтобы открыть")
             .setContentIntent(open)

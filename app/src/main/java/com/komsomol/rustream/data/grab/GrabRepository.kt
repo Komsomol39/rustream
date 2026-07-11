@@ -294,7 +294,8 @@ class GrabRepository @Inject constructor(
                 android.app.PendingIntent.FLAG_IMMUTABLE)
             nm.notify(title.hashCode() and 0xffff,
                 androidx.core.app.NotificationCompat.Builder(context, "grab")
-                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setSmallIcon(com.komsomol.rustream.R.drawable.ic_notification)
+                    .setLargeIcon(appIconBitmap())
                     .setContentTitle(if (video) "Видео скачано" else "Аудио скачано")
                     .setContentText(title)
                     .setContentIntent(open)
@@ -302,6 +303,17 @@ class GrabRepository @Inject constructor(
                     .build())
         } catch (_: Exception) {}
     }
+
+    // Полноцветная иконка приложения как крупная картинка в уведомлении
+    private fun appIconBitmap(): android.graphics.Bitmap? = try {
+        val d = context.packageManager.getApplicationIcon(context.packageName)
+        val bmp = android.graphics.Bitmap.createBitmap(
+            192, 192, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        d.setBounds(0, 0, c.width, c.height)
+        d.draw(c)
+        bmp
+    } catch (_: Exception) { null }
 
     // Тихое автообновление при старте приложения (не блокирует ничего)
     fun autoUpdateSilently() {

@@ -37,7 +37,7 @@ class TorrentService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("RuStream")
             .setContentText("Загрузки активны")
-            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setSmallIcon(com.komsomol.rustream.R.drawable.ic_notification)
             .setOngoing(true)
             .build()
         startForeground(NOTIF_ID, notification)
