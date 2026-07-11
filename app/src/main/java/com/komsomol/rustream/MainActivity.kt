@@ -11,6 +11,10 @@ import com.komsomol.rustream.ui.navigation.AppNavGraph
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.komsomol.rustream.ui.theme.RuStreamTheme
+import com.komsomol.rustream.ui.update.UpdateDialogs
+import com.komsomol.rustream.ui.update.UpdateViewModel
+import androidx.compose.runtime.LaunchedEffect
+import androidx.hilt.navigation.compose.hiltViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -59,6 +63,12 @@ class MainActivity : ComponentActivity() {
                 .collectAsState(initial = true)
             RuStreamTheme(darkTheme = dark) {
                 AppNavGraph()
+
+                // Проверка обновлений при запуске (если включено в настройках)
+                val updateVm: UpdateViewModel = hiltViewModel()
+                val updateState by updateVm.state.collectAsState()
+                LaunchedEffect(Unit) { updateVm.checkOnLaunch() }
+                UpdateDialogs(updateState, updateVm)
             }
         }
     }

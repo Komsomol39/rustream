@@ -14,8 +14,10 @@ android {
         applicationId = "com.komsomol.rustream"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Нумерацию версий задаёт CI (номер прогона workflow)
+        val ciVersion = System.getenv("VERSION_CODE")?.toIntOrNull()
+        versionCode = ciVersion ?: 1
+        versionName = if (ciVersion != null) "1.0.$ciVersion" else "1.0-dev"
         ndk { abiFilters += "arm64-v8a" }
     }
 

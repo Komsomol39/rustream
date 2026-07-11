@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
@@ -34,6 +35,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.komsomol.rustream.ui.update.UpdateDialogs
+import com.komsomol.rustream.ui.update.UpdateUiState
+import com.komsomol.rustream.ui.update.UpdateViewModel
 
 private val SCREEN_PADDING = 20.dp
 private val CARD_PADDING = 20.dp
@@ -168,14 +172,46 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             }
         }
 
-        // --- О приложении ---
+        // --- О приложении и обновления ---
+        val updateVm: UpdateViewModel = hiltViewModel()
+        val updateState by updateVm.state.collectAsState()
+        val autoUpdate by viewModel.autoUpdateCheck.collectAsState()
+        UpdateDialogs(updateState, updateVm)
+
         SettingsCard {
             SectionLabel("О приложении")
             Text("RuStream", style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold)
-            Text("Версия 1.0 • торренты, онлайн-загрузки, плеер",
+            Text("Версия " + updateVm.currentVersion + " • торренты, онлайн-загрузки, плеер",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            RowDivider()
+            RowItem(
+                icon = Icons.Default.Autorenew,
+                title = "Проверять обновления",
+                subtitle = "При каждом запуске приложения"
+            ) {
+                Switch(checked = autoUpdate, onCheckedChange = viewModel::setAutoUpdateCheck)
+            }
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = { updateVm.checkNow() },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = updateState !is UpdateUiState.Checking
+                       && updateState !is UpdateUiState.Downloading
+            ) {
+                Text(when (updateState) {
+                    is UpdateUiState.Checking -> "Проверяю..."
+                    else -> "Проверить сейчас"
+                })
+            }
+            if (updateState is UpdateUiState.UpToDate) {
+                Spacer(Modifier.height(8.dp))
+                Text("Установлена последняя версия",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.tertiary)
+            }
         }
 
         Spacer(Modifier.height(8.dp))

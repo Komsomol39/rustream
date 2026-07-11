@@ -36,7 +36,19 @@ jobs:
           KEYSTORE_PATH: /tmp/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          VERSION_CODE: ${{ github.run_number }}
         run: ./gradlew assembleDebug assembleRelease 2>&1 | tee build-log.txt || true
+
+      - name: Create version.json
+        if: success()
+        run: |
+          cat > version.json << EOF
+          {
+            "versionCode": ${{ github.run_number }},
+            "versionName": "1.0.${{ github.run_number }}",
+            "apkUrl": "https://github.com/Komsomol39/rustream/releases/latest/download/app-release.apk"
+          }
+          EOF
 
       - name: Save errors to repo
         if: always()
@@ -78,4 +90,5 @@ jobs:
           files: |
             app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release.apk
+            version.json
           make_latest: true

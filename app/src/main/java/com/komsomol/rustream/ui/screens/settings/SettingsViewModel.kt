@@ -24,6 +24,7 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val darkTheme        = repo.darkTheme.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val autoUpdateCheck  = repo.autoUpdateCheck.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val ruTorEnabled     = repo.ruTorEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val ruTrackerEnabled = repo.ruTrackerEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val kinozalEnabled   = repo.kinozalEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -44,6 +45,7 @@ class SettingsViewModel @Inject constructor(
     val kinozalLoggedIn: StateFlow<Boolean> = _kinozalLoggedIn.asStateFlow()
 
     fun setDarkTheme(v: Boolean)        = viewModelScope.launch { repo.setDarkTheme(v) }
+    fun setAutoUpdateCheck(v: Boolean)  = viewModelScope.launch { repo.setAutoUpdateCheck(v) }
     fun setRuTorEnabled(v: Boolean)     = viewModelScope.launch { repo.setRuTorEnabled(v) }
     fun setRuTrackerEnabled(v: Boolean) = viewModelScope.launch { repo.setRuTrackerEnabled(v) }
     fun setKinozalEnabled(v: Boolean)   = viewModelScope.launch { repo.setKinozalEnabled(v) }
