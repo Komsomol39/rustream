@@ -35,7 +35,7 @@ fun UpdateDialogs(state: UpdateUiState, viewModel: UpdateViewModel) {
         )
         is UpdateUiState.Downloading -> AlertDialog(
             onDismissRequest = {},
-            title = { Text("Загрузка обновления") },
+            title = { Text("Подготовка обновления") },
             text = {
                 Column {
                     LinearProgressIndicator(

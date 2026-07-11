@@ -1,9 +1,10 @@
 package com.komsomol.rustream.data.update
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.util.Log
-import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -60,16 +61,29 @@ class UpdateRepository @Inject constructor(
         }
     }
 
-    /** Скачивает APK в кэш, отдаёт прогресс 0..1. Бросает исключение при ошибке. */
+    /**
+     * Скачивает APK в кэш, отдаёт прогресс 0..1. Файл именуется по версии:
+     * если эта версия уже скачана целиком — загрузка пропускается.
+     * Качаем во временный файл и переименовываем, так что существование
+     * итогового файла гарантирует целостность.
+     */
     suspend fun downloadApk(info: UpdateInfo, onProgress: (Float) -> Unit): File =
         withContext(Dispatchers.IO) {
             val dir = File(context.cacheDir, "updates").apply { mkdirs() }
-            val file = File(dir, "app-release.apk")
+            val file = File(dir, "update-v${info.versionCode}.apk")
+            if (file.exists() && file.length() > 0) {
+                onProgress(1f)
+                return@withContext file
+            }
+            // прибираем APK других версий
+            dir.listFiles()?.forEach { if (it.name != file.name) it.delete() }
+
+            val tmp = File(dir, file.name + ".part")
             val resp = client.newCall(Request.Builder().url(info.apkUrl).build()).execute()
             if (!resp.isSuccessful) { resp.close(); error("HTTP ${resp.code}") }
             val total = resp.body!!.contentLength()
             resp.body!!.byteStream().use { input ->
-                file.outputStream().use { out ->
+                tmp.outputStream().use { out ->
                     val buf = ByteArray(64 * 1024)
                     var read = 0L
                     while (true) {
@@ -81,18 +95,34 @@ class UpdateRepository @Inject constructor(
                     }
                 }
             }
+            if (!tmp.renameTo(file)) error("Не удалось сохранить файл")
             file
         }
 
-    /** Открывает системный установщик пакетов для скачанного APK */
+    /**
+     * Установка через PackageInstaller: без вопроса «чем открыть»,
+     * система сама закрывает приложение и заменяет его. Единственное
+     * взаимодействие — системное подтверждение «Обновить».
+     */
     fun installApk(file: File) {
-        val uri = FileProvider.getUriForFile(
-            context, context.packageName + ".fileprovider", file)
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+        val installer = context.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(
+            PackageInstaller.SessionParams.MODE_FULL_INSTALL
+        ).apply { setAppPackageName(context.packageName) }
+
+        val sessionId = installer.createSession(params)
+        installer.openSession(sessionId).use { session ->
+            session.openWrite("app.apk", 0, file.length()).use { out ->
+                file.inputStream().use { it.copyTo(out, 64 * 1024) }
+                session.fsync(out)
+            }
+            val intent = Intent(context, InstallReceiver::class.java)
+                .setAction(InstallReceiver.ACTION_INSTALL_STATUS)
+            val pi = PendingIntent.getBroadcast(
+                context, sessionId, intent,
+                PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            session.commit(pi.intentSender)
         }
-        context.startActivity(intent)
     }
 
     companion object {
