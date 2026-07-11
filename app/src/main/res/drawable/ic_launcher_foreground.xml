@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+
+    <!-- Паутина: кольца -->
+    <path
+        android:pathData="M54,41Q57.98,44.39 63.19,44.81Q63.61,50.02 67,54Q63.61,57.98 63.19,63.19Q57.98,63.61 54,67Q50.02,63.61 44.81,63.19Q44.39,57.98 41,54Q44.39,50.02 44.81,44.81Q50.02,44.39 54,41M54,33Q60.43,38.48 68.85,39.15Q69.52,47.57 75,54Q69.52,60.43 68.85,68.85Q60.43,69.52 54,75Q47.57,69.52 39.15,68.85Q38.48,60.43 33,54Q38.48,47.57 39.15,39.15Q47.57,38.48 54,33M54,25Q62.88,32.57 74.51,33.49Q75.43,45.12 83,54Q75.43,62.88 74.51,74.51Q62.88,75.43 54,83Q45.12,75.43 33.49,74.51Q32.57,62.88 25,54Q32.57,45.12 33.49,33.49Q45.12,32.57 54,25"
+        android:strokeColor="#C9B8FF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Паутина: лучи -->
+    <path
+        android:pathData="M54,47.5L54,23.5M58.6,49.4L75.57,32.43M60.5,54L84.5,54M58.6,58.6L75.57,75.57M54,60.5L54,84.5M49.4,58.6L32.43,75.57M47.5,54L23.5,54M49.4,49.4L32.43,32.43"
+        android:strokeColor="#C9B8FF"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Play в центре -->
+    <path
+        android:pathData="M63.3,54L51.3,60.93L51.3,47.07Z"
+        android:fillColor="#FFFFFF"/>
+</vector>
