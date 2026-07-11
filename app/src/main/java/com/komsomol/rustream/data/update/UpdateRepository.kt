@@ -104,7 +104,7 @@ class UpdateRepository @Inject constructor(
      * система сама закрывает приложение и заменяет его. Единственное
      * взаимодействие — системное подтверждение «Обновить».
      */
-    fun installApk(file: File) {
+    suspend fun installApk(file: File) = withContext(Dispatchers.IO) {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(
             PackageInstaller.SessionParams.MODE_FULL_INSTALL

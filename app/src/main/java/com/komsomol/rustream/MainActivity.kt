@@ -68,6 +68,13 @@ class MainActivity : ComponentActivity() {
                 val updateVm: UpdateViewModel = hiltViewModel()
                 val updateState by updateVm.state.collectAsState()
                 LaunchedEffect(Unit) { updateVm.checkOnLaunch() }
+                // Окно установки APK запускаем отсюда (передний план) —
+                // из фонового ресивера его блокирует MIUI/HyperOS
+                LaunchedEffect(Unit) {
+                    com.komsomol.rustream.data.update.InstallPrompt.confirmIntent.collect { intent ->
+                        try { startActivity(intent) } catch (_: Exception) {}
+                    }
+                }
                 UpdateDialogs(updateState, updateVm)
             }
         }

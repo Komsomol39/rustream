@@ -22,11 +22,16 @@ class InstallReceiver : BroadcastReceiver() {
                 val confirm = if (Build.VERSION.SDK_INT >= 33)
                     intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
                 else @Suppress("DEPRECATION") intent.getParcelableExtra(Intent.EXTRA_INTENT)
-                confirm?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                try {
-                    if (confirm != null) context.startActivity(confirm)
-                } catch (e: Exception) {
-                    Log.e(TAG, "confirm failed: ${e.message}")
+                if (confirm != null) {
+                    // Запускаем не отсюда (фон блокируется MIUI/HyperOS),
+                    // а из активного MainActivity — он слушает этот канал
+                    if (!InstallPrompt.confirmIntent.tryEmit(confirm)) {
+                        // на всякий случай — прямой запуск как фолбэк
+                        try {
+                            confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(confirm)
+                        } catch (e: Exception) { Log.e(TAG, "confirm failed: ${e.message}") }
+                    }
                 }
             }
             PackageInstaller.STATUS_SUCCESS -> Log.d(TAG, "install ok")
