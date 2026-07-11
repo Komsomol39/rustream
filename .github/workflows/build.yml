@@ -86,20 +86,31 @@ jobs:
           REL=app/build/outputs/apk/release/app-release.apk
           DBG=app/build/outputs/apk/debug/app-debug.apk
 
-          # Файлы обязаны существовать — иначе падаем, а не публикуем пустой релиз
           test -f "$REL" || { echo "release APK missing"; exit 1; }
           test -f "$DBG" || { echo "debug APK missing"; exit 1; }
 
-          # Пересоздаём релиз начисто: softprops не перезаписывал одноимённые ассеты
-          gh release delete latest --yes --cleanup-tag || true
-          gh release create latest --title "RuStream (latest build)" --notes \
-            "Автоматическая сборка из ветки main. Обновляется при каждом успешном билде." \
-            "$REL" "$DBG" version.json
+          # Релиз держим постоянным (тег latest), ассеты перезаписываем --clobber.
+          # Не пересоздаём релиз: это провоцировало гонку и пустые релизы.
+          gh release view latest >/dev/null 2>&1 || \
+            gh release create latest --title "RuStream (latest build)" \
+              --notes "Автоматическая сборка из ветки main. Обновляется при каждом успешном билде."
 
-          # Проверяем, что оба APK реально загрузились
+          # Загрузка больших APK иногда срывается — ретраим каждый файл
+          upload() {
+            for i in 1 2 3; do
+              if gh release upload latest "$1" --clobber; then return 0; fi
+              echo "retry upload $1 (attempt $i)"; sleep 10
+            done
+            echo "failed to upload $1"; return 1
+          }
+          upload "$REL"
+          upload "$DBG"
+          upload version.json
+
+          # Проверяем, что оба APK действительно в релизе
           sleep 5
           ASSETS=$(gh release view latest --json assets --jq '.assets[].name')
           echo "$ASSETS"
-          echo "$ASSETS" | grep -q app-release.apk || { echo "release APK not uploaded"; exit 1; }
-          echo "$ASSETS" | grep -q app-debug.apk   || { echo "debug APK not uploaded"; exit 1; }
+          echo "$ASSETS" | grep -q app-release.apk || { echo "release APK not in release"; exit 1; }
+          echo "$ASSETS" | grep -q app-debug.apk   || { echo "debug APK not in release"; exit 1; }
           make_latest: true
