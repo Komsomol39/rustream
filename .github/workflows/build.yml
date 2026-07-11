@@ -77,6 +77,15 @@ jobs:
             app/build/outputs/apk/release/app-release.apk
           retention-days: 7
 
+      - name: Delete stale "latest" release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # softprops не перезаписывает ассеты с существующим именем —
+          # поэтому сносим релиз и тег целиком, публикуем заново со свежими APK
+          gh release delete latest --yes --cleanup-tag || true
+
       - name: Publish APK to "latest" release
         if: success()
         uses: softprops/action-gh-release@v2
