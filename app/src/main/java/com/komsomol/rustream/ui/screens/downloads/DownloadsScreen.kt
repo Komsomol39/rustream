@@ -134,7 +134,7 @@ fun DownloadCard(
 
             // Прогресс-бар (только при активной загрузке)
             if (item.state == DownloadState.DOWNLOADING || item.state == DownloadState.PAUSED ||
-                item.state == DownloadState.FETCHING_META) {
+                item.state == DownloadState.FETCHING_META || item.state == DownloadState.CHECKING) {
                 LinearProgressIndicator(
                     progress = { item.progress },
                     modifier = Modifier.fillMaxWidth().height(4.dp)
@@ -147,6 +147,7 @@ fun DownloadCard(
                 // Состояние + прогресс %
                 val stateText = when (item.state) {
                     DownloadState.QUEUED        -> "В очереди"
+                    DownloadState.CHECKING      -> "Проверка файлов  %.0f%%".format(item.progress * 100)
                     DownloadState.FETCHING_META -> "Метаданные... пиры: " + item.peers
                     DownloadState.DOWNLOADING   -> "%.1f%%  ↓ %s/с".format(
                         item.progress * 100, formatSpeed(item.downloadSpeedBps))

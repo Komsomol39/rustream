@@ -7,6 +7,7 @@ import com.komsomol.rustream.domain.model.DownloadItem
 import com.komsomol.rustream.domain.model.DownloadState
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +41,15 @@ class TorrentEngine @Inject constructor(
         Log.e("TorrentEngine", "Coroutine crash: " + e)
     }
     private val scope = CoroutineScope(Dispatchers.IO + kotlinx.coroutines.SupervisorJob() + crashHandler)
+
+    // ВСЕ обращения к libtorrent идут через этот единственный поток.
+    // Во время проверки хэшей вызовы вроде fileProgress() блокируются
+    // занятым диском: попади они на main — приложение фризит.
+    // Один поток заодно убирает конкуренцию за мьютекс сессии.
+    private val engineDispatcher: kotlinx.coroutines.CoroutineDispatcher =
+        java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+            Thread(r, "torrent-engine")
+        }.asCoroutineDispatcher()
     val session = SessionManager()
     private var started = false
 
@@ -147,7 +157,7 @@ class TorrentEngine @Inject constructor(
         session.startDht()
         File(savePath).mkdirs()
 
-        scope.launch {
+        scope.launch(engineDispatcher) {
             while (true) {
                 delay(1000)
                 if (started) {
@@ -213,37 +223,50 @@ class TorrentEngine @Inject constructor(
     }
 
     fun pause(id: String) {
-        findHandle(id)?.pause()
         updateState(id, DownloadState.PAUSED)
+        scope.launch(engineDispatcher) {
+            try { findHandle(id)?.pause() } catch (_: Exception) {}
+        }
     }
 
     fun resume(id: String) {
-        findHandle(id)?.resume()
         updateState(id, DownloadState.DOWNLOADING)
+        scope.launch(engineDispatcher) {
+            try { findHandle(id)?.resume() } catch (_: Exception) {}
+        }
     }
 
     fun remove(id: String, deleteFiles: Boolean = false) {
-        val h = findHandle(id)
-        if (h != null) try {
-            if (deleteFiles) {
-                org.libtorrent4j.SessionHandle(session.swig())
-                    .removeTorrent(h, org.libtorrent4j.SessionHandle.DELETE_FILES)
-            } else {
-                session.remove(h)
-            }
-        } catch (_: Exception) {}
-        synchronized(idToHash) { idToHash.remove(id) }
         _downloads.update { it - id }
+        scope.launch(engineDispatcher) {
+            val h = findHandle(id)
+            if (h != null) try {
+                if (deleteFiles) {
+                    org.libtorrent4j.SessionHandle(session.swig())
+                        .removeTorrent(h, org.libtorrent4j.SessionHandle.DELETE_FILES)
+                } else {
+                    session.remove(h)
+                }
+            } catch (_: Exception) {}
+            synchronized(idToHash) { idToHash.remove(id) }
+        }
     }
 
     // Список файлов раздачи (доступен после метаданных)
-    fun getFiles(id: String): List<com.komsomol.rustream.domain.model.TorrentFileEntry> {
-        val h = findHandle(id) ?: return emptyList()
-        return try {
-            if (!h.isValid) return emptyList()
-            val ti = h.torrentFile() ?: return emptyList()
+    suspend fun getFiles(id: String): List<com.komsomol.rustream.domain.model.TorrentFileEntry> =
+        kotlinx.coroutines.withContext(engineDispatcher) {
+        val h = findHandle(id) ?: return@withContext emptyList()
+        try {
+            if (!h.isValid) return@withContext emptyList()
+            val ti = h.torrentFile() ?: return@withContext emptyList()
             val fs = ti.files()
-            val progress = try { h.fileProgress() } catch (_: Exception) { LongArray(0) }
+            // Во время проверки хэшей diskthread занят — прогресс по файлам
+            // не запрашиваем, чтобы не тормозить проверку
+            val checking = try {
+                h.status().state() == TorrentStatus.State.CHECKING_FILES
+            } catch (_: Exception) { false }
+            val progress = if (checking) LongArray(0)
+                else try { h.fileProgress() } catch (_: Exception) { LongArray(0) }
             (0 until fs.numFiles()).map { i ->
                 com.komsomol.rustream.domain.model.TorrentFileEntry(
                     index           = i,
@@ -256,8 +279,8 @@ class TorrentEngine @Inject constructor(
         } catch (_: Exception) { emptyList() }
     }
 
-    fun setFileEnabled(id: String, index: Int, enabled: Boolean) {
-        val h = findHandle(id) ?: return
+    fun setFileEnabled(id: String, index: Int, enabled: Boolean) = scope.launch(engineDispatcher) {
+        val h = findHandle(id) ?: return@launch
         try {
             h.filePriority(index,
                 if (enabled) org.libtorrent4j.Priority.DEFAULT
@@ -266,10 +289,10 @@ class TorrentEngine @Inject constructor(
         } catch (_: Exception) {}
     }
 
-    fun setAllFilesEnabled(id: String, enabled: Boolean) {
-        val h = findHandle(id) ?: return
+    fun setAllFilesEnabled(id: String, enabled: Boolean) = scope.launch(engineDispatcher) {
+        val h = findHandle(id) ?: return@launch
         try {
-            val ti = h.torrentFile() ?: return
+            val ti = h.torrentFile() ?: return@launch
             val p = if (enabled) org.libtorrent4j.Priority.DEFAULT
                     else org.libtorrent4j.Priority.IGNORE
             h.prioritizeFiles(Array(ti.numFiles()) { p })
@@ -286,12 +309,18 @@ class TorrentEngine @Inject constructor(
                 if (!h.isValid) return@forEach
                 val s = h.status()
                 val state = when (s.state()) {
-                    TorrentStatus.State.DOWNLOADING          -> DownloadState.DOWNLOADING
-                    TorrentStatus.State.DOWNLOADING_METADATA -> DownloadState.FETCHING_META
+                    TorrentStatus.State.DOWNLOADING           -> DownloadState.DOWNLOADING
+                    TorrentStatus.State.DOWNLOADING_METADATA  -> DownloadState.FETCHING_META
+                    TorrentStatus.State.CHECKING_FILES,
+                    TorrentStatus.State.CHECKING_RESUME_DATA  -> DownloadState.CHECKING
                     TorrentStatus.State.FINISHED,
-                    TorrentStatus.State.SEEDING              -> DownloadState.FINISHED
-                    else                                     -> DownloadState.DOWNLOADING
+                    TorrentStatus.State.SEEDING               -> DownloadState.FINISHED
+                    else                                      -> DownloadState.DOWNLOADING
                 }
+                // Пауза, поставленная пользователем, важнее опроса —
+                // иначе тикер перезатрёт её через секунду
+                if (item.state == DownloadState.PAUSED &&
+                    state == DownloadState.DOWNLOADING) return@forEach
                 _downloads.update { map ->
                     map + (id to item.copy(
                         state            = state,

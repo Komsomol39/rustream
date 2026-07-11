@@ -36,12 +36,12 @@ class DownloadDetailViewModel @Inject constructor(
         }
     }
 
-    fun toggle(index: Int, enabled: Boolean) {
+    fun toggle(index: Int, enabled: Boolean) = viewModelScope.launch {
         repo.setFileEnabled(id, index, enabled)
         _files.value = repo.getFiles(id)
     }
 
-    fun setAll(enabled: Boolean) {
+    fun setAll(enabled: Boolean) = viewModelScope.launch {
         repo.setAllFilesEnabled(id, enabled)
         _files.value = repo.getFiles(id)
     }

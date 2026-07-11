@@ -60,9 +60,11 @@ fun DownloadDetailScreen(
         if (files.isEmpty()) {
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Text(
-                    if (item?.state == DownloadState.FETCHING_META)
-                        "Список файлов появится после получения метаданных..."
-                    else "Список файлов недоступен",
+                    when (item?.state) {
+                        DownloadState.FETCHING_META -> "Список файлов появится после получения метаданных..."
+                        DownloadState.CHECKING      -> "Идёт проверка уже скачанных файлов..."
+                        else                        -> "Список файлов недоступен"
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

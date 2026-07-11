@@ -21,6 +21,7 @@ data class DownloadItem(
 enum class DownloadState {
     QUEUED,       // в очереди
     FETCHING_META,// получаем метаданные (magnet)
+    CHECKING,     // проверка хэшей уже скачанных файлов
     DOWNLOADING,  // скачивается
     PAUSED,       // на паузе
     FINISHED,     // завершено

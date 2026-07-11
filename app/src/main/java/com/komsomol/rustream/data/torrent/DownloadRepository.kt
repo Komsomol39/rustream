@@ -138,7 +138,7 @@ class DownloadRepository @Inject constructor(
         }
     }
 
-    fun getFiles(id: String) = engine.getFiles(id)
+    suspend fun getFiles(id: String) = engine.getFiles(id)
     fun setFileEnabled(id: String, index: Int, enabled: Boolean) =
         engine.setFileEnabled(id, index, enabled)
     fun setAllFilesEnabled(id: String, enabled: Boolean) =
