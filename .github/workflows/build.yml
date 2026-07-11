@@ -115,10 +115,10 @@ jobs:
           upload "$DBG"
           upload version.json
 
-          # Проверяем, что оба APK действительно в релизе
+          # Проверяем, что оба APK действительно в релизе (без jq — простой текст)
           sleep 5
-          ASSETS=$(gh release view latest --json assets --jq '.assets[].name')
-          echo "$ASSETS"
-          echo "$ASSETS" | grep -q app-release.apk || { echo "release APK not in release"; exit 1; }
-          echo "$ASSETS" | grep -q app-debug.apk   || { echo "debug APK not in release"; exit 1; }
+          gh release view latest > /tmp/rel.txt 2>&1 || true
+          grep -q app-release.apk /tmp/rel.txt || { echo "release APK not in release"; cat /tmp/rel.txt; exit 1; }
+          grep -q app-debug.apk   /tmp/rel.txt || { echo "debug APK not in release"; cat /tmp/rel.txt; exit 1; }
+          echo "both APKs present in latest release"
           make_latest: true
