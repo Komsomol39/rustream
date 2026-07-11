@@ -30,5 +30,5 @@ Execution failed for task ':app:compileReleaseKotlin'.
 > Get more help at https://help.gradle.org.
 ==============================================================================
 
-BUILD FAILED in 5m 44s
-59 actionable tasks: 55 executed, 4 from cache
+BUILD FAILED in 5m 24s
+69 actionable tasks: 65 executed, 4 from cache
