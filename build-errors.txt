@@ -1,20 +1,20 @@
 BUILD FAILED
 e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/grab/GrabRepository.kt:367:13 Unresolved reference 'delay'.
 --- LAST 30 LINES ---
-> Task :app:processReleaseResources
-
-> Task :app:stripReleaseDebugSymbols
-Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libdatastore_shared_counter.so, libffmpeg.so, libffmpeg.zip.so, libffmpegJNI.so, libffprobe.so, libpython.so, libpython.zip.so, libqjs.so, libtorrent4j.so.
-
 > Task :app:extractReleaseNativeSymbolTables
 > Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:mergeReleaseArtProfile
+> Task :app:expandReleaseL8ArtProfileWildcards
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:desugarReleaseFileDependencies
+> Task :app:mergeReleaseStartupProfile
+> Task :app:kspReleaseKotlin
 
 > Task :app:compileDebugKotlin
 e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/data/grab/GrabRepository.kt:367:13 Unresolved reference 'delay'.
 
 > Task :app:compileDebugKotlin FAILED
-> Task :app:mergeReleaseArtProfile
-> Task :app:kspReleaseKotlin
+> Task :app:mergeExtDexRelease
 
 FAILURE: Build failed with an exception.
 
@@ -29,5 +29,5 @@ Execution failed for task ':app:compileDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 4m 7s
-53 actionable tasks: 49 executed, 4 from cache
+BUILD FAILED in 5m 48s
+58 actionable tasks: 54 executed, 4 from cache
