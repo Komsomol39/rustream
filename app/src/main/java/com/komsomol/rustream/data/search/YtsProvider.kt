@@ -22,10 +22,13 @@ class YtsProvider @Inject constructor() {
         .followRedirects(true)
         .build()
 
-    // Только оригинальный YTS. Клоны (yts.bz, yts.lt, yts.do, yts.rs и др.)
-    // отдают через API фейковые хэши: за ними раздача с одной рекламой
-    // (картинка + txt про прокси/TOR), без самого фильма.
-    private val mirrors = listOf("https://yts.mx")
+    // Оригинал yts.mx в РФ заблокирован, поэтому нужны зеркала. Часть из них —
+    // клоны, отдающие фейковые хэши (раздача только с рекламой). Защита от
+    // фейков — не по домену, а по размеру: DownloadRepository сверяет реальный
+    // размер метаданных с ожидаемым и отсекает подделки (см. expectedBytes).
+    private val mirrors = listOf(
+        "https://yts.mx", "https://yts.rs", "https://yts.am", "https://yts.lt"
+    )
     private val TAG = "YTS"
 
     // YTS — только фильмы
@@ -95,9 +98,9 @@ class YtsProvider @Inject constructor() {
                     seeders    = seeds,
                     leechers   = peers,
                     magnetUri  = magnet,
-                    // .torrent строим по хэшу на оригинальном сайте —
-                    // url из ответа API у зеркал часто отдаёт 404
-                    torrentUrl = "$base/torrent/download/$hash",
+                    // .torrent по хэшу на оригинальном сайте (не на зеркале,
+                    // где url из API часто 404). Для скачивания важен хэш.
+                    torrentUrl = "https://yts.mx/torrent/download/$hash",
                     detailUrl  = movieUrl,
                     uploadDate = year.toString()
                 ))

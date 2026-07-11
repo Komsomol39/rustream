@@ -85,6 +85,7 @@ class DownloadRepository @Inject constructor(
             magnetUri  = magnet,
             torrentUrl = null,
             savePath   = engine.savePath,
+            expectedBytes = result.sizeBytes,
             state      = DownloadState.FETCHING_META
         )
         engine.addMagnet(item)
@@ -103,6 +104,7 @@ class DownloadRepository @Inject constructor(
             magnetUri  = null,
             torrentUrl = torrentUrl,
             savePath   = engine.savePath,
+            expectedBytes = result.sizeBytes,
             state      = DownloadState.DOWNLOADING
         )
         try {

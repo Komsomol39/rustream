@@ -10,6 +10,7 @@ data class DownloadItem(
     val progress: Float = 0f,          // 0.0 - 1.0
     val downloadedBytes: Long = 0L,
     val totalBytes: Long = 0L,
+    val expectedBytes: Long = 0L,      // размер из поиска — для отсева фейк-раздач
     val downloadSpeedBps: Long = 0L,   // байт/сек
     val uploadSpeedBps: Long = 0L,
     val seeds: Int = 0,

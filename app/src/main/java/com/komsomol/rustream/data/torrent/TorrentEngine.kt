@@ -107,12 +107,26 @@ class TorrentEngine @Inject constructor(
                         if (id != null) synchronized(idToHash) { idToHash[id] = hash }
                     }
                     AlertType.METADATA_RECEIVED -> {
-                        val hash = (alert as MetadataReceivedAlert).handle().infoHash().toString()
+                        val h = (alert as MetadataReceivedAlert).handle()
+                        val hash = h.infoHash().toString()
                         val id = synchronized(hashToId) { hashToId[hash] }
                         if (id != null) {
                             synchronized(idToHash) { idToHash[id] = hash }
-                            // даже если успел сработать таймаут — оживляем загрузку
-                            updateState(id, DownloadState.DOWNLOADING)
+                            // Защита от YTS-клонов: реальный размер раздачи против
+                            // ожидаемого из поиска. Фейк с одной рекламой весит
+                            // сотни КБ вместо гигабайтов — режем, если меньше 20%.
+                            val expected = _downloads.value[id]?.expectedBytes ?: 0L
+                            val actual = try { h.torrentFile()?.totalSize() ?: 0L } catch (_: Exception) { 0L }
+                            if (expected > 50_000_000L && actual in 1 until (expected / 5)) {
+                                try { session.remove(h) } catch (_: Exception) {}
+                                updateState(id, DownloadState.ERROR,
+                                    error = "Похоже на фейк: раздача " + fmtSize(actual) +
+                                            " вместо " + fmtSize(expected) +
+                                            ". Попробуйте другую версию или .torrent.")
+                            } else {
+                                // даже если успел сработать таймаут — оживляем загрузку
+                                updateState(id, DownloadState.DOWNLOADING)
+                            }
                         }
                     }
                     AlertType.TORRENT_FINISHED -> {
@@ -346,6 +360,13 @@ class TorrentEngine @Inject constructor(
                 errorMessage = if (state == DownloadState.ERROR) (error ?: item.errorMessage) else null
             ))
         }
+    }
+
+    private fun fmtSize(bytes: Long): String = when {
+        bytes >= 1_073_741_824 -> "%.1f ГБ".format(bytes / 1_073_741_824.0)
+        bytes >= 1_048_576     -> "%.0f МБ".format(bytes / 1_048_576.0)
+        bytes >= 1024          -> "%.0f КБ".format(bytes / 1024.0)
+        else                   -> "$bytes Б"
     }
 
     companion object {
