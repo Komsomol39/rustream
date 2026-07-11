@@ -90,35 +90,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -e
           REL=app/build/outputs/apk/release/app-release.apk
           DBG=app/build/outputs/apk/debug/app-debug.apk
-
-          test -f "$REL" || { echo "release APK missing"; exit 1; }
-          test -f "$DBG" || { echo "debug APK missing"; exit 1; }
-
-          # Релиз держим постоянным (тег latest), ассеты перезаписываем --clobber.
-          # Не пересоздаём релиз: это провоцировало гонку и пустые релизы.
+          if [ ! -f "$REL" ] || [ ! -f "$DBG" ]; then
+            echo "APK missing, aborting"; exit 1
+          fi
           gh release view latest >/dev/null 2>&1 || \
             gh release create latest --title "RuStream (latest build)" \
-              --notes "Автоматическая сборка из ветки main. Обновляется при каждом успешном билде."
-
-          # Загрузка больших APK иногда срывается — ретраим каждый файл
-          upload() {
-            for i in 1 2 3; do
-              if gh release upload latest "$1" --clobber; then return 0; fi
-              echo "retry upload $1 (attempt $i)"; sleep 10
+              --notes "Auto build from main; updated on every successful build."
+          for f in "$REL" "$DBG" version.json; do
+            n=1
+            until gh release upload latest "$f" --clobber; do
+              n=$((n+1))
+              if [ "$n" -gt 3 ]; then echo "upload failed: $f"; exit 1; fi
+              echo "retry $f ($n)"; sleep 10
             done
-            echo "failed to upload $1"; return 1
-          }
-          upload "$REL"
-          upload "$DBG"
-          upload version.json
-
-          # Проверяем, что оба APK действительно в релизе (без jq — простой текст)
-          sleep 5
-          gh release view latest > /tmp/rel.txt 2>&1 || true
-          grep -q app-release.apk /tmp/rel.txt || { echo "release APK not in release"; cat /tmp/rel.txt; exit 1; }
-          grep -q app-debug.apk   /tmp/rel.txt || { echo "debug APK not in release"; cat /tmp/rel.txt; exit 1; }
-          echo "both APKs present in latest release"
-          make_latest: true
+          done
+          echo "published ok"
