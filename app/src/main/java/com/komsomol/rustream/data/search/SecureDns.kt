@@ -39,8 +39,8 @@ object SecureDns {
                 .includeIPv6(false)
                 .build()
 
-            Dns { hostname ->
-                try {
+            object : Dns {
+                override fun lookup(hostname: String): List<InetAddress> = try {
                     doh.lookup(hostname)
                 } catch (e: Exception) {
                     Log.w(TAG, "DoH failed for $hostname, falling back: ${e.message}")
