@@ -30,8 +30,15 @@ class YtsProvider @Inject constructor() {
     //   yts.bz  — официальный домен API, живой
     //   yts.am, yts.lt — живые зеркала, отдают тот же подлинный хэш
     //   yts.mx — не резолвится (мёртв), yts.rs — HTTP 500, yts.do — мусор
+    // Порядок важен. movies-api.accel.li — новая официальная база API
+    // (о переезде сообщает сам ответ YTS). yts.bz — проверенный домен,
+    // отдаёт подлинные хэши.
+    //
+    // yts.am и yts.lt УБРАНЫ: они возвращают правильные метаданные
+    // (название, размер), но ПОДМЕНЁННЫЙ infohash — за ним раздача
+    // с одной рекламой (~44 КБ). Проверено сравнением хэшей.
     private val mirrors = listOf(
-        "https://yts.bz", "https://yts.am", "https://yts.lt"
+        "https://movies-api.accel.li", "https://yts.bz"
     )
     private val TAG = "YTS"
 
