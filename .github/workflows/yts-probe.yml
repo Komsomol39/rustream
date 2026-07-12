@@ -1,5 +1,8 @@
 name: YTS Probe
-on: workflow_dispatch
+on:
+  push:
+    paths: [ .github/workflows/yts-probe.yml ]
+  workflow_dispatch:
 jobs:
   probe:
     runs-on: ubuntu-latest
