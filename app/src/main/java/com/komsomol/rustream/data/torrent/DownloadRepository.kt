@@ -114,7 +114,7 @@ class DownloadRepository @Inject constructor(
                 .build()
             val bytes = clientFor(result.source).newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {
-                    engine.addFailed(item, "Сервер вернул " + resp.code + " при скачивании .torrent")
+                    engine.addFailed(item, "HTTP " + resp.code + " при скачивании .torrent\n" + torrentUrl)
                     return@withContext id
                 }
                 resp.body?.bytes()

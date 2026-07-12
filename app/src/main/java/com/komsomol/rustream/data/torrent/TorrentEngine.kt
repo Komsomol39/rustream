@@ -122,7 +122,7 @@ class TorrentEngine @Inject constructor(
                                 updateState(id, DownloadState.ERROR,
                                     error = "Похоже на фейк: раздача " + fmtSize(actual) +
                                             " вместо " + fmtSize(expected) +
-                                            ". Попробуйте другую версию или .torrent.")
+                                            ". hash=" + hash.uppercase())
                             } else {
                                 // даже если успел сработать таймаут — оживляем загрузку
                                 updateState(id, DownloadState.DOWNLOADING)
