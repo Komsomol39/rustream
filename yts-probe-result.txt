@@ -1,0 +1,45 @@
+============================================================
+ЗАПРОС: the sting 1973
+============================================================
+
+### yts.mx
+  API НЕДОСТУПЕН: <urlopen error [Errno -2] Name or service not known>
+
+### yts.bz
+  API OK: The Sting (720p)
+  hash     = BE06ABA10AA720254814C52E77C0218C138AD197
+  API size = 1.0 ГБ
+  API url  = https://yts.gg/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197
+  [https://yts.gg/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197]
+     -> HTTP 200, размер в торренте = 1.0 ГБ  => НАСТОЯЩИЙ
+  [https://yts.bz/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197]
+     -> HTTP 200, размер в торренте = 1.0 ГБ  => НАСТОЯЩИЙ
+  [https://yts.bz/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197.torrent] -> HTTP 404
+
+### yts.rs
+  API НЕДОСТУПЕН: HTTP Error 500: Internal Server Error
+
+### yts.am
+  API OK: The Sting (720p)
+  hash     = BE06ABA10AA720254814C52E77C0218C138AD197
+  API size = 1.0 ГБ
+  API url  = https://yts.gg/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197
+  [https://yts.gg/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197]
+     -> HTTP 200, размер в торренте = 1.0 ГБ  => НАСТОЯЩИЙ
+  [https://yts.am/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197]
+     -> HTTP 200, размер в торренте = 1.0 ГБ  => НАСТОЯЩИЙ
+  [https://yts.am/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197.torrent] -> HTTP 404
+
+### yts.lt
+  API OK: The Sting (720p)
+  hash     = BE06ABA10AA720254814C52E77C0218C138AD197
+  API size = 1.0 ГБ
+  API url  = https://yts.gg/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197
+  [https://yts.gg/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197]
+     -> HTTP 200, размер в торренте = 1.0 ГБ  => НАСТОЯЩИЙ
+  [https://yts.lt/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197]
+     -> HTTP 200, размер в торренте = 1.0 ГБ  => НАСТОЯЩИЙ
+  [https://yts.lt/torrent/download/BE06ABA10AA720254814C52E77C0218C138AD197.torrent] -> HTTP 404
+
+### yts.do
+  API НЕДОСТУПЕН: Expecting value: line 1 column 1 (char 0)
