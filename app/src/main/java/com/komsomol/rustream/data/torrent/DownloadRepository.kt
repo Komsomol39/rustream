@@ -30,6 +30,7 @@ class DownloadRepository @Inject constructor(
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .followRedirects(true)
+        .dns(com.komsomol.rustream.data.search.SecureDns.resolver)  // обход подмены DNS
         .build()
 
     // .torrent с приватных трекеров нужно качать С КУКАМИ авторизации

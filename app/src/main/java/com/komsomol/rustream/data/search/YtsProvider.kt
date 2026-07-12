@@ -20,6 +20,7 @@ class YtsProvider @Inject constructor() {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
+        .dns(SecureDns.resolver)   // обход подмены DNS провайдером
         .build()
 
     // Оригинал yts.mx в РФ заблокирован, поэтому нужны зеркала. Часть из них —
