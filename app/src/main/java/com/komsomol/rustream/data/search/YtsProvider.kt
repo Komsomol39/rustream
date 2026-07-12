@@ -98,9 +98,9 @@ class YtsProvider @Inject constructor() {
                     seeders    = seeds,
                     leechers   = peers,
                     magnetUri  = magnet,
-                    // .torrent берём с ТОГО ЖЕ зеркала, что ответило на поиск:
-                    // захардкоженный yts.mx не резолвится там, где он заблокирован
-                    torrentUrl = "$base/torrent/download/$hash",
+                    // .torrent берём с ТОГО ЖЕ зеркала, что ответило на поиск.
+                    // Расширение .torrent обязательно — без него сервер даёт 404.
+                    torrentUrl = "$base/torrent/download/$hash.torrent",
                     detailUrl  = movieUrl,
                     uploadDate = year.toString()
                 ))
