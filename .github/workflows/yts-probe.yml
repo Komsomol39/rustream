@@ -1,0 +1,24 @@
+name: YTS Probe
+on:
+  push:
+    paths:
+      - 'probe_yts.py'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        continue-on-error: true
+        run: python3 probe_yts.py > yts-probe-result.txt 2>&1 || true
+      - name: Commit
+        if: always()
+        run: |
+          git config user.email "ci@local"
+          git config user.name "ci"
+          git add yts-probe-result.txt || true
+          git commit -m "probe result [skip ci]" || true
+          git push || true
