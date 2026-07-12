@@ -26,8 +26,12 @@ class YtsProvider @Inject constructor() {
     // клоны, отдающие фейковые хэши (раздача только с рекламой). Защита от
     // фейков — не по домену, а по размеру: DownloadRepository сверяет реальный
     // размер метаданных с ожидаемым и отсекает подделки (см. expectedBytes).
+    // Проверено probe'ом из чистой сети (июль 2026):
+    //   yts.bz  — официальный домен API, живой
+    //   yts.am, yts.lt — живые зеркала, отдают тот же подлинный хэш
+    //   yts.mx — не резолвится (мёртв), yts.rs — HTTP 500, yts.do — мусор
     private val mirrors = listOf(
-        "https://yts.mx", "https://yts.rs", "https://yts.am", "https://yts.lt"
+        "https://yts.bz", "https://yts.am", "https://yts.lt"
     )
     private val TAG = "YTS"
 
@@ -100,7 +104,11 @@ class YtsProvider @Inject constructor() {
                     magnetUri  = magnet,
                     // .torrent берём с ТОГО ЖЕ зеркала, что ответило на поиск.
                     // Расширение .torrent обязательно — без него сервер даёт 404.
-                    torrentUrl = "$base/torrent/download/$hash.torrent",
+                    // API сам отдаёт рабочую ссылку (ведёт на yts.gg — настоящий
+                    // хост загрузок). Фолбэк — тот же путь на зеркале.
+                    // ВАЖНО: без расширения .torrent — с ним сервер даёт 404.
+                    torrentUrl = torrent.optString("url").takeIf { it.startsWith("http") }
+                        ?: "$base/torrent/download/$hash",
                     detailUrl  = movieUrl,
                     uploadDate = year.toString()
                 ))
