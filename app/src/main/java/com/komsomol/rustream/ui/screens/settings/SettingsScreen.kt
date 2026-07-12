@@ -224,13 +224,14 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             val scope = rememberCoroutineScope()
             OutlinedButton(
                 onClick = {
-                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                        val r = com.komsomol.rustream.data.search.SecureDns.diagnose("yts.bz")
-                        withContext(kotlinx.coroutines.Dispatchers.Main) { dnsInfo = r }
+                    dnsInfo = "Проверяю..."
+                    scope.launch {
+                        val r = com.komsomol.rustream.data.search.SecureDns.diagnoseApi()
+                        dnsInfo = r
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Проверить DNS (диагностика)") }
+            ) { Text("Проверить API (диагностика)") }
             dnsInfo?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, style = MaterialTheme.typography.bodySmall,
