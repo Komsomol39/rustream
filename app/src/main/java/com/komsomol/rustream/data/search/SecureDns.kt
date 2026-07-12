@@ -23,6 +23,21 @@ object SecureDns {
 
     private const val TAG = "SecureDns"
 
+    @Volatile var lastStatus: String = "не инициализирован"
+        private set
+
+    /** Диагностика: что резолвится для host через систему и через DoH */
+    fun diagnose(host: String): String = buildString {
+        val sys = try {
+            java.net.InetAddress.getAllByName(host).joinToString(",") { it.hostAddress ?: "?" }
+        } catch (e: Exception) { "ошибка: ${e.message}" }
+        append("Системный DNS для $host:\n$sys\n\n")
+        val doh = try {
+            resolver.lookup(host).joinToString(",") { it.hostAddress ?: "?" }
+        } catch (e: Exception) { "ошибка: ${e.message}" }
+        append("DoH (Cloudflare) для $host:\n$doh\n\nСтатус DoH: $lastStatus")
+    }
+
     val resolver: Dns by lazy {
         try {
             val bootstrap = OkHttpClient.Builder().build()
@@ -41,8 +56,11 @@ object SecureDns {
 
             object : Dns {
                 override fun lookup(hostname: String): List<InetAddress> = try {
-                    doh.lookup(hostname)
+                    val r = doh.lookup(hostname)
+                    lastStatus = "OK через Cloudflare"
+                    r
                 } catch (e: Exception) {
+                    lastStatus = "ОТКАТ на системный DNS: ${e.message}"
                     Log.w(TAG, "DoH failed for $hostname, falling back: ${e.message}")
                     Dns.SYSTEM.lookup(hostname)
                 }

@@ -1,5 +1,11 @@
 package com.komsomol.rustream.ui.screens.settings
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import android.app.Activity
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -211,6 +217,24 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 Text("Установлена последняя версия",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.tertiary)
+            }
+
+            RowDivider()
+            var dnsInfo by remember { mutableStateOf<String?>(null) }
+            val scope = rememberCoroutineScope()
+            OutlinedButton(
+                onClick = {
+                    scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                        val r = com.komsomol.rustream.data.search.SecureDns.diagnose("yts.bz")
+                        withContext(kotlinx.coroutines.Dispatchers.Main) { dnsInfo = r }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Проверить DNS (диагностика)") }
+            dnsInfo?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
 
