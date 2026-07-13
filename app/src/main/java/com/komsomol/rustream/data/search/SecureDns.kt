@@ -26,17 +26,6 @@ object SecureDns {
     @Volatile var lastStatus: String = "не инициализирован"
         private set
 
-    /** Диагностика: что резолвится для host через систему и через DoH */
-    fun diagnose(host: String): String = buildString {
-        val sys = try {
-            java.net.InetAddress.getAllByName(host).joinToString(",") { it.hostAddress ?: "?" }
-        } catch (e: Exception) { "ошибка: ${e.message}" }
-        append("Системный DNS для $host:\n$sys\n\n")
-        val doh = try {
-            resolver.lookup(host).joinToString(",") { it.hostAddress ?: "?" }
-        } catch (e: Exception) { "ошибка: ${e.message}" }
-        append("DoH (Cloudflare) для $host:\n$doh\n\nСтатус DoH: $lastStatus")
-    }
 
     val resolver: Dns by lazy {
         try {
@@ -69,44 +58,6 @@ object SecureDns {
             Log.e(TAG, "DoH init failed, using system DNS: ${e.message}")
             Dns.SYSTEM
         }
-    }
-    /** Диагностика: реальный запрос к обоим API-доменам, показывает хэш 2160p The Sting */
-    suspend fun diagnoseApi(): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        val hosts = listOf("movies-api.accel.li", "yts.bz")
-        val sb = StringBuilder()
-        val cli = OkHttpClient.Builder()
-            .connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(12, java.util.concurrent.TimeUnit.SECONDS)
-            .build()
-        for (h in hosts) {
-            sb.append(h).append(":\n")
-            try {
-                val url = "https://$h/api/v2/list_movies.json?query_term=the%20sting&limit=5"
-                val req = okhttp3.Request.Builder().url(url)
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-                    .build()
-                val body = cli.newCall(req).execute().use { it.body?.string() ?: "" }
-                val movies = org.json.JSONObject(body).optJSONObject("data")?.optJSONArray("movies")
-                var found = "?"
-                if (movies != null) for (i in 0 until movies.length()) {
-                    val m = movies.getJSONObject(i)
-                    if (m.optInt("year") == 1973 && m.optString("title").contains("Sting")) {
-                        val ts = m.optJSONArray("torrents")
-                        if (ts != null) for (j in 0 until ts.length()) {
-                            val t = ts.getJSONObject(j)
-                            if (t.optString("quality") == "2160p") found = t.optString("hash").uppercase()
-                        }
-                    }
-                }
-                val ok = if (found == "092830915ADEA71C92FA58DF2E8EB39EA3CF3449") "✓ НАСТОЯЩИЙ"
-                         else "✗ ФЕЙК/перехват"
-                sb.append("  hash=").append(found.take(16)).append("... ").append(ok).append("\n")
-            } catch (e: Exception) {
-                sb.append("  ошибка: ").append(e.message).append("\n")
-            }
-        }
-        sb.toString()
     }
 
 }

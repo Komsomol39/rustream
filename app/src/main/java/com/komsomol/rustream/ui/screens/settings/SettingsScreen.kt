@@ -219,24 +219,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.tertiary)
             }
 
-            RowDivider()
-            var dnsInfo by remember { mutableStateOf<String?>(null) }
-            val scope = rememberCoroutineScope()
-            OutlinedButton(
-                onClick = {
-                    dnsInfo = "Проверяю..."
-                    scope.launch {
-                        val r = com.komsomol.rustream.data.search.SecureDns.diagnoseApi()
-                        dnsInfo = r
-                    }
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Проверить API (диагностика)") }
-            dnsInfo?.let {
-                Spacer(Modifier.height(8.dp))
-                Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
         }
 
         Spacer(Modifier.height(8.dp))
