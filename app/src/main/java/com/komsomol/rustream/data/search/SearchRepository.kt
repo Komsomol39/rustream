@@ -16,6 +16,7 @@ class SearchRepository @Inject constructor(
     private val kinozalProvider: KinozalProvider,
     private val nnmProvider: NnmClubProvider,
     private val ytsProvider: YtsProvider,
+    private val tpbProvider: TpbProvider,
     private val settings: SettingsRepository
 ) {
     suspend fun search(query: String, category: ContentCategory): List<SearchResult> = coroutineScope {
@@ -24,6 +25,7 @@ class SearchRepository @Inject constructor(
         val kinozalEnabled   = settings.kinozalEnabled.first()
         val nnmEnabled       = settings.nnmEnabled.first()
         val ytsEnabled       = settings.ytsEnabled.first()
+        val tpbEnabled       = settings.tpbEnabled.first()
 
         val d1 = if (ruTorEnabled)
             async { runCatching { ruTorProvider.search(query, category) }.getOrElse { emptyList() } }
@@ -40,6 +42,9 @@ class SearchRepository @Inject constructor(
         val d5 = if (ytsEnabled && category != ContentCategory.MUSIC)
             async { runCatching { ytsProvider.search(query, category) }.getOrElse { emptyList() } }
         else null
+        val d6 = if (tpbEnabled)
+            async { runCatching { tpbProvider.search(query, category) }.getOrElse { emptyList() } }
+        else null
 
         val raw = mutableListOf<SearchResult>()
         d1?.let { raw.addAll(it.await()) }
@@ -47,6 +52,7 @@ class SearchRepository @Inject constructor(
         d3?.let { raw.addAll(it.await()) }
         d4?.let { raw.addAll(it.await()) }
         d5?.let { raw.addAll(it.await()) }
+        d6?.let { raw.addAll(it.await()) }
 
         val filtered = when (category) {
             ContentCategory.ALL   -> raw

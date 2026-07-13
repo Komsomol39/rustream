@@ -64,6 +64,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val kinozalEnabled   by viewModel.kinozalEnabled.collectAsState()
     val nnmEnabled       by viewModel.nnmEnabled.collectAsState()
     val ytsEnabled       by viewModel.ytsEnabled.collectAsState()
+    val tpbEnabled       by viewModel.tpbEnabled.collectAsState()
     val newpipeEnabled   by viewModel.newpipeEnabled.collectAsState()
     val mediaFolders     by viewModel.mediaFolders.collectAsState()
     val nnmLoggedIn      by viewModel.nnmLoggedIn.collectAsState()
@@ -118,6 +119,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
 
             SourceRow(Icons.Default.Movie, "YTS", "Фильмы 720p–4K, без входа",
                 ytsEnabled, viewModel::setYtsEnabled)
+            SourceRow(Icons.Default.Public, "TPB", "The Pirate Bay — всё, без входа",
+                tpbEnabled, viewModel::setTpbEnabled)
             RowDivider()
             SourceRow(Icons.Default.Language, "RuTor", "Нужен VPN в РФ • магнет-ссылки",
                 ruTorEnabled, viewModel::setRuTorEnabled)
