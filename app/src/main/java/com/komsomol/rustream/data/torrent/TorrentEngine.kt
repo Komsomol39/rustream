@@ -119,10 +119,11 @@ class TorrentEngine @Inject constructor(
                             val actual = try { h.torrentFile()?.totalSize() ?: 0L } catch (_: Exception) { 0L }
                             if (expected > 50_000_000L && actual in 1 until (expected / 5)) {
                                 try { session.remove(h) } catch (_: Exception) {}
+                                val dbg = _downloads.value[id]
                                 updateState(id, DownloadState.ERROR,
-                                    error = "Похоже на фейк: раздача " + fmtSize(actual) +
-                                            " вместо " + fmtSize(expected) +
-                                            ". hash=" + hash.uppercase())
+                                    error = "ФЕЙК: " + fmtSize(actual) + " вместо " + fmtSize(expected) +
+                                            "\nдвижок hash=" + hash.uppercase() +
+                                            "\nmagnet=" + (dbg?.magnetUri?.take(80) ?: "?"))
                             } else {
                                 // даже если успел сработать таймаут — оживляем загрузку
                                 updateState(id, DownloadState.DOWNLOADING)
