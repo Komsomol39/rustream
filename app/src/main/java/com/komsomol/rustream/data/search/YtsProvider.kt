@@ -69,6 +69,16 @@ class YtsProvider @Inject constructor() {
             .build()
 
         val body = client.newCall(req).execute().use { it.body?.string() ?: "" }
+        // ДИАГНОСТИКА: пишем что реально получил боевой клиент
+        try {
+            val f = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
+                android.os.Environment.DIRECTORY_DOWNLOADS), "RuStream/search-raw.txt")
+            f.parentFile?.mkdirs()
+            f.appendText("=== $base query=$query ===\n" +
+                "содержит f998565: " + body.contains("f998565", ignoreCase = true) + "\n" +
+                "длина: " + body.length + "\n" +
+                body.take(1500) + "\n\n")
+        } catch (_: Exception) {}
         val json  = JSONObject(body)
 
         if (json.optString("status") != "ok") return emptyList()
