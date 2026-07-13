@@ -219,6 +219,23 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.tertiary)
             }
 
+            RowDivider()
+            var dumpMsg by remember { mutableStateOf<String?>(null) }
+            val dumpScope = rememberCoroutineScope()
+            OutlinedButton(
+                onClick = {
+                    dumpMsg = "Сохраняю..."
+                    dumpScope.launch {
+                        dumpMsg = com.komsomol.rustream.data.search.SecureDns.dumpYtsRaw()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Сохранить ответ YTS (диагностика)") }
+            dumpMsg?.let {
+                Spacer(Modifier.height(8.dp))
+                Text(it, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
 
         Spacer(Modifier.height(8.dp))

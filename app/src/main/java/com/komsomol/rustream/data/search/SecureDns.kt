@@ -61,4 +61,52 @@ object SecureDns {
         }
     }
 
+
+    /** Диагностика: сохраняет сырой ответ yts.bz для Sting в файл на устройстве */
+    suspend fun dumpYtsRaw(): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val out = StringBuilder()
+        val cli = OkHttpClient.Builder()
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .cache(null)
+            .build()
+        val ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                 "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        for (host in listOf("yts.bz", "movies-api.accel.li")) {
+            out.append("========== ").append(host).append(" ==========\n")
+            try {
+                val url = "https://$host/api/v2/list_movies.json?query_term=sting&limit=50&sort_by=seeds"
+                val req = okhttp3.Request.Builder().url(url)
+                    .header("User-Agent", ua)
+                    .cacheControl(okhttp3.CacheControl.FORCE_NETWORK)
+                    .build()
+                cli.newCall(req).execute().use { resp ->
+                    out.append("HTTP ").append(resp.code).append("\n")
+                    out.append("server=").append(resp.header("server") ?: "?").append("\n")
+                    out.append("cf-ray=").append(resp.header("cf-ray") ?: "нет").append("\n")
+                    out.append("via=").append(resp.header("via") ?: "нет").append("\n")
+                    out.append("resolved IP=").append(
+                        try { java.net.InetAddress.getByName(host).hostAddress } catch (e: Exception) { e.message }
+                    ).append("\n")
+                    val body = resp.body?.string() ?: ""
+                    out.append("--- тело (").append(body.length).append(" симв) ---\n")
+                    out.append(body).append("\n\n")
+                }
+            } catch (e: Exception) {
+                out.append("ОШИБКА: ").append(e.message).append("\n\n")
+            }
+        }
+        // пишем в файл
+        try {
+            val dir = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
+                android.os.Environment.DIRECTORY_DOWNLOADS), "RuStream")
+            dir.mkdirs()
+            val f = java.io.File(dir, "yts-raw.txt")
+            f.writeText(out.toString())
+            "Сохранено: " + f.absolutePath + "\n(" + out.length + " символов)"
+        } catch (e: Exception) {
+            "Не удалось сохранить: " + e.message
+        }
+    }
+
 }
