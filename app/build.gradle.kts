@@ -79,7 +79,6 @@ dependencies {
     implementation(libs.room.ktx)
     implementation(libs.datastore.preferences)
     implementation(libs.okhttp)
-    implementation(libs.okhttp.doh)
     implementation(libs.jsoup)
     implementation(libs.coroutines.android)
     implementation(libs.libtorrent4j.android.arm64)
