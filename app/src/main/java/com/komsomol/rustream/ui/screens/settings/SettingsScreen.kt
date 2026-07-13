@@ -117,7 +117,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         SettingsCard {
             SectionLabel("Торрент-трекеры")
 
-            SourceRow(Icons.Default.Movie, "YTS", "Фильмы 720p–4K, без входа",
+            SourceRow(Icons.Default.Movie, "YTS", "Фильмы. У части провайдеров РФ отдаёт битые ссылки",
                 ytsEnabled, viewModel::setYtsEnabled)
             SourceRow(Icons.Default.Public, "TPB", "The Pirate Bay — всё, без входа",
                 tpbEnabled, viewModel::setTpbEnabled)
