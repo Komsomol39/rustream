@@ -1,5 +1,7 @@
 package com.komsomol.rustream.data.search
 
+import com.komsomol.rustream.data.torrent.TorrentEngine
+
 import android.util.Log
 import com.komsomol.rustream.domain.model.ContentCategory
 import com.komsomol.rustream.domain.model.SearchResult
@@ -20,7 +22,8 @@ class YtsProvider @Inject constructor() {
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .followRedirects(true)
-        .dns(SecureDns.resolver)   // обход подмены DNS провайдером
+        .dns(SecureDns.resolver)
+        .cache(null)               // без дискового кэша — всегда свежий ответ
         .build()
 
     // Оригинал yts.mx в РФ заблокирован, поэтому нужны зеркала. Часть из них —
@@ -66,6 +69,9 @@ class YtsProvider @Inject constructor() {
 
         val req = Request.Builder().url(url)
             .header("User-Agent", UA)
+            .header("Cache-Control", "no-cache, no-store")
+            .header("Pragma", "no-cache")
+            .cacheControl(okhttp3.CacheControl.FORCE_NETWORK)
             .build()
 
         val body = client.newCall(req).execute().use { it.body?.string() ?: "" }
@@ -125,6 +131,10 @@ class YtsProvider @Inject constructor() {
         }
 
         Log.d(TAG, "$base: ${results.size} results")
+        if (results.isNotEmpty()) {
+            val firstHash = TorrentEngine.extractHash(results[0].magnetUri ?: "") ?: "?"
+            SecureDns.lastDiag = "$base отдал ${results.size}, 1й hash=${firstHash.take(12)}"
+        }
         return results.sortedByDescending { it.seeders }
     }
 

@@ -26,6 +26,8 @@ object SecureDns {
     @Volatile var lastStatus: String = "не инициализирован"
         private set
 
+    @Volatile var lastDiag: String = ""
+
 
     val resolver: Dns by lazy {
         try {

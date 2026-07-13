@@ -88,6 +88,10 @@ fun SearchScreen(
                     }
                 }
                 Spacer(Modifier.height(4.dp))
+                Text(com.komsomol.rustream.data.search.SecureDns.lastDiag,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(4.dp))
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(state.results) { result ->
                         SearchResultCard(result = result, onClick = { downloadDialogItem = result })
