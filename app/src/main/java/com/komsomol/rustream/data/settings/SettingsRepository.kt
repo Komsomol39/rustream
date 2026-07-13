@@ -27,7 +27,6 @@ class SettingsRepository @Inject constructor(
         val KEY_RUTRACKER_ENABLED = booleanPreferencesKey("rutracker_enabled")
         val KEY_KINOZAL_ENABLED   = booleanPreferencesKey("kinozal_enabled")
         val KEY_NNM_ENABLED       = booleanPreferencesKey("nnm_enabled")
-        val KEY_YTS_ENABLED       = booleanPreferencesKey("yts_enabled")
         val KEY_TPB_ENABLED     = booleanPreferencesKey("tpb_enabled")
         val KEY_NEWPIPE_ENABLED   = booleanPreferencesKey("newpipe_enabled")
         val KEY_MEDIA_FOLDERS     = stringPreferencesKey("media_folders")
@@ -40,7 +39,6 @@ class SettingsRepository @Inject constructor(
     val ruTrackerEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_RUTRACKER_ENABLED] ?: false }
     val kinozalEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_KINOZAL_ENABLED] ?: true }
     val nnmEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_NNM_ENABLED] ?: false }
-    val ytsEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_YTS_ENABLED] ?: false }
     val tpbEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_TPB_ENABLED] ?: true }
     val newpipeEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_NEWPIPE_ENABLED] ?: false }
 
@@ -55,7 +53,6 @@ class SettingsRepository @Inject constructor(
     suspend fun setRuTrackerEnabled(v: Boolean)  = context.dataStore.edit { it[KEY_RUTRACKER_ENABLED] = v }
     suspend fun setKinozalEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_KINOZAL_ENABLED] = v }
     suspend fun setNnmEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_NNM_ENABLED] = v }
-    suspend fun setYtsEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_YTS_ENABLED] = v }
     suspend fun setTpbEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_TPB_ENABLED] = v }
     suspend fun setNewpipeEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_NEWPIPE_ENABLED] = v }
 

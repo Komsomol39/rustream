@@ -63,7 +63,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val rtLoggedIn       by viewModel.ruTrackerLoggedIn.collectAsState()
     val kinozalEnabled   by viewModel.kinozalEnabled.collectAsState()
     val nnmEnabled       by viewModel.nnmEnabled.collectAsState()
-    val ytsEnabled       by viewModel.ytsEnabled.collectAsState()
     val tpbEnabled       by viewModel.tpbEnabled.collectAsState()
     val newpipeEnabled   by viewModel.newpipeEnabled.collectAsState()
     val mediaFolders     by viewModel.mediaFolders.collectAsState()
@@ -117,8 +116,6 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         SettingsCard {
             SectionLabel("Торрент-трекеры")
 
-            SourceRow(Icons.Default.Movie, "YTS", "Фильмы. У части провайдеров РФ отдаёт битые ссылки",
-                ytsEnabled, viewModel::setYtsEnabled)
             SourceRow(Icons.Default.Public, "TPB", "The Pirate Bay — всё, без входа",
                 tpbEnabled, viewModel::setTpbEnabled)
             RowDivider()

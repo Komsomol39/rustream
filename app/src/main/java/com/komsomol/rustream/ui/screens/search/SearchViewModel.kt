@@ -56,9 +56,9 @@ class SearchViewModel @Inject constructor(
         val all = listOf(
             SourceStatus("Kinozal",   settings.kinozalEnabled.first(),   settings.kinozalEnabled.first()),
             SourceStatus("RuTor",     settings.ruTorEnabled.first(),     settings.ruTorEnabled.first()),
-            SourceStatus("YTS",       settings.ytsEnabled.first(),       settings.ytsEnabled.first()),
             SourceStatus("RuTracker", settings.ruTrackerEnabled.first(), settings.ruTrackerEnabled.first() && rtCookies.isLoggedIn()),
             SourceStatus("NNM-Club",  settings.nnmEnabled.first(),       settings.nnmEnabled.first() && nnmCookies.isLoggedIn()),
+            SourceStatus("TPB",       settings.tpbEnabled.first(),       settings.tpbEnabled.first()),
         )
         _activeStatuses.value = all.filter { it.enabled }
     }

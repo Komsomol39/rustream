@@ -18,7 +18,6 @@ enum class SearchSource(val displayName: String) {
     RUTRACKER("RuTracker"),
     KINOZAL("Kinozal"),
     NNM("NNM-Club"),
-    YTS("YTS"),
     TPB("TPB")
 }
 

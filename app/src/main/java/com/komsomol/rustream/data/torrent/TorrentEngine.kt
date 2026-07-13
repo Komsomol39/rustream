@@ -112,7 +112,7 @@ class TorrentEngine @Inject constructor(
                         val id = synchronized(hashToId) { hashToId[hash] }
                         if (id != null) {
                             synchronized(idToHash) { idToHash[id] = hash }
-                            // Защита от YTS-клонов: реальный размер раздачи против
+                            // Защита от битых раздач: реальный размер против
                             // ожидаемого из поиска. Фейк с одной рекламой весит
                             // сотни КБ вместо гигабайтов — режем, если меньше 20%.
                             val expected = _downloads.value[id]?.expectedBytes ?: 0L

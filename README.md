@@ -22,7 +22,7 @@
 ## Возможности
 
 **Поиск и загрузка**
-- Торрент-поиск по нескольким трекерам сразу: YTS, RuTor, Kinozal, RuTracker, NNM-Club
+- Торрент-поиск по нескольким трекерам сразу: The Pirate Bay, RuTor, Kinozal, RuTracker, NNM-Club
 - Авторизация на приватных трекерах через встроенный WebView (куки сохраняются)
 - Скачивание magnet-ссылок и `.torrent`-файлов на встроенном движке libtorrent4j
 - Выбор отдельных файлов внутри раздачи — можно качать только нужные серии
@@ -78,7 +78,7 @@
 ```
 app/src/main/java/com/komsomol/rustream/
 ├── data/
-│   ├── search/     # провайдеры трекеров (RuTracker, NNM, Kinozal, RuTor, YTS), куки, зеркала
+│   ├── search/     # провайдеры трекеров (RuTracker, NNM, Kinozal, RuTor, TPB), куки, зеркала
 │   ├── torrent/    # TorrentEngine (libtorrent4j) и репозиторий загрузок
 │   ├── grab/       # онлайн-поиск (NewPipe) и скачивание (yt-dlp)
 │   ├── music/      # медиатека, контроллер плеера, объединение исполнителей
