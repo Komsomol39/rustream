@@ -1,6 +1,5 @@
 package com.komsomol.rustream.data.search
 
-import com.komsomol.rustream.data.torrent.TorrentEngine
 
 import android.util.Log
 import com.komsomol.rustream.domain.model.ContentCategory
@@ -34,17 +33,12 @@ class YtsProvider @Inject constructor() {
     //   yts.bz  — официальный домен API, живой
     //   yts.am, yts.lt — живые зеркала, отдают тот же подлинный хэш
     //   yts.mx — не резолвится (мёртв), yts.rs — HTTP 500, yts.do — мусор
-    // Порядок важен. movies-api.accel.li — новая официальная база API
-    // (о переезде сообщает сам ответ YTS). yts.bz — проверенный домен.
-    //
-    // yts.am и yts.lt УБРАНЫ. Сами по себе они честные (с чистой сети
-    // отдают тот же подлинный хэш), но у части провайдеров эти домены
-    // перехватываются: клон возвращает верные метаданные (название,
-    // размер) и ПОДМЕНЁННЫЙ infohash — за ним раздача с одной рекламой
-    // (~44 КБ вместо гигабайтов). Проверено сравнением хэшей.
-    private val mirrors = listOf(
-        "https://movies-api.accel.li", "https://yts.bz"
-    )
+    // ВАЖНО: только yts.bz. Диагностика на устройстве пользователя показала,
+    // что movies-api.accel.li отдаёт ФЕЙКОВЫЕ хэши (первый Sting 2024 =
+    // f998565d..., которого нет в настоящем каталоге) — то ли домен подменён
+    // у провайдера, то ли отдаёт битый индекс. yts.bz на той же сети возвращает
+    // подлинные хэши. Не возвращать accel.li без перепроверки на реальной сети РФ.
+    private val mirrors = listOf("https://yts.bz")
     private val TAG = "YTS"
 
     // YTS — только фильмы
@@ -131,10 +125,6 @@ class YtsProvider @Inject constructor() {
         }
 
         Log.d(TAG, "$base: ${results.size} results")
-        if (results.isNotEmpty()) {
-            val firstHash = TorrentEngine.extractHash(results[0].magnetUri ?: "") ?: "?"
-            SecureDns.lastDiag = "$base отдал ${results.size}, 1й hash=${firstHash.take(12)}"
-        }
         return results.sortedByDescending { it.seeders }
     }
 
