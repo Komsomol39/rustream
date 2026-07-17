@@ -107,6 +107,7 @@ class GrabRepository @Inject constructor(
     // ---------- Скачивание: yt-dlp + ffmpeg (надёжно, HLS, лучшее качество) ----------
 
     @Volatile private var ytdlReady = false
+    @Volatile private var ytdlUpdated = false
     private fun ensureYtdl() {
         if (ytdlReady) return
         synchronized(this) {
@@ -114,6 +115,20 @@ class GrabRepository @Inject constructor(
             YoutubeDL.getInstance().init(context)
             FFmpeg.getInstance().init(context)
             ytdlReady = true
+        }
+        // YouTube часто меняет плеер (SABR и пр.) — фиксы приходят в свежих
+        // сборках yt-dlp. Один раз за сессию обновляемся ДО первого скачивания
+        // (блокирующе), чтобы не ловить «android client https formats skipped».
+        if (!ytdlUpdated) {
+            synchronized(this) {
+                if (!ytdlUpdated) {
+                    try {
+                        YoutubeDL.getInstance()
+                            .updateYoutubeDL(context, YoutubeDL.UpdateChannel.NIGHTLY)
+                    } catch (_: Exception) {}
+                    ytdlUpdated = true
+                }
+            }
         }
     }
 
@@ -133,7 +148,7 @@ class GrabRepository @Inject constructor(
                 req.addOption("--no-check-certificates")
                 // Клиенты android/ios не требуют решения n-challenge через JS,
                 // который ломается на новых плеерах YouTube (found 0 n function)
-                req.addOption("--extractor-args", "youtube:player_client=tv,web_safari,android")
+                req.addOption("--extractor-args", "youtube:player_client=tv,web_safari,web")
                 if (video) {
                     // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
                     req.addOption("-f", "bestvideo+bestaudio/best")
@@ -167,7 +182,7 @@ class GrabRepository @Inject constructor(
                 val req = YoutubeDLRequest(clean)
                 req.addOption("--no-check-certificates")
                 req.addOption("--no-playlist")
-                req.addOption("--extractor-args", "youtube:player_client=tv,web_safari,android")
+                req.addOption("--extractor-args", "youtube:player_client=tv,web_safari,web")
                 val info = YoutubeDL.getInstance().getInfo(req)
                 val formats = buildFormats(info.formats ?: emptyList())
                 _formatQuery.update {
@@ -244,7 +259,7 @@ class GrabRepository @Inject constructor(
                 req.addOption("--no-mtime")
                 req.addOption("--no-playlist")
                 req.addOption("--no-check-certificates")
-                req.addOption("--extractor-args", "youtube:player_client=tv,web_safari,android")
+                req.addOption("--extractor-args", "youtube:player_client=tv,web_safari,web")
                 if (fmt.video) {
                     req.addOption("-f", fmt.formatId)
                     req.addOption("--merge-output-format", "mp4")
