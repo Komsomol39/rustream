@@ -146,9 +146,9 @@ class GrabRepository @Inject constructor(
                 // Python внутри приложения не видит системные/VPN CA — иначе
                 // self-signed certificate in chain при туннелировании трафика
                 req.addOption("--no-check-certificates")
-                // tv и android попали под DRM/SABR-эксперименты YouTube — используем
-                // веб-клиентов (web_safari устойчивее к n-challenge)
-                req.addOption("--extractor-args", "youtube:player_client=web_safari,mweb,web")
+                // android_vr и tv_embedded не требуют PO-токена и не под DRM/SABR;
+                // веб-клиенты — запасные (могут просить PO-токен/бот-чек)
+                req.addOption("--extractor-args", "youtube:player_client=android_vr,tv_embedded,web_safari,web")
                 if (video) {
                     // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
                     req.addOption("-f", "bestvideo+bestaudio/best")
@@ -182,7 +182,7 @@ class GrabRepository @Inject constructor(
                 val req = YoutubeDLRequest(clean)
                 req.addOption("--no-check-certificates")
                 req.addOption("--no-playlist")
-                req.addOption("--extractor-args", "youtube:player_client=web_safari,mweb,web")
+                req.addOption("--extractor-args", "youtube:player_client=android_vr,tv_embedded,web_safari,web")
                 val info = YoutubeDL.getInstance().getInfo(req)
                 val formats = buildFormats(info.formats ?: emptyList())
                 _formatQuery.update {
@@ -259,7 +259,7 @@ class GrabRepository @Inject constructor(
                 req.addOption("--no-mtime")
                 req.addOption("--no-playlist")
                 req.addOption("--no-check-certificates")
-                req.addOption("--extractor-args", "youtube:player_client=web_safari,mweb,web")
+                req.addOption("--extractor-args", "youtube:player_client=android_vr,tv_embedded,web_safari,web")
                 if (fmt.video) {
                     req.addOption("-f", fmt.formatId)
                     req.addOption("--merge-output-format", "mp4")
