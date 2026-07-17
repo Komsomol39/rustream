@@ -116,16 +116,19 @@ class GrabRepository @Inject constructor(
             FFmpeg.getInstance().init(context)
             ytdlReady = true
         }
-        // YouTube часто меняет плеер (SABR и пр.) — фиксы приходят в свежих
-        // сборках yt-dlp. Один раз за сессию обновляемся ДО первого скачивания
-        // (блокирующе), чтобы не ловить «android client https formats skipped».
+        // YouTube часто меняет плеер (SABR/DRM/бот-чек) — фиксы приходят в
+        // обновлениях yt-dlp. Обновляемся один раз за сессию ДО первого
+        // скачивания. STABLE, а не NIGHTLY: nightly иногда прилетает с
+        // регрессией и падает traceback'ом при запуске бинаря.
         if (!ytdlUpdated) {
             synchronized(this) {
                 if (!ytdlUpdated) {
                     try {
                         YoutubeDL.getInstance()
-                            .updateYoutubeDL(context, YoutubeDL.UpdateChannel.NIGHTLY)
-                    } catch (_: Exception) {}
+                            .updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+                    } catch (_: Exception) {
+                        // Обновление не удалось — работаем на встроенной сборке
+                    }
                     ytdlUpdated = true
                 }
             }
@@ -353,6 +356,33 @@ class GrabRepository @Inject constructor(
                 "yt-dlp уже актуален" else "✓ yt-dlp обновлён"
         } catch (e: Exception) {
             "Ошибка обновления: " + (e.message ?: "?").take(120)
+        }
+    }
+
+    // Сброс yt-dlp: удалить скачанную сборку, чтобы вернуться к встроенной
+    // в библиотеку версии. Спасает, если обновление скачало битый бинарь
+    // и он падает traceback'ом при запуске.
+    suspend fun resetYtDlp(): String = withContext(Dispatchers.IO) {
+        try {
+            // youtubedl-android хранит скачанный yt-dlp в no_backup/youtubedl-android
+            val base = java.io.File(context.noBackupFilesDir, "youtubedl-android")
+            var removed = false
+            if (base.exists()) {
+                base.walkBottomUp().forEach { f ->
+                    // Не трогаем ffmpeg и python — только пакеты yt-dlp
+                    if (f.name.contains("yt-dlp") || f.parentFile?.name == "yt-dlp" ||
+                        f.parentFile?.name == "packages") {
+                        if (f.deleteRecursively()) removed = true
+                    }
+                }
+            }
+            ytdlUpdated = false
+            ytdlReady = false
+            ensureYtdl()   // переинициализация из библиотеки
+            if (removed) "✓ yt-dlp сброшен к встроенной версии — попробуйте снова"
+            else "Скачанной сборки не найдено; переинициализировано"
+        } catch (e: Exception) {
+            "Ошибка сброса: " + (e.message ?: "?").take(120)
         }
     }
 

@@ -44,6 +44,11 @@ class GrabViewModel @Inject constructor(
         _engineMsg.value = repo.updateYtDlp()
     }
 
+    fun resetEngine() = viewModelScope.launch {
+        _engineMsg.value = "Сбрасываю yt-dlp..."
+        _engineMsg.value = repo.resetYtDlp()
+    }
+
     fun onQueryChange(q: String) { _query.value = q }
 
     fun search() {

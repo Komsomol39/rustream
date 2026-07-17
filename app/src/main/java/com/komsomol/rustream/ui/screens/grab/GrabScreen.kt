@@ -79,6 +79,7 @@ fun GrabScreen(
             Spacer(Modifier.weight(1f))
             TextButton(onClick = onOpenPaste) { Text("🔗 Ссылка") }
             TextButton(onClick = { viewModel.updateEngine() }) { Text("⟳") }
+            TextButton(onClick = { viewModel.resetEngine() }) { Text("Сброс") }
         }
         if (engineMsg != null) {
             Text(engineMsg ?: "",
