@@ -122,36 +122,35 @@ class GrabRepository @Inject constructor(
         setDl(GrabDownload(dlId, result.title, video, 0f, GrabState.RESOLVING))
         scope.launch {
             try {
-                ensureYtdl() // первый запуск распаковывает Python, ~10-20 сек
-
-                val req = YoutubeDLRequest(result.url)
-                req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
-                req.addOption("--no-mtime")
-                req.addOption("--no-playlist")
-                // Python внутри приложения не видит системные/VPN CA — иначе
-                // self-signed certificate in chain при туннелировании трафика
-                req.addOption("--no-check-certificates")
-                // Клиенты tv/web_safari обходят SABR-эксперимент YouTube,
-                // из-за которого android-клиент отдаёт битые URL (особенно для аудио).
-                req.addOption("--extractor-args", "youtube:player_client=tv,web_safari,android")
-                // WARNING'и не должны валить загрузку — только настоящие ошибки
-                req.addOption("--no-abort-on-error")
-                req.addOption("--ignore-errors")
-                if (video) {
-                    // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
-                    req.addOption("-f", "bestvideo+bestaudio/best")
-                    req.addOption("--merge-output-format", "mp4")
-                } else {
-                    // Извлечь аудио и конвертировать в настоящий mp3
-                    req.addOption("-x")
-                    req.addOption("--audio-format", "mp3")
-                    req.addOption("--audio-quality", "0")
-                }
-
+                ensureYtdl()
                 setDl(GrabDownload(dlId, result.title, video, 0f, GrabState.DOWNLOADING))
-                runYtdl(req, dlId, result.title, video)
+                // Пробуем наборы YouTube-клиентов по очереди: если один упирается
+                // в SABR/битые URL — берём следующий. Для не-YouTube хватит первого.
+                val clientSets = listOf(
+                    "tv,web_safari",
+                    "ios,mweb",
+                    "web,android",
+                    "tv_embedded"
+                )
+                var lastErr: Exception? = null
+                for ((idx, clients) in clientSets.withIndex()) {
+                    try {
+                        runYtDlp(result, video, dlId, clients)
+                        setDl(GrabDownload(dlId, result.title, video, 1f, GrabState.DONE))
+                        return@launch
+                    } catch (e: Exception) {
+                        lastErr = e
+                        Log.w(TAG, "client set " + clients + " failed: " + e.message)
+                        if (idx < clientSets.size - 1) {
+                            setDl(GrabDownload(dlId, result.title, video, 0f,
+                                GrabState.DOWNLOADING, "Пробую другой способ..."))
+                        }
+                    }
+                }
+                rawLog(result.title, lastErr ?: Exception("unknown"))
+                setDl(GrabDownload(dlId, result.title, video, 0f,
+                    GrabState.ERROR, humanError(lastErr ?: Exception("не удалось"))))
             } catch (e: Exception) {
-                if (cancelled.remove(dlId)) return@launch  // отменено пользователем
                 Log.e(TAG, "yt-dlp failed: " + e)
                 rawLog(result.title, e)
                 setDl(GrabDownload(dlId, result.title, video, 0f,
@@ -160,180 +159,30 @@ class GrabRepository @Inject constructor(
         }
     }
 
-    /** Запрос доступных вариантов качества для ссылки. Показываем плитки перед скачиванием. */
-    fun queryFormats(url: String) {
-        val clean = url.trim()
-        _formatQuery.value = FormatQuery(url = clean, title = clean.take(60), loading = true)
-        scope.launch {
-            try {
-                ensureYtdl()
-                val req = YoutubeDLRequest(clean)
-                req.addOption("--no-check-certificates")
-                req.addOption("--no-playlist")
-                req.addOption("--extractor-args", "youtube:player_client=android,ios,web")
-                val info = YoutubeDL.getInstance().getInfo(req)
-                val formats = buildFormats(info.formats ?: emptyList())
-                _formatQuery.update {
-                    it?.copy(loading = false, title = info.title ?: it.title, formats = formats)
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "queryFormats failed: " + e)
-                rawLog("format query", e)
-                _formatQuery.update { it?.copy(loading = false, error = humanError(e)) }
+    private fun runYtDlp(result: GrabResult, video: Boolean, dlId: String, clients: String) {
+        val req = YoutubeDLRequest(result.url)
+        req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
+        req.addOption("--no-mtime")
+        req.addOption("--no-playlist")
+        req.addOption("--no-check-certificates")
+        req.addOption("--extractor-args", "youtube:player_client=" + clients)
+        if (video) {
+            req.addOption("-f", "bestvideo+bestaudio/best")
+            req.addOption("--merge-output-format", "mp4")
+        } else {
+            req.addOption("-x")
+            req.addOption("--audio-format", "mp3")
+            req.addOption("--audio-quality", "0")
+        }
+        YoutubeDL.getInstance().execute(req, dlId) { progress, _, _ ->
+            if (progress >= 0f) {
+                setDl(GrabDownload(dlId, result.title, video,
+                    progress / 100f, GrabState.DOWNLOADING))
             }
         }
     }
 
-    fun dismissFormats() { _formatQuery.value = null }
-
-    /**
-     * Собирает список плиток. Видео-варианты (по одной строке на разрешение,
-     * лучшее внутри разрешения) + один аудио-вариант mp3.
-     * yt-dlp склеит выбранное видео с лучшим аудио.
-     */
-    private fun buildFormats(all: List<VideoFormat>): List<GrabFormat> {
-        val out = mutableListOf<GrabFormat>()
-
-        // Видео: берём форматы с картинкой, группируем по высоте, оставляем лучший fps/битрейт
-        val byHeight = all
-            .filter { it.vcodec != null && it.vcodec != "none" && it.height > 0 }
-            .groupBy { it.height }
-        byHeight.keys.sortedDescending().forEach { h ->
-            val best = byHeight.getValue(h).maxByOrNull { it.fps * 100_000L + it.tbr } ?: return@forEach
-            val hasAudio = best.acodec != null && best.acodec != "none"
-            // если в формате нет звука — просим yt-dlp домешать лучшее аудио
-            val fid = if (hasAudio) best.formatId!! else best.formatId + "+bestaudio"
-            val fps = if (best.fps >= 50) best.fps.toString() else ""
-            val ext = (best.ext ?: "mp4").uppercase()
-            val size = pickSize(best)
-            out.add(GrabFormat(
-                formatId = fid,
-                label    = "${h}p$fps • $ext",
-                detail   = size,
-                video    = true
-            ))
-        }
-        // Фолбэк, если разрешения не распарсились
-        if (out.none { it.video }) {
-            out.add(GrabFormat("bestvideo+bestaudio/best", "Лучшее видео", null, true))
-        }
-
-        // Аудио: один пункт mp3 (yt-dlp сам выберет лучший источник и перекодирует)
-        out.add(GrabFormat("bestaudio", "MP3 • лучшее качество", "конвертация", false))
-        return out
-    }
-
-    private fun pickSize(f: VideoFormat): String? {
-        val bytes = if (f.fileSize > 0) f.fileSize
-                    else if (f.fileSizeApproximate > 0) f.fileSizeApproximate else 0L
-        if (bytes <= 0) return null
-        return "~" + when {
-            bytes >= 1_073_741_824 -> "%.1f ГБ".format(bytes / 1_073_741_824.0)
-            bytes >= 1_048_576     -> "%.0f МБ".format(bytes / 1_048_576.0)
-            else                   -> "%.0f КБ".format(bytes / 1024.0)
-        }.replace('.', ',')
-    }
-
-    /** Скачивание конкретного выбранного варианта */
-    fun startFormat(url: String, title: String, fmt: GrabFormat) {
-        val dlId = url + "#" + fmt.formatId
-        setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.RESOLVING))
-        scope.launch {
-            try {
-                ensureYtdl()
-                setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.DOWNLOADING))
-                val req = YoutubeDLRequest(url)
-                req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
-                req.addOption("--no-mtime")
-                req.addOption("--no-playlist")
-                req.addOption("--no-check-certificates")
-                req.addOption("--extractor-args", "youtube:player_client=android,ios,web")
-                if (fmt.video) {
-                    req.addOption("-f", fmt.formatId)
-                    req.addOption("--merge-output-format", "mp4")
-                } else {
-                    req.addOption("-f", fmt.formatId)
-                    req.addOption("-x")
-                    req.addOption("--audio-format", "mp3")
-                    req.addOption("--audio-quality", "0")
-                }
-                runYtdl(req, dlId, title, fmt.video)
-            } catch (e: Exception) {
-                if (cancelled.remove(dlId)) return@launch
-                Log.e(TAG, "startFormat failed: " + e)
-                rawLog(title, e)
-                setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.ERROR, humanError(e)))
-            }
-        }
-    }
-
-    // Общий прогон yt-dlp с прогрессом и фазой обработки (склейка/перекодирование).
-    // 100% скачивания + строка про merge/ffmpeg -> состояние PROCESSING.
-    private fun runYtdl(req: YoutubeDLRequest, dlId: String, title: String, video: Boolean) {
-        YoutubeDL.getInstance().execute(req, dlId) { progress, etaSec, line ->
-            val processing = line != null &&
-                (line.contains("[Merger]") || line.contains("[ExtractAudio]") ||
-                 line.contains("[ffmpeg]") || line.contains("[VideoConvertor]"))
-            when {
-                processing -> setDl(GrabDownload(dlId, title, video, 1f, GrabState.PROCESSING))
-                progress >= 0f -> setDl(GrabDownload(dlId, title, video,
-                    progress / 100f, GrabState.DOWNLOADING,
-                    detail = formatDetail(progress, etaSec, line)))
-            }
-        }
-        setDl(GrabDownload(dlId, title, video, 1f, GrabState.DONE))
-        notifyDone(title, video)
-    }
-
-    // Уведомление «скачано» — чтобы не сидеть в приложении во время долгой загрузки
-    private fun notifyDone(title: String, video: Boolean) {
-        try {
-            val nm = context.getSystemService(android.app.NotificationManager::class.java)
-            nm.createNotificationChannel(android.app.NotificationChannel(
-                "grab", "Загрузки", android.app.NotificationManager.IMPORTANCE_LOW))
-            val open = android.app.PendingIntent.getActivity(
-                context, 0,
-                android.content.Intent(context, com.komsomol.rustream.MainActivity::class.java)
-                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                android.app.PendingIntent.FLAG_IMMUTABLE)
-            nm.notify(title.hashCode() and 0xffff,
-                androidx.core.app.NotificationCompat.Builder(context, "grab")
-                    .setSmallIcon(com.komsomol.rustream.R.drawable.ic_notification)
-                    .setLargeIcon(appIconBitmap())
-                    .setContentTitle(if (video) "Видео скачано" else "Аудио скачано")
-                    .setContentText(title)
-                    .setContentIntent(open)
-                    .setAutoCancel(true)
-                    .build())
-        } catch (_: Exception) {}
-    }
-
-    // Полноцветная иконка приложения как крупная картинка в уведомлении
-    private fun appIconBitmap(): android.graphics.Bitmap? = try {
-        val d = context.packageManager.getApplicationIcon(context.packageName)
-        val bmp = android.graphics.Bitmap.createBitmap(
-            192, 192, android.graphics.Bitmap.Config.ARGB_8888)
-        val c = android.graphics.Canvas(bmp)
-        d.setBounds(0, 0, c.width, c.height)
-        d.draw(c)
-        bmp
-    } catch (_: Exception) { null }
-
-    // Тихое автообновление при старте приложения (не блокирует ничего)
-    fun autoUpdateSilently() {
-        scope.launch {
-            try {
-                ensureYtdl()
-                YoutubeDL.getInstance()
-                    .updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
-                Log.d(TAG, "yt-dlp auto-update done")
-            } catch (e: Exception) {
-                Log.w(TAG, "yt-dlp auto-update skipped: " + e.message)
-            }
-        }
-    }
-
-    // Обновить yt-dlp без пересборки приложения (когда YouTube что-то сломает)
+        // Обновить yt-dlp без пересборки приложения (когда YouTube что-то сломает)
     suspend fun updateYtDlp(): String = withContext(Dispatchers.IO) {
         try {
             ensureYtdl()
@@ -433,6 +282,8 @@ class GrabRepository @Inject constructor(
                 "Соединение оборвалось по таймауту — сервис может замедляться провайдером"
             e is java.net.UnknownHostException ->
                 "Сервер не найден — проверь интернет или включи VPN"
+            m.contains("SABR") || m.contains("missing a URL") ->
+                "YouTube ограничил доступ к этому ролику. Обнови yt-dlp (кнопка ⟳) или попробуй позже"
             else -> m.take(200).ifBlank { "неизвестная ошибка" }
         }
     }
