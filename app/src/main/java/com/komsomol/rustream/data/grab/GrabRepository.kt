@@ -145,7 +145,11 @@ class GrabRepository @Inject constructor(
                 val req = YoutubeDLRequest(result.url)
                 req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
                 req.addOption("--no-mtime")
-                req.addOption("--no-playlist")
+                // Альбом/плейлист Яндекса — качаем все треки; иначе одиночный элемент
+                val isYandexAlbum = result.url.contains("music.yandex.") &&
+                    (result.url.contains("/album/") || result.url.contains("/playlists/")) &&
+                    !result.url.contains("/track/")
+                if (!isYandexAlbum) req.addOption("--no-playlist")
                 // Python внутри приложения не видит системные/VPN CA — иначе
                 // self-signed certificate in chain при туннелировании трафика
                 req.addOption("--no-check-certificates")
@@ -475,6 +479,11 @@ class GrabRepository @Inject constructor(
                 "Сервер не найден — проверь интернет или включи VPN"
             m.contains("SABR") || m.contains("missing a URL") ->
                 "YouTube ограничил этот ролик. Нажми ⟳ (обновить yt-dlp) вверху и повтори"
+            // Краш экстрактора Яндекс Музыки: API изменился, чинится только
+            // обновлением yt-dlp (нажми ⟳). Ссылка на трек надёжнее альбома.
+            m.contains("yandexmusic") || m.contains("'bool' is not iterable") ->
+                "Яндекс Музыка временно не поддерживается (изменился их API). " +
+                "Попробуй ⟳ обновить, ссылку на отдельный трек, или скачай позже"
             else -> m.take(200).ifBlank { "неизвестная ошибка" }
         }
     }
