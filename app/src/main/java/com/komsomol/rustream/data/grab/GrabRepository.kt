@@ -131,9 +131,12 @@ class GrabRepository @Inject constructor(
                 // Python внутри приложения не видит системные/VPN CA — иначе
                 // self-signed certificate in chain при туннелировании трафика
                 req.addOption("--no-check-certificates")
-                // Клиенты android/ios не требуют решения n-challenge через JS,
-                // который ломается на новых плеерах YouTube (found 0 n function)
-                req.addOption("--extractor-args", "youtube:player_client=android,ios,web")
+                // Клиенты tv/web_safari обходят SABR-эксперимент YouTube,
+                // из-за которого android-клиент отдаёт битые URL (особенно для аудио).
+                req.addOption("--extractor-args", "youtube:player_client=tv,web_safari,android")
+                // WARNING'и не должны валить загрузку — только настоящие ошибки
+                req.addOption("--no-abort-on-error")
+                req.addOption("--ignore-errors")
                 if (video) {
                     // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
                     req.addOption("-f", "bestvideo+bestaudio/best")
