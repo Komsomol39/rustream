@@ -146,9 +146,9 @@ class GrabRepository @Inject constructor(
                 // Python внутри приложения не видит системные/VPN CA — иначе
                 // self-signed certificate in chain при туннелировании трафика
                 req.addOption("--no-check-certificates")
-                // android_vr и tv_embedded не требуют PO-токена и не под DRM/SABR;
-                // веб-клиенты — запасные (могут просить PO-токен/бот-чек)
-                req.addOption("--extractor-args", "youtube:player_client=android_vr,tv_embedded,web_safari,web")
+                // Клиентов НЕ задаём: nightly-сборки yt-dlp сами ежедневно
+                // перенастраивают дефолтный набор под текущие меры YouTube
+                // (SABR/DRM/бот-чек) — любой зашитый список устаревает быстрее
                 if (video) {
                     // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
                     req.addOption("-f", "bestvideo+bestaudio/best")
@@ -182,7 +182,6 @@ class GrabRepository @Inject constructor(
                 val req = YoutubeDLRequest(clean)
                 req.addOption("--no-check-certificates")
                 req.addOption("--no-playlist")
-                req.addOption("--extractor-args", "youtube:player_client=android_vr,tv_embedded,web_safari,web")
                 val info = YoutubeDL.getInstance().getInfo(req)
                 val formats = buildFormats(info.formats ?: emptyList())
                 _formatQuery.update {
@@ -259,7 +258,6 @@ class GrabRepository @Inject constructor(
                 req.addOption("--no-mtime")
                 req.addOption("--no-playlist")
                 req.addOption("--no-check-certificates")
-                req.addOption("--extractor-args", "youtube:player_client=android_vr,tv_embedded,web_safari,web")
                 if (fmt.video) {
                     req.addOption("-f", fmt.formatId)
                     req.addOption("--merge-output-format", "mp4")
