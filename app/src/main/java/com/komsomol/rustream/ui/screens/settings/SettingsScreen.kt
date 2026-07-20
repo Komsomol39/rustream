@@ -311,7 +311,6 @@ private fun SourceRow(
 }
 
 @Composable
-@Composable
 private fun YtAccountRow(loggedIn: Boolean, onLogin: () -> Unit, onLogout: () -> Unit) {
     Column {
         RowItem(
