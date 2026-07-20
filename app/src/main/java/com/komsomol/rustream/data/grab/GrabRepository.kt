@@ -170,11 +170,18 @@ class GrabRepository @Inject constructor(
                 // мягкие обходы бот-проверки YouTube (см. addYtOptions)
                 addYtOptions(req)
                 if (video) {
-                    // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
-                    req.addOption("-f", "bestvideo+bestaudio/best")
+                    // Предпочитаем форматы, отдающиеся обычным https (protocol=https),
+                    // иначе yt-dlp может выбрать SABR-поток и упасть с
+                    // «Did not get any data blocks». Фолбэки — от строгого к любому.
+                    req.addOption("-S", "proto:https")
+                    req.addOption("-f",
+                        "bv*[protocol^=http]+ba[protocol^=http]/b[protocol^=http]/bv*+ba/b")
                     req.addOption("--merge-output-format", "mp4")
                 } else {
-                    // Извлечь аудио и конвертировать в настоящий mp3
+                    // Извлечь аудио и конвертировать в настоящий mp3.
+                    // https-формат в приоритете — иначе SABR-поток даёт
+                    // «Did not get any data blocks»
+                    req.addOption("-f", "ba[protocol^=http]/ba/b")
                     req.addOption("-x")
                     req.addOption("--audio-format", "mp3")
                     req.addOption("--audio-quality", "0")
