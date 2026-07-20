@@ -343,6 +343,7 @@ private fun YtAccountRow(loggedIn: Boolean, onLogin: () -> Unit, onLogout: () ->
     }
 }
 
+@Composable
 private fun AuthSourceRow(
     icon: ImageVector, name: String, loggedIn: Boolean, enabled: Boolean,
     onToggle: (Boolean) -> Unit, onLogin: () -> Unit, onLogout: () -> Unit
