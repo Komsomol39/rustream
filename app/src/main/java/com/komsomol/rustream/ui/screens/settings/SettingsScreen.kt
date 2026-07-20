@@ -68,6 +68,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val mediaFolders     by viewModel.mediaFolders.collectAsState()
     val nnmLoggedIn      by viewModel.nnmLoggedIn.collectAsState()
     val kinozalLoggedIn  by viewModel.kinozalLoggedIn.collectAsState()
+    val youtubeLoggedIn  by viewModel.youtubeLoggedIn.collectAsState()
 
     val rtLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_OK) viewModel.onRuTrackerLoginSuccess()
@@ -77,6 +78,9 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     }
     val kinozalLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (it.resultCode == Activity.RESULT_OK) viewModel.onKinozalLoginSuccess()
+    }
+    val ytLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode == Activity.RESULT_OK) viewModel.onYoutubeLoginSuccess()
     }
 
     Column(
@@ -110,6 +114,12 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             SourceRow(Icons.Default.Public, "NewPipe / yt-dlp",
                 "YouTube, SoundCloud и ещё сотни сайтов",
                 newpipeEnabled, viewModel::setNewpipeEnabled)
+            RowDivider()
+            YtAccountRow(
+                loggedIn = youtubeLoggedIn,
+                onLogin = { ytLauncher.launch(Intent(context, YoutubeLoginActivity::class.java)) },
+                onLogout = viewModel::logoutYoutube
+            )
         }
 
         // --- Торрент-трекеры ---
@@ -301,6 +311,39 @@ private fun SourceRow(
 }
 
 @Composable
+@Composable
+private fun YtAccountRow(loggedIn: Boolean, onLogin: () -> Unit, onLogout: () -> Unit) {
+    Column {
+        RowItem(
+            icon = Icons.Default.Login,
+            title = "Аккаунт YouTube",
+            subtitle = if (loggedIn)
+                "Вход выполнен — обходит «подтвердите, что вы не робот»"
+            else "Войдите, если YouTube просит подтвердить, что вы не робот"
+        ) {}
+        Spacer(Modifier.height(6.dp))
+        Row(
+            Modifier.padding(start = 54.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (loggedIn) {
+                Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+                Text("Вход выполнен", style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.weight(1f))
+                OutlinedButton(onClick = onLogout) {
+                    Icon(Icons.Default.Logout, null); Spacer(Modifier.width(6.dp)); Text("Выйти")
+                }
+            } else {
+                Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Login, null)
+                    Spacer(Modifier.width(8.dp)); Text("Войти в YouTube")
+                }
+            }
+        }
+    }
+}
+
 private fun AuthSourceRow(
     icon: ImageVector, name: String, loggedIn: Boolean, enabled: Boolean,
     onToggle: (Boolean) -> Unit, onLogin: () -> Unit, onLogout: () -> Unit

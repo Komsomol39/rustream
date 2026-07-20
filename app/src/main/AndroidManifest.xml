@@ -39,6 +39,8 @@
             android:exported="false" android:theme="@style/Theme.RuStream" />
         <activity android:name=".ui.screens.settings.KinozalLoginActivity"
             android:exported="false" android:theme="@style/Theme.RuStream" />
+        <activity android:name=".ui.screens.settings.YoutubeLoginActivity"
+            android:exported="false" android:theme="@style/Theme.RuStream" />
 
         <service
             android:name=".service.TorrentService"

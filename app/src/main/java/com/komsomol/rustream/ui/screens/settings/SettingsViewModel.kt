@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.komsomol.rustream.data.search.KinozalCookieStore
 import com.komsomol.rustream.data.search.NnmCookieStore
 import com.komsomol.rustream.data.search.RuTrackerCookieStore
+import com.komsomol.rustream.data.search.YoutubeCookieStore
 import com.komsomol.rustream.data.settings.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,8 @@ class SettingsViewModel @Inject constructor(
     private val repo: SettingsRepository,
     private val rtCookies: RuTrackerCookieStore,
     private val nnmCookies: NnmCookieStore,
-    private val kinozalCookies: KinozalCookieStore
+    private val kinozalCookies: KinozalCookieStore,
+    private val ytCookies: YoutubeCookieStore
 ) : ViewModel() {
 
     val darkTheme        = repo.darkTheme.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
@@ -44,6 +46,9 @@ class SettingsViewModel @Inject constructor(
     private val _kinozalLoggedIn = MutableStateFlow(kinozalCookies.isLoggedIn())
     val kinozalLoggedIn: StateFlow<Boolean> = _kinozalLoggedIn.asStateFlow()
 
+    private val _ytLoggedIn = MutableStateFlow(ytCookies.isLoggedIn())
+    val youtubeLoggedIn: StateFlow<Boolean> = _ytLoggedIn.asStateFlow()
+
     fun setDarkTheme(v: Boolean)        = viewModelScope.launch { repo.setDarkTheme(v) }
     fun setAutoUpdateCheck(v: Boolean)  = viewModelScope.launch { repo.setAutoUpdateCheck(v) }
     fun setRuTorEnabled(v: Boolean)     = viewModelScope.launch { repo.setRuTorEnabled(v) }
@@ -58,6 +63,8 @@ class SettingsViewModel @Inject constructor(
 
     fun onRuTrackerLoginSuccess() { _rtLoggedIn.value = rtCookies.isLoggedIn() }
     fun onKinozalLoginSuccess() { _kinozalLoggedIn.value = kinozalCookies.isLoggedIn() }
+    fun onYoutubeLoginSuccess() { _ytLoggedIn.value = ytCookies.isLoggedIn() }
+    fun logoutYoutube() { ytCookies.clearCookies(); _ytLoggedIn.value = false }
     fun logoutKinozal() { kinozalCookies.clearCookies(); _kinozalLoggedIn.value = false }
     fun onNnmLoginSuccess()       { _nnmLoggedIn.value = nnmCookies.isLoggedIn() }
 

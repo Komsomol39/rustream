@@ -40,7 +40,8 @@ import javax.inject.Singleton
 @Singleton
 class GrabRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val engine: TorrentEngine
+    private val engine: TorrentEngine,
+    private val ytCookies: com.komsomol.rustream.data.search.YoutubeCookieStore
 ) {
     private val TAG = "GrabRepo"
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -146,6 +147,8 @@ class GrabRepository @Inject constructor(
         req.addOption("--no-check-certificates")
         req.addOption("--extractor-retries", "3")
         req.addOption("--extractor-args", "youtube:formats=missing_pot")
+        // Куки залогиненного аккаунта — снимают «Sign in to confirm you're not a bot»
+        ytCookies.cookieFilePathOrNull()?.let { req.addOption("--cookies", it) }
     }
 
     fun startDownload(result: GrabResult, video: Boolean) {
