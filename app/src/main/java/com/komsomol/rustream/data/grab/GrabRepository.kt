@@ -117,15 +117,14 @@ class GrabRepository @Inject constructor(
             ytdlReady = true
         }
         // YouTube часто меняет плеер (SABR/DRM/бот-чек) — фиксы приходят в
-        // обновлениях yt-dlp. Обновляемся один раз за сессию ДО первого
-        // скачивания. STABLE, а не NIGHTLY: nightly иногда прилетает с
-        // регрессией и падает traceback'ом при запуске бинаря.
+        // обновлениях yt-dlp. MASTER-канал: свежее STABLE (там та же версия,
+        // что вшита в библиотеку — «обновлять нечего»), но стабильнее NIGHTLY.
         if (!ytdlUpdated) {
             synchronized(this) {
                 if (!ytdlUpdated) {
                     try {
                         YoutubeDL.getInstance()
-                            .updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+                            .updateYoutubeDL(context, YoutubeDL.UpdateChannel.MASTER)
                     } catch (_: Exception) {
                         // Обновление не удалось — работаем на встроенной сборке
                     }
@@ -342,7 +341,7 @@ class GrabRepository @Inject constructor(
             try {
                 ensureYtdl()
                 YoutubeDL.getInstance()
-                    .updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+                    .updateYoutubeDL(context, YoutubeDL.UpdateChannel.MASTER)
                 Log.d(TAG, "yt-dlp auto-update done")
             } catch (e: Exception) {
                 Log.w(TAG, "yt-dlp auto-update skipped: " + e.message)
@@ -350,14 +349,22 @@ class GrabRepository @Inject constructor(
         }
     }
 
-    // Обновить yt-dlp без пересборки приложения (когда YouTube что-то сломает)
+    // Обновить yt-dlp без пересборки приложения (когда YouTube что-то сломает).
+    // MASTER свежее STABLE (там версия = вшитой, «обновлять нечего»); если
+    // master не дал апдейта — пробуем nightly (самый свежий обход мер YouTube).
     suspend fun updateYtDlp(): String = withContext(Dispatchers.IO) {
         try {
             ensureYtdl()
-            val status = YoutubeDL.getInstance()
-                .updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
+            var status = YoutubeDL.getInstance()
+                .updateYoutubeDL(context, YoutubeDL.UpdateChannel.MASTER)
+            if (status == YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE) {
+                status = YoutubeDL.getInstance()
+                    .updateYoutubeDL(context, YoutubeDL.UpdateChannel.NIGHTLY)
+            }
+            val ver = YoutubeDL.getInstance().versionName(context)
+                ?: YoutubeDL.getInstance().version(context) ?: "?"
             if (status == YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE)
-                "yt-dlp уже актуален" else "✓ yt-dlp обновлён"
+                "yt-dlp актуален ($ver)" else "✓ yt-dlp обновлён → $ver"
         } catch (e: Exception) {
             "Ошибка обновления: " + (e.message ?: "?").take(120)
         }
@@ -382,8 +389,23 @@ class GrabRepository @Inject constructor(
             }
             ytdlUpdated = false
             ytdlReady = false
+            // Сбрасываем маркеры версии yt-dlp в SharedPrefs библиотеки —
+            // иначе после удаления бинаря checkForUpdate решит «версия свежая»
+            // и заново ничего не скачает
+            try {
+                context.getSharedPreferences("youtubedl-android", android.content.Context.MODE_PRIVATE)
+                    .edit().remove("dlpVersion").remove("dlpVersionName").apply()
+            } catch (_: Exception) {}
             ensureYtdl()   // переинициализация из библиотеки
-            if (removed) "✓ yt-dlp сброшен к встроенной версии — попробуйте снова"
+            // Сразу пробуем поставить свежую сборку взамен удалённой
+            val put = try {
+                YoutubeDL.getInstance()
+                    .updateYoutubeDL(context, YoutubeDL.UpdateChannel.MASTER)
+                YoutubeDL.getInstance().versionName(context)
+                    ?: YoutubeDL.getInstance().version(context)
+            } catch (_: Exception) { null }
+            if (put != null) "✓ yt-dlp переустановлен → $put"
+            else if (removed) "✓ yt-dlp сброшен к встроенной версии — попробуйте снова"
             else "Скачанной сборки не найдено; переинициализировано"
         } catch (e: Exception) {
             "Ошибка сброса: " + (e.message ?: "?").take(120)
