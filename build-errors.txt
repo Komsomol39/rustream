@@ -1,10 +1,8 @@
 BUILD FAILED
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:314:1 This annotation is not repeatable.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:347:13 Functions which invoke @Composable functions must be marked with the @Composable annotation
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:351:5 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:314:1 This annotation is not repeatable.
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:347:13 Functions which invoke @Composable functions must be marked with the @Composable annotation
-e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:351:5 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:346:13 Functions which invoke @Composable functions must be marked with the @Composable annotation
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:350:5 @Composable invocations can only happen from the context of a @Composable function
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:346:13 Functions which invoke @Composable functions must be marked with the @Composable annotation
+e: file:///home/runner/work/rustream/rustream/app/src/main/java/com/komsomol/rustream/ui/screens/settings/SettingsScreen.kt:350:5 @Composable invocations can only happen from the context of a @Composable function
 --- LAST 30 LINES ---
 1: Task failed with an exception.
 -----------
@@ -34,5 +32,5 @@ Execution failed for task ':app:compileReleaseKotlin'.
 > Get more help at https://help.gradle.org.
 ==============================================================================
 
-BUILD FAILED in 5m 48s
-69 actionable tasks: 65 executed, 4 from cache
+BUILD FAILED in 5m 47s
+59 actionable tasks: 55 executed, 4 from cache
