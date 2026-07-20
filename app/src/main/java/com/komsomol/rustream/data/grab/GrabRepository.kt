@@ -134,6 +134,20 @@ class GrabRepository @Inject constructor(
         }
     }
 
+    /**
+     * Общие опции против бот-проверки YouTube без куки:
+     * - retries: часть бот-чеков временные, проходят со 2-3 попытки
+     * - formats=missing_pot: не выбрасывать форматы, требующие PO-токена
+     *   (свежий yt-dlp сам добывает токен web-клиентом; без этого форматы
+     *   молча пропускаются и получается «нет форматов»/бот-чек)
+     * Клиентов НЕ фиксируем — nightly сам выбирает рабочий набор.
+     */
+    private fun addYtOptions(req: YoutubeDLRequest) {
+        req.addOption("--no-check-certificates")
+        req.addOption("--extractor-retries", "3")
+        req.addOption("--extractor-args", "youtube:formats=missing_pot")
+    }
+
     fun startDownload(result: GrabResult, video: Boolean) {
         val dlId = result.url + (if (video) "#v" else "#a")
         setDl(GrabDownload(dlId, result.title, video, 0f, GrabState.RESOLVING))
@@ -149,12 +163,9 @@ class GrabRepository @Inject constructor(
                     (result.url.contains("/album/") || result.url.contains("/playlists/")) &&
                     !result.url.contains("/track/")
                 if (!isYandexAlbum) req.addOption("--no-playlist")
-                // Python внутри приложения не видит системные/VPN CA — иначе
-                // self-signed certificate in chain при туннелировании трафика
-                req.addOption("--no-check-certificates")
-                // Клиентов НЕ задаём: nightly-сборки yt-dlp сами ежедневно
-                // перенастраивают дефолтный набор под текущие меры YouTube
-                // (SABR/DRM/бот-чек) — любой зашитый список устаревает быстрее
+                // Python внутри приложения не видит системные/VPN CA, плюс
+                // мягкие обходы бот-проверки YouTube (см. addYtOptions)
+                addYtOptions(req)
                 if (video) {
                     // Лучшее видео + лучшее аудио, склейка ffmpeg в mp4
                     req.addOption("-f", "bestvideo+bestaudio/best")
@@ -186,7 +197,7 @@ class GrabRepository @Inject constructor(
             try {
                 ensureYtdl()
                 val req = YoutubeDLRequest(clean)
-                req.addOption("--no-check-certificates")
+                addYtOptions(req)
                 req.addOption("--no-playlist")
                 val info = YoutubeDL.getInstance().getInfo(req)
                 val formats = buildFormats(info.formats ?: emptyList())
@@ -263,7 +274,7 @@ class GrabRepository @Inject constructor(
                 req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
                 req.addOption("--no-mtime")
                 req.addOption("--no-playlist")
-                req.addOption("--no-check-certificates")
+                addYtOptions(req)
                 if (fmt.video) {
                     req.addOption("-f", fmt.formatId)
                     req.addOption("--merge-output-format", "mp4")
