@@ -1,5 +1,6 @@
 package com.komsomol.rustream.player
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -69,6 +70,13 @@ class PlayerActivity : ComponentActivity() {
             // Сохраняем ДО finish(), пока плеер ещё жив
             setOnClickListener { savePosition(); finish() }
         }
+        val shareBtn = android.widget.ImageButton(this).apply {
+            setImageResource(android.R.drawable.ic_menu_share)
+            background = null
+            alpha = 0.6f
+            setColorFilter(android.graphics.Color.WHITE)
+            setOnClickListener { shareVideo() }
+        }
         val root = android.widget.FrameLayout(this)
         root.addView(view, android.widget.FrameLayout.LayoutParams(
             android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
@@ -78,11 +86,16 @@ class PlayerActivity : ComponentActivity() {
         root.addView(backBtn, android.widget.FrameLayout.LayoutParams(sz, sz).apply {
             leftMargin = d; topMargin = d
         })
+        root.addView(shareBtn, android.widget.FrameLayout.LayoutParams(sz, sz).apply {
+            gravity = android.view.Gravity.TOP or android.view.Gravity.END
+            rightMargin = d; topMargin = d
+        })
         setContentView(root)
 
         view.setControllerVisibilityListener(
             androidx.media3.ui.PlayerView.ControllerVisibilityListener { visibility ->
                 backBtn.visibility = visibility
+                shareBtn.visibility = visibility
             })
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -115,6 +128,45 @@ class PlayerActivity : ComponentActivity() {
         savePosition()
         player?.release()
         player = null
+    }
+
+    /**
+     * Поделиться текущим видеофайлом: отдаём его другим приложениям через
+     * FileProvider (напрямую file:// нельзя — FileUriExposedException).
+     * Плеер ставим на паузу, чтобы звук не играл поверх чужого приложения.
+     */
+    private fun shareVideo() {
+        try {
+            val file = File(videoPath)
+            if (!file.exists()) {
+                android.widget.Toast.makeText(this, "Файл не найден",
+                    android.widget.Toast.LENGTH_SHORT).show()
+                return
+            }
+            player?.pause()
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this, "$packageName.fileprovider", file)
+            val mime = when (file.extension.lowercase()) {
+                "mp4", "m4v" -> "video/mp4"
+                "mkv" -> "video/x-matroska"
+                "webm" -> "video/webm"
+                "avi" -> "video/x-msvideo"
+                "mp3" -> "audio/mpeg"
+                "m4a" -> "audio/mp4"
+                else -> "video/*"
+            }
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = mime
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, file.nameWithoutExtension)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(send, "Отправить видео"))
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this,
+                "Не удалось поделиться: ${e.message}",
+                android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun positionPrefs() =
