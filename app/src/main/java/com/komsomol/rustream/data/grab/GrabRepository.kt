@@ -126,8 +126,10 @@ class GrabRepository @Inject constructor(
                     try {
                         YoutubeDL.getInstance()
                             .updateYoutubeDL(context, YoutubeDL.UpdateChannel.MASTER)
-                    } catch (_: Exception) {
-                        // Обновление не удалось — работаем на встроенной сборке
+                    } catch (e: Exception) {
+                        // Обновление не удалось — работаем на встроенной сборке.
+                        // Логируем: именно молчание тут скрывало «yt-dlp не обновляется»
+                        Log.w(TAG, "yt-dlp update failed: " + e.message)
                     }
                     ytdlUpdated = true
                 }

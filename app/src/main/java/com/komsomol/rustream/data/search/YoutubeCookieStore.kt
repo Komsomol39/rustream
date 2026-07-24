@@ -3,8 +3,12 @@ package com.komsomol.rustream.data.search
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.komsomol.rustream.data.settings.SecretCipher
 import com.komsomol.rustream.data.settings.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -20,9 +24,29 @@ import javax.inject.Singleton
  */
 @Singleton
 class YoutubeCookieStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val cipher: SecretCipher
 ) {
     @Volatile private var cachedCookies: String? = null
+
+    init { warmCache() }
+
+    /**
+     * Прогрев кэша в фоне. Куки читаются на каждый запрос, а чтение DataStore
+     * блокирующее — после прогрева обращения берут значение из памяти и
+     * не задерживают поток UI.
+     */
+    private fun warmCache() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val v = context.dataStore.data
+                    .map { cipher.decrypt(it[KEY_COOKIES] ?: "") }.first()
+                // не перетираем значение, уже записанное свежим логином
+                if (cachedCookies == null) cachedCookies = v
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     companion object {
         private val KEY_COOKIES = stringPreferencesKey("youtube_webview_cookies")
@@ -32,14 +56,14 @@ class YoutubeCookieStore @Inject constructor(
     }
 
     fun saveCookies(rawCookies: String) {
-        runBlocking { context.dataStore.edit { it[KEY_COOKIES] = rawCookies } }
+        runBlocking { context.dataStore.edit { it[KEY_COOKIES] = cipher.encrypt(rawCookies) } }
         cachedCookies = rawCookies
         writeNetscapeFile(rawCookies)
     }
 
     fun getRawCookies(): String =
         cachedCookies ?: runBlocking {
-            context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first()
+            context.dataStore.data.map { cipher.decrypt(it[KEY_COOKIES] ?: "") }.first()
         }.also { cachedCookies = it }
 
     /** Залогинен, если есть куки сессии Google (SID/SAPISID и т.п.) */
@@ -88,7 +112,9 @@ class YoutubeCookieStore @Inject constructor(
                 }
             }
             cookieFile().writeText(sb.toString())
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            // Без файла куки yt-dlp снова упрётся в бот-проверку — это важно видеть
+            android.util.Log.w("YtCookies", "cookies.txt write failed: " + e.message)
         }
     }
 }

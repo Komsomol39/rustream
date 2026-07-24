@@ -3,8 +3,12 @@ package com.komsomol.rustream.data.search
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.komsomol.rustream.data.settings.SecretCipher
 import com.komsomol.rustream.data.settings.dataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
@@ -16,12 +20,32 @@ import javax.inject.Singleton
 
 @Singleton
 class RuTrackerCookieStore @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val cipher: SecretCipher
 ) : CookieJar {
 
     // Кэш в памяти: куки читаются на каждый HTTP-запрос,
     // блокирующее чтение DataStore каждый раз — лишнее
     @Volatile private var cachedCookies: String? = null
+
+    init { warmCache() }
+
+    /**
+     * Прогрев кэша в фоне. Куки читаются на каждый запрос, а чтение DataStore
+     * блокирующее — после прогрева обращения берут значение из памяти и
+     * не задерживают поток UI.
+     */
+    private fun warmCache() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val v = context.dataStore.data
+                    .map { cipher.decrypt(it[KEY_COOKIES] ?: "") }.first()
+                // не перетираем значение, уже записанное свежим логином
+                if (cachedCookies == null) cachedCookies = v
+            } catch (_: Exception) {
+            }
+        }
+    }
     @Volatile private var cachedMirror: String? = null
 
     companion object {
@@ -32,7 +56,7 @@ class RuTrackerCookieStore @Inject constructor(
     fun saveCookies(rawCookies: String, mirror: String = "https://rutracker.net") {
         runBlocking {
             context.dataStore.edit {
-                it[KEY_COOKIES] = rawCookies
+                it[KEY_COOKIES] = cipher.encrypt(rawCookies)
                 it[KEY_MIRROR]  = mirror
             }
         }
@@ -55,7 +79,7 @@ class RuTrackerCookieStore @Inject constructor(
 
     private fun rawCookies(): String =
         cachedCookies ?: runBlocking {
-            context.dataStore.data.map { it[KEY_COOKIES] ?: "" }.first()
+            context.dataStore.data.map { cipher.decrypt(it[KEY_COOKIES] ?: "") }.first()
         }.also { cachedCookies = it }
 
     private fun isValidSession(raw: String): Boolean {
