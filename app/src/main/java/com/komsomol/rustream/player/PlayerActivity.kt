@@ -24,6 +24,9 @@ class PlayerActivity : ComponentActivity() {
 
     private var player: ExoPlayer? = null
     private var videoPath: String = ""
+    private var playerView: PlayerView? = null
+    private var pipBackBtn: android.widget.ImageButton? = null
+    private var pipShareBtn: android.widget.ImageButton? = null
 
     // Последняя валидная позиция и длительность, обновляются во время игры.
     // Нужны потому, что при finish() ExoPlayer может успеть сброситься в 0.
@@ -58,6 +61,7 @@ class PlayerActivity : ComponentActivity() {
         player = p
 
         val view = PlayerView(this)
+        playerView = view
         view.player = p
         view.keepScreenOn = true
         view.setShowSubtitleButton(true)
@@ -91,6 +95,19 @@ class PlayerActivity : ComponentActivity() {
             rightMargin = d; topMargin = d
         })
         setContentView(root)
+        pipBackBtn = backBtn
+        pipShareBtn = shareBtn
+
+        // Android 12+: параметры PiP держим актуальными, чтобы работал
+        // плавный автопереход по кнопке Home во время воспроизведения
+        p.addListener(object : androidx.media3.common.Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                refreshPipParams()
+            }
+            override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                refreshPipParams()
+            }
+        })
 
         view.setControllerVisibilityListener(
             androidx.media3.ui.PlayerView.ControllerVisibilityListener { visibility ->
@@ -109,6 +126,51 @@ class PlayerActivity : ComponentActivity() {
         p.prepare()
         p.play()
         handler.post(ticker)
+    }
+
+    // ---------- Картинка в картинке (как у YouTube Premium) ----------
+
+    /** Пропорции окна PiP по реальному размеру видео (в допустимых пределах) */
+    private fun pipParams(): android.app.PictureInPictureParams {
+        val vs = player?.videoSize
+        var ratio = if (vs != null && vs.width > 0 && vs.height > 0)
+            android.util.Rational(vs.width, vs.height)
+        else android.util.Rational(16, 9)
+        val f = ratio.toFloat()
+        if (f > 2.35f) ratio = android.util.Rational(235, 100)
+        if (f < 0.43f) ratio = android.util.Rational(100, 235)
+        val b = android.app.PictureInPictureParams.Builder().setAspectRatio(ratio)
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            b.setAutoEnterEnabled(player?.isPlaying == true)
+        }
+        return b.build()
+    }
+
+    private fun refreshPipParams() {
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            try { setPictureInPictureParams(pipParams()) } catch (_: Exception) {}
+        }
+    }
+
+    /** Кнопка Home во время просмотра — сворачиваемся в плавающее окно */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (android.os.Build.VERSION.SDK_INT >= 26 && player?.isPlaying == true) {
+            try { enterPictureInPictureMode(pipParams()) } catch (_: Exception) {}
+        }
+    }
+
+    /** В мини-окне прячем контролы и кнопки; при разворачивании возвращаем */
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: android.content.res.Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        playerView?.useController = !isInPictureInPictureMode
+        val vis = if (isInPictureInPictureMode) android.view.View.GONE
+                  else android.view.View.VISIBLE
+        pipBackBtn?.visibility = vis
+        pipShareBtn?.visibility = vis
     }
 
     override fun onPause() {
