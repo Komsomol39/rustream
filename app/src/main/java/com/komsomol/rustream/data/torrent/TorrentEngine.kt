@@ -53,6 +53,9 @@ class TorrentEngine @Inject constructor(
     val session = SessionManager()
     private var started = false
 
+    // Список раздач на диске: без него всё терялось при перезапуске процесса
+    private val store = TorrentStore(context)
+
     private val _downloads = MutableStateFlow<Map<String, DownloadItem>>(emptyMap())
     val downloads: StateFlow<Map<String, DownloadItem>> = _downloads.asStateFlow()
 
@@ -135,6 +138,7 @@ class TorrentEngine @Inject constructor(
                         val hash = h.infoHash().toString()
                         synchronized(hashToId) { hashToId[hash] }?.let {
                             updateState(it, DownloadState.FINISHED, 1f)
+                            store.setFinished(it)
                         }
                     }
                     AlertType.TORRENT_ERROR -> {
@@ -142,7 +146,10 @@ class TorrentEngine @Inject constructor(
                         val hash = a.handle().infoHash().toString()
                         val msg: String = a.message()
                         val id2 = synchronized(hashToId) { hashToId[hash] }
-                        if (id2 != null) updateState(id2, DownloadState.ERROR, error = msg)
+                        if (id2 != null) {
+                            updateState(id2, DownloadState.ERROR, error = msg)
+                            store.remove(id2)
+                        }
                     }
                     else -> {}
                 }
@@ -172,6 +179,8 @@ class TorrentEngine @Inject constructor(
         session.startDht()
         File(savePath).mkdirs()
 
+        restoreSaved()
+
         scope.launch(engineDispatcher) {
             while (true) {
                 delay(1000)
@@ -189,9 +198,98 @@ class TorrentEngine @Inject constructor(
         try { session.stop() } catch (_: Exception) {}
     }
 
-    fun addMagnet(item: DownloadItem) {
+    /**
+     * Поднимает раздачи из прошлого запуска.
+     *
+     * Файлы никуда не девались — libtorrent сам проверит их хэши (состояние
+     * CHECKING) и продолжит с того места, где остановились. Если у раздачи
+     * сохранён .torrent, добавляем из него: метаданные готовы сразу и не нужно
+     * второй раз ходить на приватный трекер. Иначе добавляем по магнету.
+     */
+    private fun restoreSaved() {
+        val saved: List<TorrentStore.Saved> =
+            try { store.load() } catch (_: Exception) { emptyList() }
+        if (saved.isEmpty()) return
+        Log.d(TAG, "Restoring " + saved.size + " torrents")
+
+        // Сначала показываем список в UI, чтобы вкладка не была пустой
+        // те секунды, пока сессия принимает раздачи.
+        _downloads.update { map ->
+            map + saved.associate { s ->
+                s.id to DownloadItem(
+                    id            = s.id,
+                    title         = s.title,
+                    magnetUri     = s.magnetUri,
+                    torrentUrl    = s.torrentUrl,
+                    savePath      = s.savePath.ifEmpty { savePath },
+                    expectedBytes = s.expectedBytes,
+                    addedAt       = s.addedAt,
+                    state         = when {
+                        s.paused   -> DownloadState.PAUSED
+                        s.finished -> DownloadState.FINISHED
+                        else       -> DownloadState.CHECKING
+                    }
+                )
+            }
+        }
+
+        scope.launch {
+            for (s in saved) {
+                val item = _downloads.value[s.id] ?: continue
+                val tf = store.torrentFile(s.id)
+                try {
+                    if (tf.exists() && tf.length() > 0) {
+                        addTorrentFile(item, tf.readBytes(), persist = false,
+                            restoring = true, keepPaused = s.paused)
+                    } else if (!s.magnetUri.isNullOrBlank()) {
+                        addMagnet(item, persist = false,
+                            restoring = true, keepPaused = s.paused)
+                    } else {
+                        // Ни магнета, ни файла — восстанавливать нечего
+                        _downloads.update { it - s.id }
+                        store.remove(s.id)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "restore " + s.id + ": " + e)
+                }
+                // Не заваливаем сессию всеми раздачами разом: проверка хэшей
+                // упирается в диск, а пачка одновременных проверок надолго
+                // занимает его и тормозит интерфейс.
+                delay(400)
+            }
+        }
+    }
+
+    /**
+     * Раздача была на паузе до перезапуска — ставим её обратно, как только
+     * сессия выдаст рабочий хэндл. Сразу после download() хэндла ещё нет.
+     */
+    private fun pauseWhenReady(id: String) = scope.launch(engineDispatcher) {
+        repeat(20) {
+            delay(500)
+            val h = findHandle(id)
+            if (h != null) {
+                try {
+                    if (h.isValid) {
+                        h.pause()
+                        updateState(id, DownloadState.PAUSED)
+                        return@launch
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+    }
+
+    fun addMagnet(
+        item: DownloadItem,
+        persist: Boolean = true,
+        restoring: Boolean = false,
+        keepPaused: Boolean = false
+    ) {
         val magnet = item.magnetUri ?: return
-        _downloads.update { it + (item.id to item.copy(state = DownloadState.FETCHING_META, errorMessage = null)) }
+        val startState = if (keepPaused) DownloadState.PAUSED else DownloadState.FETCHING_META
+        _downloads.update { it + (item.id to item.copy(state = startState, errorMessage = null)) }
+        if (persist) store.put(item.copy(state = DownloadState.FETCHING_META))
         val hash = extractHash(magnet)
         if (hash != null) {
             synchronized(hashToId) { hashToId[hash] = item.id }
@@ -203,31 +301,62 @@ class TorrentEngine @Inject constructor(
             } catch (e: Exception) {
                 Log.e(TAG, "addMagnet: " + e.message)
                 updateState(item.id, DownloadState.ERROR, error = "Не удалось добавить: " + (e.message ?: "?"))
+                store.remove(item.id)
                 return@launch
             }
-            // Таймаут метаданных: если за 2 минуты пиров не нашлось — сообщаем
+            if (keepPaused) {
+                pauseWhenReady(item.id)
+                return@launch
+            }
+            // Таймаут метаданных: если за 2 минуты пиров не нашлось — сообщаем.
+            // Восстановленную раздачу при этом из списка не выкидываем: она
+            // уже качалась раньше и пиры могут вернуться.
             delay(METADATA_TIMEOUT_MS)
             val cur = _downloads.value[item.id]
             if (cur != null && cur.state == DownloadState.FETCHING_META) {
-                updateState(item.id, DownloadState.ERROR,
-                    error = "Пиры не найдены за 2 мин (DHT: " + _dhtNodes.value +
-                            " узлов). Раздача продолжится сама, если пиры появятся")
+                val suffix = if (restoring)
+                    ". Раздача останется в списке и продолжится, когда пиры появятся"
+                else
+                    ". Раздача продолжится сама, если пиры появятся"
+                _downloads.update { map ->
+                    val cur2 = map[item.id] ?: return@update map
+                    map + (item.id to cur2.copy(
+                        state = DownloadState.ERROR,
+                        errorMessage = "Пиры не найдены за 2 мин (DHT: " +
+                            _dhtNodes.value + " узлов)" + suffix
+                    ))
+                }
             }
         }
     }
 
-    fun addTorrentFile(item: DownloadItem, bytes: ByteArray) {
-        _downloads.update { it + (item.id to item.copy(state = DownloadState.DOWNLOADING, errorMessage = null)) }
+    fun addTorrentFile(
+        item: DownloadItem,
+        bytes: ByteArray,
+        persist: Boolean = true,
+        restoring: Boolean = false,
+        keepPaused: Boolean = false
+    ) {
+        val startState = if (keepPaused) DownloadState.PAUSED else DownloadState.DOWNLOADING
+        _downloads.update { it + (item.id to item.copy(state = startState, errorMessage = null)) }
         scope.launch {
             try {
                 val ti = TorrentInfo.bdecode(bytes)
                 val hash = ti.infoHash().toString()
                 synchronized(hashToId) { hashToId[hash] = item.id }
                 synchronized(idToHash) { idToHash[item.id] = hash }
+                if (persist) {
+                    // Кладём .torrent рядом со списком: при следующем запуске
+                    // раздача поднимется из него мгновенно, без похода на трекер
+                    store.saveTorrentFile(item.id, bytes)
+                    store.put(item.copy(state = DownloadState.DOWNLOADING))
+                }
                 session.download(ti, File(savePath))
+                if (keepPaused) pauseWhenReady(item.id)
             } catch (e: Exception) {
                 Log.e(TAG, "addTorrentFile: " + e.message)
                 updateState(item.id, DownloadState.ERROR, error = "Битый .torrent: " + (e.message ?: "?"))
+                if (!restoring) store.remove(item.id)
             }
         }
     }
@@ -235,10 +364,12 @@ class TorrentEngine @Inject constructor(
     // Регистрация ошибки без добавления в сессию (например .torrent не скачался)
     fun addFailed(item: DownloadItem, message: String) {
         _downloads.update { it + (item.id to item.copy(state = DownloadState.ERROR, errorMessage = message)) }
+        store.remove(item.id)
     }
 
     fun pause(id: String) {
         updateState(id, DownloadState.PAUSED)
+        store.setPaused(id, true)
         scope.launch(engineDispatcher) {
             try { findHandle(id)?.pause() } catch (_: Exception) {}
         }
@@ -246,6 +377,7 @@ class TorrentEngine @Inject constructor(
 
     fun resume(id: String) {
         updateState(id, DownloadState.DOWNLOADING)
+        store.setPaused(id, false)
         scope.launch(engineDispatcher) {
             try { findHandle(id)?.resume() } catch (_: Exception) {}
         }
@@ -253,6 +385,7 @@ class TorrentEngine @Inject constructor(
 
     fun remove(id: String, deleteFiles: Boolean = false) {
         _downloads.update { it - id }
+        store.remove(id)
         scope.launch(engineDispatcher) {
             val h = findHandle(id)
             if (h != null) try {
