@@ -140,6 +140,96 @@ class DownloadRepository @Inject constructor(
         }
     }
 
+    // ---- Ручное добавление (кнопка "+" на вкладке Загрузки) ----
+
+    /**
+     * Принимает magnet-ссылку или прямую ссылку на .torrent.
+     * Возвращает null при успехе, иначе текст ошибки для показа пользователю.
+     */
+    suspend fun addManualLink(rawInput: String): String? = withContext(Dispatchers.IO) {
+        val input = rawInput.trim()
+        if (input.isEmpty()) return@withContext "Пустая ссылка"
+
+        if (input.startsWith("magnet:", ignoreCase = true)) {
+            val hash = TorrentEngine.extractHash(input)
+                ?: return@withContext "В магнет-ссылке нет инфохэша — проверьте, что она скопирована целиком"
+            if (downloads.value.containsKey(hash)) return@withContext "Эта раздача уже в списке"
+            val item = DownloadItem(
+                id         = hash,
+                title      = magnetTitle(input) ?: ("Раздача " + hash.take(8)),
+                magnetUri  = enrichMagnet(input),
+                torrentUrl = null,
+                savePath   = engine.savePath,
+                state      = DownloadState.FETCHING_META
+            )
+            engine.addMagnet(item)
+            return@withContext null
+        }
+
+        if (!input.startsWith("http://", true) && !input.startsWith("https://", true)) {
+            return@withContext "Нужна magnet-ссылка или ссылка http(s) на .torrent"
+        }
+
+        // Ссылка на .torrent: качаем без кук — это публичный адрес.
+        // Для приватных трекеров пользователь скачивает файл браузером
+        // и добавляет его кнопкой "Файл".
+        val id = java.util.UUID.randomUUID().toString()
+        val item = DownloadItem(
+            id         = id,
+            title      = input.substringAfterLast('/').substringBefore('?')
+                            .removeSuffix(".torrent").ifBlank { "Загрузка" },
+            magnetUri  = null,
+            torrentUrl = input,
+            savePath   = engine.savePath,
+            state      = DownloadState.DOWNLOADING
+        )
+        return@withContext try {
+            val req = Request.Builder().url(input).header("User-Agent", UA).build()
+            val bytes = plainClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext "Сервер ответил " + resp.code
+                resp.body?.bytes()
+            }
+            if (bytes == null || bytes.isEmpty()) {
+                "Пустой ответ по этой ссылке"
+            } else if (bytes[0] != 'd'.code.toByte()) {
+                "По ссылке лежит не .torrent (похоже на HTML-страницу). " +
+                "Если трекер требует вход — скачайте файл браузером и добавьте " +
+                "кнопкой «Выбрать .torrent файл»"
+            } else {
+                engine.addTorrentFile(item, bytes)
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "addManualLink: " + e.message)
+            "Не удалось скачать: " + (e.message ?: "?")
+        }
+    }
+
+    /** Добавление .torrent, выбранного в файловом менеджере. */
+    suspend fun addManualTorrentBytes(name: String, bytes: ByteArray): String? =
+        withContext(Dispatchers.IO) {
+            if (bytes.isEmpty()) return@withContext "Файл пустой"
+            if (bytes[0] != 'd'.code.toByte())
+                return@withContext "Это не .torrent — файл должен начинаться с bencode-словаря"
+            val item = DownloadItem(
+                id         = java.util.UUID.randomUUID().toString(),
+                title      = name.removeSuffix(".torrent").ifBlank { "Загрузка" },
+                magnetUri  = null,
+                torrentUrl = null,
+                savePath   = engine.savePath,
+                state      = DownloadState.DOWNLOADING
+            )
+            engine.addTorrentFile(item, bytes)
+            null
+        }
+
+    // Имя раздачи из параметра dn= магнет-ссылки
+    private fun magnetTitle(magnet: String): String? = try {
+        Regex("[?&]dn=([^&]+)").find(magnet)?.groupValues?.get(1)
+            ?.let { java.net.URLDecoder.decode(it, "UTF-8") }
+            ?.replace('+', ' ')?.trim()?.ifBlank { null }
+    } catch (_: Exception) { null }
+
     suspend fun getFiles(id: String) = engine.getFiles(id)
     fun setFileEnabled(id: String, index: Int, enabled: Boolean) =
         engine.setFileEnabled(id, index, enabled)
