@@ -99,7 +99,8 @@ class TorrentEngine @Inject constructor(
                 AlertType.ADD_TORRENT.swig(),
                 AlertType.METADATA_RECEIVED.swig(),
                 AlertType.TORRENT_FINISHED.swig(),
-                AlertType.TORRENT_ERROR.swig()
+                AlertType.TORRENT_ERROR.swig(),
+                AlertType.SAVE_RESUME_DATA.swig()
             )
             override fun alert(alert: Alert<*>) {
                 try {
@@ -139,6 +140,17 @@ class TorrentEngine @Inject constructor(
                         synchronized(hashToId) { hashToId[hash] }?.let {
                             updateState(it, DownloadState.FINISHED, 1f)
                             store.setFinished(it)
+                            requestResumeDataFor(it)
+                        }
+                    }
+                    AlertType.SAVE_RESUME_DATA -> {
+                        val a2 = alert as org.libtorrent4j.alerts.SaveResumeDataAlert
+                        val hash2 = a2.handle().infoHash().toString()
+                        val rid = synchronized(hashToId) { hashToId[hash2] }
+                        if (rid != null) {
+                            val buf = org.libtorrent4j.AddTorrentParams
+                                .writeResumeDataBuf(a2.params())
+                            if (buf != null) store.saveResumeData(rid, buf)
                         }
                     }
                     AlertType.TORRENT_ERROR -> {
@@ -182,11 +194,16 @@ class TorrentEngine @Inject constructor(
         restoreSaved()
 
         scope.launch(engineDispatcher) {
+            var tick = 0L
             while (true) {
                 delay(1000)
                 if (started) {
                     try { _dhtNodes.value = session.stats().dhtNodes() } catch (_: Exception) {}
                     pollProgress()
+                    // Раз в минуту просим libtorrent сделать снимок состояния.
+                    // Ответ придёт alert'ом SAVE_RESUME_DATA и ляжет на диск.
+                    tick++
+                    if (tick % 60L == 0L) requestResumeData()
                 }
             }
         }
@@ -238,7 +255,9 @@ class TorrentEngine @Inject constructor(
                 val item = _downloads.value[s.id] ?: continue
                 val tf = store.torrentFile(s.id)
                 try {
-                    if (tf.exists() && tf.length() > 0) {
+                    if (addFromResume(item, s.paused)) {
+                        // Поднялись из снимка: ни перепроверки хэшей, ни сети
+                    } else if (tf.exists() && tf.length() > 0) {
                         addTorrentFile(item, tf.readBytes(), persist = false,
                             restoring = true, keepPaused = s.paused)
                     } else if (!s.magnetUri.isNullOrBlank()) {
@@ -259,6 +278,59 @@ class TorrentEngine @Inject constructor(
             }
         }
     }
+
+    /**
+     * Пробует поднять раздачу из fast-resume снимка.
+     *
+     * Снимок делает сам libtorrent, в нём лежат уже проверенные куски (а с
+     * флагом SAVE_INFO_DICT — и метаданные). Поэтому раздача стартует сразу,
+     * без перепроверки хэшей всех файлов и без похода в сеть.
+     *
+     * Возвращает false при любой заминке — тогда вызывающий код поднимает
+     * раздачу обычным путём, через .torrent или магнет.
+     */
+    private suspend fun addFromResume(item: DownloadItem, keepPaused: Boolean): Boolean =
+        kotlinx.coroutines.withContext(engineDispatcher) {
+            val rf = store.resumeFile(item.id)
+            if (!rf.exists() || rf.length() <= 0L) return@withContext false
+
+            // Хэш нужен заранее: по нему alert'ы находят раздачу в наших мапах
+            val hash = try {
+                val tf = store.torrentFile(item.id)
+                if (tf.exists() && tf.length() > 0L)
+                    TorrentInfo.bdecode(tf.readBytes()).infoHash().toString()
+                else
+                    item.magnetUri?.let { extractHash(it) }
+            } catch (_: Exception) { null }
+            if (hash == null) return@withContext false
+
+            try {
+                val ec = org.libtorrent4j.swig.error_code()
+                val p = org.libtorrent4j.swig.libtorrent.read_resume_data_ex(
+                    org.libtorrent4j.Vectors.bytes2byte_vector(rf.readBytes()), ec)
+                if (ec.value() != 0 || p == null) return@withContext false
+                p.setSave_path(savePath)
+
+                synchronized(hashToId) { hashToId[hash] = item.id }
+                synchronized(idToHash) { idToHash[item.id] = hash }
+
+                org.libtorrent4j.SessionHandle(session.swig())
+                    .asyncAddTorrent(org.libtorrent4j.AddTorrentParams(p))
+
+                _downloads.update { map ->
+                    val cur = map[item.id] ?: return@update map
+                    map + (item.id to cur.copy(
+                        state = if (keepPaused) DownloadState.PAUSED else DownloadState.CHECKING,
+                        errorMessage = null
+                    ))
+                }
+                if (keepPaused) pauseWhenReady(item.id)
+                true
+            } catch (e: Throwable) {
+                Log.e(TAG, "addFromResume: " + e)
+                false
+            }
+        }
 
     /**
      * Раздача была на паузе до перезапуска — ставим её обратно, как только
@@ -373,6 +445,8 @@ class TorrentEngine @Inject constructor(
         scope.launch(engineDispatcher) {
             try { findHandle(id)?.pause() } catch (_: Exception) {}
         }
+        // На паузе состояние стабильно — лучший момент снять снимок
+        requestResumeDataFor(id)
     }
 
     fun resume(id: String) {
@@ -483,6 +557,33 @@ class TorrentEngine @Inject constructor(
                 }
             } catch (_: Exception) {}
         }
+    }
+
+    /**
+     * Просит libtorrent сохранить состояние всех активных раздач.
+     * SAVE_INFO_DICT кладёт в снимок и метаданные раздачи — благодаря этому
+     * добавленный магнетом торрент после перезапуска поднимается без похода
+     * в сеть за метаданными.
+     */
+    private fun requestResumeData() {
+        val ids = _downloads.value.filterValues {
+            it.state != DownloadState.ERROR
+        }.keys.toList()
+        for (id in ids) {
+            val h = findHandle(id) ?: continue
+            try {
+                if (!h.isValid) continue
+                if (!h.needSaveResumeData()) continue
+                h.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
+            } catch (_: Exception) {}
+        }
+    }
+
+    private fun requestResumeDataFor(id: String) = scope.launch(engineDispatcher) {
+        val h = findHandle(id) ?: return@launch
+        try {
+            if (h.isValid) h.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
+        } catch (_: Exception) {}
     }
 
     private fun updateState(id: String, state: DownloadState, progress: Float? = null, error: String? = null) {
