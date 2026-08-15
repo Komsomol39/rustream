@@ -45,6 +45,27 @@ class TorrentStore(context: Context) {
 
     fun torrentFile(id: String): File = File(dir, id + ".torrent")
 
+    /**
+     * Fast-resume: снимок состояния раздачи от самого libtorrent.
+     * Позволяет при следующем запуске продолжить без перепроверки хэшей всех
+     * файлов, а если снимок сделан с флагом SAVE_INFO_DICT — ещё и без
+     * повторного получения метаданных из сети.
+     */
+    fun resumeFile(id: String): File = File(dir, id + ".resume")
+
+    fun saveResumeData(id: String, bytes: ByteArray) {
+        if (bytes.isEmpty()) return
+        try {
+            val tmp = File(dir, id + ".resume.tmp")
+            tmp.writeBytes(bytes)
+            val target = resumeFile(id)
+            if (target.exists()) target.delete()
+            tmp.renameTo(target)
+        } catch (e: Exception) {
+            Log.e(TAG, "saveResumeData: " + e)
+        }
+    }
+
     fun saveTorrentFile(id: String, bytes: ByteArray) {
         try {
             torrentFile(id).writeBytes(bytes)
@@ -161,12 +182,9 @@ class TorrentStore(context: Context) {
 
     private fun removeInternal(id: String) {
         val list = loadUnlocked()
-        if (list.none { it.id == id }) {
-            try { torrentFile(id).delete() } catch (_: Exception) {}
-            return
-        }
-        writeAll(list.filter { it.id != id })
+        if (list.any { it.id == id }) writeAll(list.filter { it.id != id })
         try { torrentFile(id).delete() } catch (_: Exception) {}
+        try { resumeFile(id).delete() } catch (_: Exception) {}
     }
 
     // Чтение без захвата lock: вызывается только изнутри synchronized-блоков
