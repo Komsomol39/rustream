@@ -42,6 +42,21 @@ class MusicRepository @Inject constructor(
             }.sortedBy { it.displayName.lowercase() }
         }
 
+    /**
+     * Какой папке исполнителя принадлежит файл по пути path.
+     *
+     * Файл только что скачан, поэтому сначала пересканируем библиотеку —
+     * иначе его ещё нет ни в одной группе. Учитываются правила объединения
+     * псевдонимов: возвращается отображаемое имя группы, а не сырой тег.
+     */
+    suspend fun artistForFile(path: String): String? {
+        scan()
+        val groups = try {
+            artists.first()
+        } catch (_: Exception) { return null }
+        return groups.firstOrNull { g -> g.tracks.any { it.path == path } }?.displayName
+    }
+
     suspend fun mergeArtists(names: List<String>) = mergeStore.merge(names)
     suspend fun unmergeArtist(name: String) = mergeStore.unmerge(name)
 

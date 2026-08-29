@@ -324,7 +324,19 @@ class GrabRepository @Inject constructor(
     // Общий прогон yt-dlp с прогрессом и фазой обработки (склейка/перекодирование).
     // 100% скачивания + строка про merge/ffmpeg -> состояние PROCESSING.
     private fun runYtdl(req: YoutubeDLRequest, dlId: String, title: String, video: Boolean) {
+        // Путь готового файла вытаскиваем из строк вывода yt-dlp.
+        // Через --print надёжнее, но он тянет за собой --quiet и --simulate,
+        // а это сломало бы разбор прогресса; разбор строк ничего не меняет
+        // в поведении загрузки.
+        var lastPath: String? = null   // [download] Destination
+        var finalPath: String? = null  // после склейки/конвертации — важнее
         YoutubeDL.getInstance().execute(req, dlId) { progress, etaSec, line ->
+            if (line != null) {
+                parseDestination(line)?.let { p ->
+                    if (line.contains("[Merger]") || line.contains("[ExtractAudio]") ||
+                        line.contains("[VideoConvertor]")) finalPath = p else lastPath = p
+                }
+            }
             val processing = line != null &&
                 (line.contains("[Merger]") || line.contains("[ExtractAudio]") ||
                  line.contains("[ffmpeg]") || line.contains("[VideoConvertor]"))
@@ -335,8 +347,36 @@ class GrabRepository @Inject constructor(
                     detail = formatDetail(progress, etaSec, line)))
             }
         }
-        setDl(GrabDownload(dlId, title, video, 1f, GrabState.DONE))
+        // Промежуточные потоки склейки (.f137.mp4) существовать уже не будут,
+        // поэтому берём то, что реально лежит на диске
+        val path = listOfNotNull(finalPath, lastPath).firstOrNull { java.io.File(it).exists() }
+        setDl(GrabDownload(dlId, title, video, 1f, GrabState.DONE, filePath = path))
         notifyDone(title, video)
+    }
+
+    /**
+     * Достаёт путь файла из строки вывода yt-dlp. Форматы разные:
+     *   [download] Destination: /path/file.mp4
+     *   [ExtractAudio] Destination: /path/file.mp3
+     *   [Merger] Merging formats into "/path/file.mp4"
+     *   [download] /path/file.mp4 has already been downloaded
+     */
+    private fun parseDestination(line: String): String? {
+        try {
+            val marker = "Destination: "
+            if (line.contains(marker)) {
+                return line.substringAfter(marker).trim().ifBlank { null }
+            }
+            if (line.contains("Merging formats into")) {
+                val q = line.substringAfter("Merging formats into").trim()
+                return q.trim('"').trim().ifBlank { null }
+            }
+            if (line.contains("has already been downloaded")) {
+                return line.substringAfter("] ").substringBefore(" has already been downloaded")
+                    .trim().ifBlank { null }
+            }
+        } catch (_: Exception) {}
+        return null
     }
 
     // Уведомление «скачано» — чтобы не сидеть в приложении во время долгой загрузки

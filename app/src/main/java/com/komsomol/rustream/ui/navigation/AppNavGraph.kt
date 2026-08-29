@@ -18,6 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import com.komsomol.rustream.player.PlayerActivity
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -61,7 +64,11 @@ fun AppNavGraph() {
                     NavigationBarItem(
                         icon  = { Icon(screen.icon, screen.label) },
                         label = { Text(screen.label) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        // Маршрут музыки теперь "music?open={open}" — сравниваем без
+                        // строки запроса, иначе вкладка перестанет подсвечиваться
+                        selected = currentDestination?.hierarchy?.any {
+                            it.route?.substringBefore("?") == screen.route
+                        } == true,
                         onClick = {
                             navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -94,19 +101,59 @@ fun AppNavGraph() {
                 DownloadDetailScreen(onBack = { navController.popBackStack() })
             }
             composable("grab") {
+                val ctx = LocalContext.current
                 GrabScreen(
                     onBack = { navController.popBackStack() },
-                    onOpenPaste = { navController.navigate("paste_url") }
+                    onOpenPaste = { navController.navigate("paste_url") },
+                    onOpenReady = { path, isVideo ->
+                        if (isVideo) {
+                            // Уходим на вкладку Видео и сразу открываем плеер:
+                            // при выходе из плеера файл будет виден в списке
+                            navController.navigate(Screen.Video.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                            ctx.startActivity(
+                                Intent(ctx, PlayerActivity::class.java)
+                                    .putExtra(PlayerActivity.EXTRA_PATH, path)
+                            )
+                        } else {
+                            // Музыка: вкладка сама найдёт папку исполнителя
+                            navController.navigate(
+                                "music?open=" + URLEncoder.encode(path, "UTF-8")
+                            ) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                            }
+                        }
+                    }
                 )
             }
             composable("paste_url") {
                 PasteUrlScreen(onBack = { navController.popBackStack() })
             }
             composable(Screen.Video.route)     { VideoScreen() }
-            composable(Screen.Music.route) {
-                MusicScreen(onOpenArtist = { name ->
-                    navController.navigate("artist/" + URLEncoder.encode(name, "UTF-8"))
+            composable(
+                Screen.Music.route + "?open={open}",
+                arguments = listOf(navArgument("open") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 })
+            ) { entry ->
+                val open = entry.arguments?.getString("open")
+                    ?.let { URLDecoder.decode(it, "UTF-8") }
+                MusicScreen(
+                    onOpenArtist = { name ->
+                        navController.navigate("artist/" + URLEncoder.encode(name, "UTF-8"))
+                    },
+                    openPath = open
+                )
             }
             composable(
                 "artist/{name}",

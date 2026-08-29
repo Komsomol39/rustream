@@ -31,9 +31,18 @@ import com.komsomol.rustream.domain.model.Track
 @Composable
 fun MusicScreen(
     onOpenArtist: (String) -> Unit = {},
+    openPath: String? = null,
     viewModel: MusicViewModel = hiltViewModel()
 ) {
     val artists by viewModel.artists.collectAsState()
+
+    // Пришли сюда сразу после скачивания трека: библиотеку надо перечитать
+    // (файл новый), затем открыть папку исполнителя, в которую он попал
+    LaunchedEffect(openPath) {
+        if (!openPath.isNullOrBlank()) {
+            viewModel.artistForFile(openPath)?.let { onOpenArtist(it) }
+        }
+    }
     val scanning by viewModel.scanning.collectAsState()
     val current by viewModel.current.collectAsState()
     val playing by viewModel.playing.collectAsState()

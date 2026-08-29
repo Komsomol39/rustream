@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.MusicNote
 fun GrabScreen(
     onBack: () -> Unit,
     onOpenPaste: () -> Unit = {},
+    onOpenReady: (path: String, video: Boolean) -> Unit = { _, _ -> },
     viewModel: GrabViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -103,7 +104,8 @@ fun GrabScreen(
                 downloads.values.sortedBy { it.title }.forEach { d ->
                     GrabDownloadRow(d,
                         onDismiss = { viewModel.dismiss(d.id) },
-                        onCancel  = { viewModel.cancel(d.id) })
+                        onCancel  = { viewModel.cancel(d.id) },
+                        onOpen    = { d.filePath?.let { p -> onOpenReady(p, d.video) } })
                 }
             }
         }
@@ -164,8 +166,19 @@ private fun GrabResultRow(r: GrabResult, onDownload: () -> Unit) {
 }
 
 @Composable
-private fun GrabDownloadRow(d: GrabDownload, onDismiss: () -> Unit, onCancel: () -> Unit) {
-    Card(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+private fun GrabDownloadRow(
+    d: GrabDownload,
+    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
+    onOpen: () -> Unit = {}
+) {
+    // Открывать можно только то, что действительно лежит на диске:
+    // путь мы вытащили из вывода yt-dlp и он может не разобраться
+    val openable = d.state == GrabState.DONE && d.filePath != null
+    Card(
+        Modifier.fillMaxWidth().padding(vertical = 2.dp)
+            .then(if (openable) Modifier.clickable(onClick = onOpen) else Modifier)
+    ) {
         Row(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -191,7 +204,11 @@ private fun GrabDownloadRow(d: GrabDownload, onDismiss: () -> Unit, onCancel: ()
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    GrabState.DONE -> Text("✓ Готово — смотри в библиотеке",
+                    GrabState.DONE -> Text(
+                        if (d.filePath != null)
+                            (if (d.video) "✓ Готово — нажмите, чтобы посмотреть"
+                             else "✓ Готово — нажмите, чтобы послушать")
+                        else "✓ Готово — смотри в библиотеке",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary)
                     GrabState.ERROR -> Text("Ошибка: " + (d.message ?: ""),

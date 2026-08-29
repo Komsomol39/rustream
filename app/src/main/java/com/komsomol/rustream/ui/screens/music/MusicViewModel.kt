@@ -39,6 +39,9 @@ class MusicViewModel @Inject constructor(
 
     fun refresh() = viewModelScope.launch { repo.scan() }
 
+    /** Имя папки исполнителя, в которую попал только что скачанный файл. */
+    suspend fun artistForFile(path: String): String? = repo.artistForFile(path)
+
     fun enterSelect(firstArtist: String) {
         _selectMode.value = true
         _selected.value = setOf(firstArtist)

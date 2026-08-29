@@ -27,7 +27,8 @@ data class GrabDownload(
     val progress: Float = 0f,
     val state: GrabState = GrabState.RESOLVING,
     val message: String? = null,
-    val detail: String? = null   // «42% • 120,5 МБ • 2,3 МБ/с • осталось 0:42»
+    val detail: String? = null,  // «42% • 120,5 МБ • 2,3 МБ/с • осталось 0:42»
+    val filePath: String? = null // реальный путь готового файла, для открытия по тапу
 )
 
 // Запрос форматов: пока yt-dlp опрашивает сайт (RESOLVING),
