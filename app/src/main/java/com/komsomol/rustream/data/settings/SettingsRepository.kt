@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -30,6 +31,10 @@ class SettingsRepository @Inject constructor(
         val KEY_TPB_ENABLED     = booleanPreferencesKey("tpb_enabled")
         val KEY_NEWPIPE_ENABLED   = booleanPreferencesKey("newpipe_enabled")
         val KEY_MEDIA_FOLDERS     = stringPreferencesKey("media_folders")
+        // Лимиты торрент-сессии. 0 = без ограничения
+        val KEY_DL_LIMIT_KB       = intPreferencesKey("dl_limit_kb")
+        val KEY_UL_LIMIT_KB       = intPreferencesKey("ul_limit_kb")
+        val KEY_MAX_ACTIVE        = intPreferencesKey("max_active_downloads")
     }
 
     val darkTheme: Flow<Boolean>        = context.dataStore.data.map { it[KEY_DARK_THEME] ?: true }
@@ -41,6 +46,10 @@ class SettingsRepository @Inject constructor(
     val nnmEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_NNM_ENABLED] ?: false }
     val tpbEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_TPB_ENABLED] ?: true }
     val newpipeEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_NEWPIPE_ENABLED] ?: false }
+
+    val downloadLimitKb: Flow<Int>      = context.dataStore.data.map { it[KEY_DL_LIMIT_KB] ?: 0 }
+    val uploadLimitKb: Flow<Int>        = context.dataStore.data.map { it[KEY_UL_LIMIT_KB] ?: 0 }
+    val maxActiveDownloads: Flow<Int>   = context.dataStore.data.map { it[KEY_MAX_ACTIVE] ?: 3 }
 
     val mediaFolders: Flow<List<String>> = context.dataStore.data.map { prefs ->
         prefs[KEY_MEDIA_FOLDERS]?.split("|")?.filter { it.isNotBlank() } ?: emptyList()
@@ -55,6 +64,10 @@ class SettingsRepository @Inject constructor(
     suspend fun setNnmEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_NNM_ENABLED] = v }
     suspend fun setTpbEnabled(v: Boolean)        = context.dataStore.edit { it[KEY_TPB_ENABLED] = v }
     suspend fun setNewpipeEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_NEWPIPE_ENABLED] = v }
+
+    suspend fun setDownloadLimitKb(v: Int)   = context.dataStore.edit { it[KEY_DL_LIMIT_KB] = v.coerceAtLeast(0) }
+    suspend fun setUploadLimitKb(v: Int)     = context.dataStore.edit { it[KEY_UL_LIMIT_KB] = v.coerceAtLeast(0) }
+    suspend fun setMaxActiveDownloads(v: Int) = context.dataStore.edit { it[KEY_MAX_ACTIVE] = v.coerceIn(1, 20) }
 
     suspend fun addMediaFolder(path: String) = context.dataStore.edit { prefs ->
         val cur = prefs[KEY_MEDIA_FOLDERS]?.split("|")?.filter { it.isNotBlank() }?.toMutableList()
