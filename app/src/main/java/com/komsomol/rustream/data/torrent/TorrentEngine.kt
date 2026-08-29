@@ -33,7 +33,8 @@ import javax.inject.Singleton
 
 @Singleton
 class TorrentEngine @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val settings: com.komsomol.rustream.data.settings.SettingsRepository
 ) {
     private val TAG = "TorrentEngine"
     // SupervisorJob + handler: падение одной корутины не роняет приложение
@@ -193,6 +194,16 @@ class TorrentEngine @Inject constructor(
 
         restoreSaved()
 
+        // Лимиты из настроек применяются сразу и на каждое изменение
+        scope.launch {
+            kotlinx.coroutines.flow.combine(
+                settings.downloadLimitKb,
+                settings.uploadLimitKb,
+                settings.maxActiveDownloads
+            ) { dl, ul, act -> Triple(dl, ul, act) }
+                .collect { (dl, ul, act) -> applyLimits(dl, ul, act) }
+        }
+
         scope.launch(engineDispatcher) {
             var tick = 0L
             while (true) {
@@ -213,6 +224,33 @@ class TorrentEngine @Inject constructor(
     fun stop() {
         started = false
         try { session.stop() } catch (_: Exception) {}
+    }
+
+    /**
+     * Лимиты скорости и число одновременных загрузок.
+     *
+     * Значения в настройках хранятся в КБ/с, libtorrent ждёт байты в секунду.
+     * Ноль означает "без ограничения" — это же значение понимает и libtorrent.
+     *
+     * activeLimit держим заведомо выше activeDownloads: это общий потолок на
+     * загрузки и раздачи вместе, и если он окажется равным числу загрузок,
+     * готовые раздачи начнут вытеснять активные.
+     */
+    private fun applyLimits(dlKb: Int, ulKb: Int, maxActive: Int) {
+        if (!started) return
+        try {
+            val n = maxActive.coerceIn(1, 20)
+            val sp = SettingsPack()
+            sp.downloadRateLimit(if (dlKb <= 0) 0 else dlKb * 1024)
+            sp.uploadRateLimit(if (ulKb <= 0) 0 else ulKb * 1024)
+            sp.activeDownloads(n)
+            sp.activeSeeds(n)
+            sp.activeLimit(n * 2 + 5)
+            session.applySettings(sp)
+            Log.d(TAG, "limits: dl=" + dlKb + "KB ul=" + ulKb + "KB active=" + n)
+        } catch (e: Exception) {
+            Log.e(TAG, "applyLimits: " + e)
+        }
     }
 
     /**
