@@ -34,6 +34,10 @@ class SettingsViewModel @Inject constructor(
     val tpbEnabled       = repo.tpbEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val newpipeEnabled   = repo.newpipeEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    val downloadLimitKb    = repo.downloadLimitKb.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    val uploadLimitKb      = repo.uploadLimitKb.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    val maxActiveDownloads = repo.maxActiveDownloads.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 3)
+
     val mediaFolders = repo.mediaFolders.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -57,6 +61,10 @@ class SettingsViewModel @Inject constructor(
     fun setNnmEnabled(v: Boolean)       = viewModelScope.launch { repo.setNnmEnabled(v) }
     fun setTpbEnabled(v: Boolean)       = viewModelScope.launch { repo.setTpbEnabled(v) }
     fun setNewpipeEnabled(v: Boolean)   = viewModelScope.launch { repo.setNewpipeEnabled(v) }
+
+    fun setDownloadLimitKb(v: Int)    = viewModelScope.launch { repo.setDownloadLimitKb(v) }
+    fun setUploadLimitKb(v: Int)      = viewModelScope.launch { repo.setUploadLimitKb(v) }
+    fun setMaxActiveDownloads(v: Int) = viewModelScope.launch { repo.setMaxActiveDownloads(v) }
 
     fun addMediaFolder(path: String) = viewModelScope.launch { repo.addMediaFolder(path) }
     fun removeMediaFolder(path: String) = viewModelScope.launch { repo.removeMediaFolder(path) }
