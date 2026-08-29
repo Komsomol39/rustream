@@ -66,7 +66,8 @@ class SettingsRepository @Inject constructor(
     suspend fun setNewpipeEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_NEWPIPE_ENABLED] = v }
 
     suspend fun setDownloadLimitKb(v: Int)   = context.dataStore.edit { it[KEY_DL_LIMIT_KB] = v.coerceAtLeast(0) }
-    suspend fun setUploadLimitKb(v: Int)     = context.dataStore.edit { it[KEY_UL_LIMIT_KB] = v.coerceAtLeast(0) }
+    // -1 = отдача выключена, 0 = без ограничения, >0 = потолок в КБ/с
+    suspend fun setUploadLimitKb(v: Int)     = context.dataStore.edit { it[KEY_UL_LIMIT_KB] = v.coerceAtLeast(-1) }
     suspend fun setMaxActiveDownloads(v: Int) = context.dataStore.edit { it[KEY_MAX_ACTIVE] = v.coerceIn(1, 20) }
 
     suspend fun addMediaFolder(path: String) = context.dataStore.edit { prefs ->

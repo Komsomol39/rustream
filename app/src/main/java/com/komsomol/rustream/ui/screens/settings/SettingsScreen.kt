@@ -116,14 +116,12 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             SectionLabel("Загрузки")
             LimitRow(
                 title    = "Скорость загрузки",
-                subtitle = if (dlLimitKb <= 0) "Без ограничения" else dlLimitKb.toString() + " КБ/с",
+                subtitle = formatLimit(dlLimitKb),
                 value    = dlLimitKb,
                 onChange = viewModel::setDownloadLimitKb
             )
             RowDivider()
-            LimitRow(
-                title    = "Скорость отдачи",
-                subtitle = if (ulLimitKb <= 0) "Без ограничения" else ulLimitKb.toString() + " КБ/с",
+            UploadRow(
                 value    = ulLimitKb,
                 onChange = viewModel::setUploadLimitKb
             )
@@ -132,6 +130,12 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 title    = "Одновременных загрузок",
                 value    = maxActive,
                 onChange = viewModel::setMaxActiveDownloads
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Пустое поле — без ограничения.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -278,6 +282,88 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 /**
+ * Человеческая подпись под лимитом: до 1024 КБ/с показываем килобайты,
+ * дальше переводим в мегабайты, иначе "9000 КБ/с" читается плохо.
+ */
+private fun formatLimit(kb: Int): String = when {
+    kb < 0     -> "Выключена"
+    kb == 0    -> "Без ограничения"
+    kb >= 1024 -> {
+        val mb = kb / 1024.0
+        (if (mb >= 10) "%.0f".format(mb) else "%.1f".format(mb)) + " МБ/с"
+    }
+    else       -> kb.toString() + " КБ/с"
+}
+
+/**
+ * Отдача. Отдельный выключатель нужен потому, что ноль в libtorrent означает
+ * "без ограничения", а не "не отдавать" — через одно поле это выразить нельзя.
+ * Выключенное состояние хранится как -1 и применяется как предельно низкий
+ * потолок: полностью запретить отдачу протокол не даёт.
+ */
+@Composable
+private fun UploadRow(
+    value: Int,
+    onChange: (Int) -> Unit
+) {
+    val enabled = value >= 0
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Скорость отдачи", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    if (enabled) formatLimit(value)
+                    else "Выключена — пиры отвечают тем же, загрузка может замедлиться",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = { on -> onChange(if (on) 0 else -1) }
+            )
+        }
+        if (enabled) {
+            Spacer(Modifier.height(8.dp))
+            LimitField(
+                value = value,
+                onChange = onChange,
+                modifier = Modifier.align(Alignment.End)
+            )
+        }
+    }
+}
+
+/** Само поле ввода лимита, общее для загрузки и отдачи. */
+@Composable
+private fun LimitField(
+    value: Int,
+    onChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var text by remember(value) { mutableStateOf(if (value <= 0) "" else value.toString()) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = { raw ->
+            val digits = raw.filter { ch -> ch.isDigit() }.take(6)
+            text = digits
+            onChange(digits.toIntOrNull() ?: 0)
+        },
+        modifier = modifier.width(130.dp),
+        singleLine = true,
+        placeholder = { Text("∞") },
+        suffix = { Text("КБ/с", style = MaterialTheme.typography.labelSmall) },
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+        )
+    )
+}
+
+/**
  * Поле лимита скорости в КБ/с. Пустая строка и ноль означают
  * "без ограничения" — именно так это значение понимает и libtorrent.
  */
@@ -288,7 +374,6 @@ private fun LimitRow(
     value: Int,
     onChange: (Int) -> Unit
 ) {
-    var text by remember(value) { mutableStateOf(if (value <= 0) "" else value.toString()) }
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -300,21 +385,7 @@ private fun LimitRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        OutlinedTextField(
-            value = text,
-            onValueChange = { raw ->
-                val digits = raw.filter { ch -> ch.isDigit() }.take(6)
-                text = digits
-                onChange(digits.toIntOrNull() ?: 0)
-            },
-            modifier = Modifier.width(110.dp),
-            singleLine = true,
-            placeholder = { Text("∞") },
-            suffix = { Text("КБ/с", style = MaterialTheme.typography.labelSmall) },
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-            )
-        )
+        LimitField(value = value, onChange = onChange)
     }
 }
 

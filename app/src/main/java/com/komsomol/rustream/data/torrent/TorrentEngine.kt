@@ -242,7 +242,14 @@ class TorrentEngine @Inject constructor(
             val n = maxActive.coerceIn(1, 20)
             val sp = SettingsPack()
             sp.downloadRateLimit(if (dlKb <= 0) 0 else dlKb * 1024)
-            sp.uploadRateLimit(if (ulKb <= 0) 0 else ulKb * 1024)
+            // -1 означает "не отдавать". Полного запрета протокол не даёт,
+            // поэтому ставим предельно низкий потолок: отдача практически
+            // прекращается, но раздача формально остаётся живой.
+            sp.uploadRateLimit(when {
+                ulKb < 0  -> 1
+                ulKb == 0 -> 0
+                else      -> ulKb * 1024
+            })
             sp.activeDownloads(n)
             sp.activeSeeds(n)
             sp.activeLimit(n * 2 + 5)
