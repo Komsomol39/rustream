@@ -66,6 +66,9 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val tpbEnabled       by viewModel.tpbEnabled.collectAsState()
     val newpipeEnabled   by viewModel.newpipeEnabled.collectAsState()
     val mediaFolders     by viewModel.mediaFolders.collectAsState()
+    val dlLimitKb        by viewModel.downloadLimitKb.collectAsState()
+    val ulLimitKb        by viewModel.uploadLimitKb.collectAsState()
+    val maxActive        by viewModel.maxActiveDownloads.collectAsState()
     val nnmLoggedIn      by viewModel.nnmLoggedIn.collectAsState()
     val kinozalLoggedIn  by viewModel.kinozalLoggedIn.collectAsState()
     val youtubeLoggedIn  by viewModel.youtubeLoggedIn.collectAsState()
@@ -106,6 +109,30 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             ) {
                 Switch(checked = darkTheme, onCheckedChange = viewModel::setDarkTheme)
             }
+        }
+
+        // --- Ограничения торрент-сессии ---
+        SettingsCard {
+            SectionLabel("Загрузки")
+            LimitRow(
+                title    = "Скорость загрузки",
+                subtitle = if (dlLimitKb <= 0) "Без ограничения" else dlLimitKb.toString() + " КБ/с",
+                value    = dlLimitKb,
+                onChange = viewModel::setDownloadLimitKb
+            )
+            RowDivider()
+            LimitRow(
+                title    = "Скорость отдачи",
+                subtitle = if (ulLimitKb <= 0) "Без ограничения" else ulLimitKb.toString() + " КБ/с",
+                value    = ulLimitKb,
+                onChange = viewModel::setUploadLimitKb
+            )
+            RowDivider()
+            CounterRow(
+                title    = "Одновременных загрузок",
+                value    = maxActive,
+                onChange = viewModel::setMaxActiveDownloads
+            )
         }
 
         // --- Онлайн-загрузки (не торренты) ---
@@ -247,6 +274,86 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
         )
     ) {
         Column(Modifier.padding(CARD_PADDING), content = content)
+    }
+}
+
+/**
+ * Поле лимита скорости в КБ/с. Пустая строка и ноль означают
+ * "без ограничения" — именно так это значение понимает и libtorrent.
+ */
+@Composable
+private fun LimitRow(
+    title: String,
+    subtitle: String,
+    value: Int,
+    onChange: (Int) -> Unit
+) {
+    var text by remember(value) { mutableStateOf(if (value <= 0) "" else value.toString()) }
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        OutlinedTextField(
+            value = text,
+            onValueChange = { raw ->
+                val digits = raw.filter { ch -> ch.isDigit() }.take(6)
+                text = digits
+                onChange(digits.toIntOrNull() ?: 0)
+            },
+            modifier = Modifier.width(110.dp),
+            singleLine = true,
+            placeholder = { Text("∞") },
+            suffix = { Text("КБ/с", style = MaterialTheme.typography.labelSmall) },
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+            )
+        )
+    }
+}
+
+/** Число одновременных загрузок: кнопки минус/плюс, диапазон 1..20. */
+@Composable
+private fun CounterRow(
+    title: String,
+    value: Int,
+    onChange: (Int) -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text("Остальные ждут в очереди",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            OutlinedButton(
+                onClick = { onChange((value - 1).coerceAtLeast(1)) },
+                enabled = value > 1,
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.size(40.dp)
+            ) { Text("-") }
+            Text(value.toString(),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 14.dp))
+            OutlinedButton(
+                onClick = { onChange((value + 1).coerceAtMost(20)) },
+                enabled = value < 20,
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier.size(40.dp)
+            ) { Text("+") }
+        }
     }
 }
 
