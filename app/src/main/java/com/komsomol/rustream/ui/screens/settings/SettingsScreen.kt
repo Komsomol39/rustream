@@ -68,6 +68,8 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val mediaFolders     by viewModel.mediaFolders.collectAsState()
     val dlLimitKb        by viewModel.downloadLimitKb.collectAsState()
     val ulLimitKb        by viewModel.uploadLimitKb.collectAsState()
+    val dlLimitOn        by viewModel.downloadLimitEnabled.collectAsState()
+    val ulLimitOn        by viewModel.uploadLimitEnabled.collectAsState()
     val maxActive        by viewModel.maxActiveDownloads.collectAsState()
     val nnmLoggedIn      by viewModel.nnmLoggedIn.collectAsState()
     val kinozalLoggedIn  by viewModel.kinozalLoggedIn.collectAsState()
@@ -114,16 +116,21 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
         // --- Ограничения торрент-сессии ---
         SettingsCard {
             SectionLabel("Загрузки")
-            LimitRow(
-                title    = "Скорость загрузки",
-                subtitle = formatLimit(dlLimitKb),
-                value    = dlLimitKb,
-                onChange = viewModel::setDownloadLimitKb
+            LimitBlock(
+                title           = "Регулировать скорость загрузки",
+                enabled         = dlLimitOn,
+                value           = dlLimitKb,
+                onEnabledChange = viewModel::setDownloadLimitEnabled,
+                onValueChange   = viewModel::setDownloadLimitKb
             )
             RowDivider()
-            UploadRow(
-                value    = ulLimitKb,
-                onChange = viewModel::setUploadLimitKb
+            LimitBlock(
+                title           = "Регулировать скорость отдачи",
+                enabled         = ulLimitOn,
+                value           = ulLimitKb,
+                hintWhenOff     = "Выключена — пиры отвечают тем же, загрузка может замедлиться",
+                onEnabledChange = viewModel::setUploadLimitEnabled,
+                onValueChange   = viewModel::setUploadLimitKb
             )
             RowDivider()
             CounterRow(
@@ -133,7 +140,7 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
             )
             Spacer(Modifier.height(10.dp))
             Text(
-                "Пустое поле — без ограничения.",
+                "Без галки скорость не ограничивается. Ноль в поле — выключить совсем.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -286,8 +293,7 @@ private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
  * дальше переводим в мегабайты, иначе "9000 КБ/с" читается плохо.
  */
 private fun formatLimit(kb: Int): String = when {
-    kb < 0     -> "Выключена"
-    kb == 0    -> "Без ограничения"
+    kb <= 0    -> "Выключена"
     kb >= 1024 -> {
         val mb = kb / 1024.0
         (if (mb >= 10) "%.0f".format(mb) else "%.1f".format(mb)) + " МБ/с"
@@ -296,96 +302,69 @@ private fun formatLimit(kb: Int): String = when {
 }
 
 /**
- * Отдача. Отдельный выключатель нужен потому, что ноль в libtorrent означает
- * "без ограничения", а не "не отдавать" — через одно поле это выразить нельзя.
- * Выключенное состояние хранится как -1 и применяется как предельно низкий
- * потолок: полностью запретить отдачу протокол не даёт.
+ * Лимит скорости: галка "регулировать" плюс числовое поле под ней.
+ *
+ * Два состояния разведены намеренно. Снятая галка — скорость не ограничивается
+ * вовсе. Галка стоит, а в поле ноль — скорость выключена. Одним числовым полем
+ * это не выразить: в libtorrent ноль как раз и означает "без ограничения",
+ * поэтому "выключить" через него сказать нечем.
  */
 @Composable
-private fun UploadRow(
+private fun LimitBlock(
+    title: String,
+    enabled: Boolean,
     value: Int,
-    onChange: (Int) -> Unit
+    hintWhenOff: String? = null,
+    onEnabledChange: (Boolean) -> Unit,
+    onValueChange: (Int) -> Unit
 ) {
-    val enabled = value >= 0
+    var text by remember(value, enabled) {
+        mutableStateOf(if (value <= 0) "" else value.toString())
+    }
     Column(Modifier.fillMaxWidth()) {
         Row(
             Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = enabled, onCheckedChange = onEnabledChange)
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(start = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(Modifier.weight(1f)) {
-                Text("Скорость отдачи", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    if (enabled) formatLimit(value)
-                    else "Выключена — пиры отвечают тем же, загрузка может замедлиться",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = enabled,
-                onCheckedChange = { on -> onChange(if (on) 0 else -1) }
-            )
-        }
-        if (enabled) {
-            Spacer(Modifier.height(8.dp))
-            LimitField(
-                value = value,
-                onChange = onChange,
-                modifier = Modifier.align(Alignment.End)
-            )
-        }
-    }
-}
-
-/** Само поле ввода лимита, общее для загрузки и отдачи. */
-@Composable
-private fun LimitField(
-    value: Int,
-    onChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var text by remember(value) { mutableStateOf(if (value <= 0) "" else value.toString()) }
-    OutlinedTextField(
-        value = text,
-        onValueChange = { raw ->
-            val digits = raw.filter { ch -> ch.isDigit() }.take(6)
-            text = digits
-            onChange(digits.toIntOrNull() ?: 0)
-        },
-        modifier = modifier.width(130.dp),
-        singleLine = true,
-        placeholder = { Text("∞") },
-        suffix = { Text("КБ/с", style = MaterialTheme.typography.labelSmall) },
-        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
-        )
-    )
-}
-
-/**
- * Поле лимита скорости в КБ/с. Пустая строка и ноль означают
- * "без ограничения" — именно так это значение понимает и libtorrent.
- */
-@Composable
-private fun LimitRow(
-    title: String,
-    subtitle: String,
-    value: Int,
-    onChange: (Int) -> Unit
-) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(subtitle,
+            Text(
+                when {
+                    !enabled       -> "Без ограничения"
+                    value <= 0     -> hintWhenOff ?: "Выключена"
+                    else           -> formatLimit(value)
+                },
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f).padding(end = 12.dp)
+            )
+            OutlinedTextField(
+                value = text,
+                onValueChange = { raw ->
+                    val digits = raw.filter { ch -> ch.isDigit() }.take(6)
+                    text = digits
+                    onValueChange(digits.toIntOrNull() ?: 0)
+                },
+                enabled = enabled,
+                modifier = Modifier.width(130.dp),
+                singleLine = true,
+                placeholder = { Text("0") },
+                suffix = { Text("КБ/с", style = MaterialTheme.typography.labelSmall) },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                )
+            )
         }
-        LimitField(value = value, onChange = onChange)
     }
 }
 

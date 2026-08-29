@@ -197,11 +197,19 @@ class TorrentEngine @Inject constructor(
         // Лимиты из настроек применяются сразу и на каждое изменение
         scope.launch {
             kotlinx.coroutines.flow.combine(
+                settings.downloadLimitEnabled,
                 settings.downloadLimitKb,
+                settings.uploadLimitEnabled,
                 settings.uploadLimitKb,
                 settings.maxActiveDownloads
-            ) { dl, ul, act -> Triple(dl, ul, act) }
-                .collect { (dl, ul, act) -> applyLimits(dl, ul, act) }
+            ) { dlOn, dl, ulOn, ul, act -> arrayOf(dlOn, dl, ulOn, ul, act) }
+                .collect { v ->
+                    applyLimits(
+                        v[0] as Boolean, v[1] as Int,
+                        v[2] as Boolean, v[3] as Int,
+                        v[4] as Int
+                    )
+                }
         }
 
         scope.launch(engineDispatcher) {
@@ -236,28 +244,40 @@ class TorrentEngine @Inject constructor(
      * загрузки и раздачи вместе, и если он окажется равным числу загрузок,
      * готовые раздачи начнут вытеснять активные.
      */
-    private fun applyLimits(dlKb: Int, ulKb: Int, maxActive: Int) {
+    private fun applyLimits(
+        dlOn: Boolean, dlKb: Int,
+        ulOn: Boolean, ulKb: Int,
+        maxActive: Int
+    ) {
         if (!started) return
         try {
             val n = maxActive.coerceIn(1, 20)
             val sp = SettingsPack()
-            sp.downloadRateLimit(if (dlKb <= 0) 0 else dlKb * 1024)
-            // -1 означает "не отдавать". Полного запрета протокол не даёт,
-            // поэтому ставим предельно низкий потолок: отдача практически
-            // прекращается, но раздача формально остаётся живой.
-            sp.uploadRateLimit(when {
-                ulKb < 0  -> 1
-                ulKb == 0 -> 0
-                else      -> ulKb * 1024
-            })
+            sp.downloadRateLimit(rateToBytes(dlOn, dlKb))
+            sp.uploadRateLimit(rateToBytes(ulOn, ulKb))
             sp.activeDownloads(n)
             sp.activeSeeds(n)
             sp.activeLimit(n * 2 + 5)
             session.applySettings(sp)
-            Log.d(TAG, "limits: dl=" + dlKb + "KB ul=" + ulKb + "KB active=" + n)
+            Log.d(TAG, "limits: dl=" + (if (dlOn) dlKb.toString() else "off") +
+                " ul=" + (if (ulOn) ulKb.toString() else "off") + " active=" + n)
         } catch (e: Exception) {
             Log.e(TAG, "applyLimits: " + e)
         }
+    }
+
+    /**
+     * Настройка -> байты в секунду для libtorrent.
+     *
+     * Галка снята — ограничения нет, и ноль здесь как раз и означает
+     * "без ограничения". Галка стоит, а в поле ноль — пользователь просит
+     * выключить совсем; полного запрета протокол не даёт, поэтому ставим
+     * предельно низкий потолок в 1 байт/с.
+     */
+    private fun rateToBytes(enabled: Boolean, kb: Int): Int = when {
+        !enabled  -> 0
+        kb <= 0   -> 1
+        else      -> kb * 1024
     }
 
     /**

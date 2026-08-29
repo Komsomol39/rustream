@@ -36,6 +36,8 @@ class SettingsViewModel @Inject constructor(
 
     val downloadLimitKb    = repo.downloadLimitKb.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     val uploadLimitKb      = repo.uploadLimitKb.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+    val downloadLimitEnabled = repo.downloadLimitEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val uploadLimitEnabled   = repo.uploadLimitEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
     val maxActiveDownloads = repo.maxActiveDownloads.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 3)
 
     val mediaFolders = repo.mediaFolders.stateIn(
@@ -65,6 +67,8 @@ class SettingsViewModel @Inject constructor(
     fun setDownloadLimitKb(v: Int)    = viewModelScope.launch { repo.setDownloadLimitKb(v) }
     fun setUploadLimitKb(v: Int)      = viewModelScope.launch { repo.setUploadLimitKb(v) }
     fun setMaxActiveDownloads(v: Int) = viewModelScope.launch { repo.setMaxActiveDownloads(v) }
+    fun setDownloadLimitEnabled(v: Boolean) = viewModelScope.launch { repo.setDownloadLimitEnabled(v) }
+    fun setUploadLimitEnabled(v: Boolean)   = viewModelScope.launch { repo.setUploadLimitEnabled(v) }
 
     fun addMediaFolder(path: String) = viewModelScope.launch { repo.addMediaFolder(path) }
     fun removeMediaFolder(path: String) = viewModelScope.launch { repo.removeMediaFolder(path) }

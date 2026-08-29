@@ -35,6 +35,10 @@ class SettingsRepository @Inject constructor(
         val KEY_DL_LIMIT_KB       = intPreferencesKey("dl_limit_kb")
         val KEY_UL_LIMIT_KB       = intPreferencesKey("ul_limit_kb")
         val KEY_MAX_ACTIVE        = intPreferencesKey("max_active_downloads")
+        // Галка "регулировать": без неё скорость не ограничивается вовсе.
+        // Значение в КБ/с при этом хранится отдельно, ноль = выключить совсем.
+        val KEY_DL_LIMIT_ON       = booleanPreferencesKey("dl_limit_enabled")
+        val KEY_UL_LIMIT_ON       = booleanPreferencesKey("ul_limit_enabled")
     }
 
     val darkTheme: Flow<Boolean>        = context.dataStore.data.map { it[KEY_DARK_THEME] ?: true }
@@ -47,8 +51,10 @@ class SettingsRepository @Inject constructor(
     val tpbEnabled: Flow<Boolean>       = context.dataStore.data.map { it[KEY_TPB_ENABLED] ?: true }
     val newpipeEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_NEWPIPE_ENABLED] ?: false }
 
-    val downloadLimitKb: Flow<Int>      = context.dataStore.data.map { it[KEY_DL_LIMIT_KB] ?: 0 }
-    val uploadLimitKb: Flow<Int>        = context.dataStore.data.map { it[KEY_UL_LIMIT_KB] ?: 0 }
+    val downloadLimitKb: Flow<Int>      = context.dataStore.data.map { (it[KEY_DL_LIMIT_KB] ?: 0).coerceAtLeast(0) }
+    val uploadLimitKb: Flow<Int>        = context.dataStore.data.map { (it[KEY_UL_LIMIT_KB] ?: 0).coerceAtLeast(0) }
+    val downloadLimitEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_DL_LIMIT_ON] ?: false }
+    val uploadLimitEnabled: Flow<Boolean>   = context.dataStore.data.map { it[KEY_UL_LIMIT_ON] ?: false }
     val maxActiveDownloads: Flow<Int>   = context.dataStore.data.map { it[KEY_MAX_ACTIVE] ?: 3 }
 
     val mediaFolders: Flow<List<String>> = context.dataStore.data.map { prefs ->
@@ -66,8 +72,9 @@ class SettingsRepository @Inject constructor(
     suspend fun setNewpipeEnabled(v: Boolean)    = context.dataStore.edit { it[KEY_NEWPIPE_ENABLED] = v }
 
     suspend fun setDownloadLimitKb(v: Int)   = context.dataStore.edit { it[KEY_DL_LIMIT_KB] = v.coerceAtLeast(0) }
-    // -1 = отдача выключена, 0 = без ограничения, >0 = потолок в КБ/с
-    suspend fun setUploadLimitKb(v: Int)     = context.dataStore.edit { it[KEY_UL_LIMIT_KB] = v.coerceAtLeast(-1) }
+    suspend fun setUploadLimitKb(v: Int)     = context.dataStore.edit { it[KEY_UL_LIMIT_KB] = v.coerceAtLeast(0) }
+    suspend fun setDownloadLimitEnabled(v: Boolean) = context.dataStore.edit { it[KEY_DL_LIMIT_ON] = v }
+    suspend fun setUploadLimitEnabled(v: Boolean)   = context.dataStore.edit { it[KEY_UL_LIMIT_ON] = v }
     suspend fun setMaxActiveDownloads(v: Int) = context.dataStore.edit { it[KEY_MAX_ACTIVE] = v.coerceIn(1, 20) }
 
     suspend fun addMediaFolder(path: String) = context.dataStore.edit { prefs ->
