@@ -7,6 +7,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -29,7 +34,7 @@ import com.komsomol.rustream.player.PlayerActivity
 
 @Composable
 fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
-    val videos by viewModel.videos.collectAsState()
+    val browse by viewModel.browse.collectAsState()
     val scanning by viewModel.scanning.collectAsState()
     val context = LocalContext.current
     var toDelete by remember { mutableStateOf<VideoItem?>(null) }
@@ -49,15 +54,26 @@ fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
         )
     }
 
+    // Системная "назад" поднимает на уровень вверх, а не выкидывает из вкладки
+    BackHandler(enabled = browse.canGoUp) { viewModel.goUp() }
+
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Видео", style = MaterialTheme.typography.headlineSmall)
+            if (browse.canGoUp) {
+                IconButton(onClick = { viewModel.goUp() }, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                }
+                Spacer(Modifier.width(6.dp))
+            }
+            Text(browse.title, style = MaterialTheme.typography.headlineSmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false))
             Spacer(Modifier.width(8.dp))
             Text(
-                if (scanning) "сканирую..." else videos.size.toString() + " файлов",
+                if (scanning) "сканирую..." else browse.totalCount.toString() + " файлов",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -67,7 +83,7 @@ fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
             }
         }
 
-        if (videos.isEmpty()) {
+        if (browse.folders.isEmpty() && browse.files.isEmpty()) {
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.PlayCircle, contentDescription = null,
@@ -81,7 +97,11 @@ fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
             }
         } else {
             LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
-                items(videos, key = { it.path }) { v ->
+                // Папки идут первыми, как в любом файловом менеджере
+                items(browse.folders, key = { "d:" + it.path }) { f ->
+                    FolderRow(folder = f, onClick = { viewModel.open(f) })
+                }
+                items(browse.files, key = { it.path }) { v ->
                     VideoRow(
                         video = v,
                         onClick = {
@@ -94,6 +114,28 @@ fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FolderRow(folder: VideoFolder, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.Folder, contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(folder.name, style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(folder.videoCount.toString() + " видео",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

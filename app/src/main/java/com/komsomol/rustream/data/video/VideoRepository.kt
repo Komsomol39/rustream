@@ -28,6 +28,11 @@ class VideoRepository @Inject constructor(
     private val _scanning = MutableStateFlow(false)
     val scanning: StateFlow<Boolean> = _scanning.asStateFlow()
 
+    // Корни, от которых считается дерево папок во вкладке Видео:
+    // папка загрузок плюс пользовательские папки из настроек
+    private val _roots = MutableStateFlow<List<String>>(emptyList())
+    val roots: StateFlow<List<String>> = _roots.asStateFlow()
+
     private val videoExt = setOf("mkv", "mp4", "avi", "webm", "mov", "ts", "m4v")
 
     suspend fun scan() = withContext(Dispatchers.IO) {
@@ -37,10 +42,9 @@ class VideoRepository @Inject constructor(
             val files = mutableListOf<File>()
             val roots = mutableListOf(engine.savePath)
             roots.addAll(settings.mediaFolders.first())
-            roots.distinct().forEach { path ->
-                val root = File(path)
-                if (root.exists()) collectVideo(root, files)
-            }
+            val existing = roots.distinct().filter { File(it).exists() }
+            _roots.value = existing
+            existing.forEach { path -> collectVideo(File(path), files) }
             val seen = HashSet<String>()
             files.retainAll { seen.add(it.absolutePath) }
             files.sortBy { it.name.lowercase() }
