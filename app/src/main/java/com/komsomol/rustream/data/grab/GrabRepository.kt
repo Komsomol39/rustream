@@ -145,6 +145,21 @@ class GrabRepository @Inject constructor(
      *   молча пропускаются и получается «нет форматов»/бот-чек)
      * Клиентов НЕ фиксируем — nightly сам выбирает рабочий набор.
      */
+    /**
+     * Шаблон имени выходного файла.
+     *
+     * %(extractor_key)s — папка по источнику: Rutube, Instagram, YouTube и т.д.
+     * Торренты при этом остаются в корне savePath, как и раньше.
+     *
+     * [%(id)s] — обязателен для уникальности. Раньше шаблон был
+     * "%(title).80s.%(ext)s", и у роликов одного автора с длинным общим
+     * началом названия имена после обрезки до 80 символов совпадали. yt-dlp
+     * видел готовый файл, писал "has already been downloaded" и завершался
+     * мгновенно — со стороны выглядело как "второе видео сразу готово".
+     * Идентификатор ролика уникален внутри источника и это исключает.
+     */
+    private val OUT_TEMPLATE = "/%(extractor_key)s/%(title).80s [%(id)s].%(ext)s"
+
     private fun addYtOptions(req: YoutubeDLRequest) {
         req.addOption("--no-check-certificates")
         req.addOption("--extractor-retries", "3")
@@ -161,7 +176,7 @@ class GrabRepository @Inject constructor(
                 ensureYtdl() // первый запуск распаковывает Python, ~10-20 сек
 
                 val req = YoutubeDLRequest(result.url)
-                req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
+                req.addOption("-o", engine.savePath + OUT_TEMPLATE)
                 req.addOption("--no-mtime")
                 // Альбом/плейлист Яндекса — качаем все треки; иначе одиночный элемент
                 val isYandexAlbum = result.url.contains("music.yandex.") &&
@@ -283,7 +298,7 @@ class GrabRepository @Inject constructor(
                 ensureYtdl()
                 setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.DOWNLOADING))
                 val req = YoutubeDLRequest(url)
-                req.addOption("-o", engine.savePath + "/%(title).80s.%(ext)s")
+                req.addOption("-o", engine.savePath + OUT_TEMPLATE)
                 req.addOption("--no-mtime")
                 req.addOption("--no-playlist")
                 addYtOptions(req)
