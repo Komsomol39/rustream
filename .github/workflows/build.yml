@@ -8,6 +8,13 @@ on:
 permissions:
   contents: write
 
+# Параллельные сборки гонятся за один и тот же релиз: каждая заливает
+# version.json и APK с --clobber, и релиз достаётся той, что финишировала
+# последней, а не самой свежей. Держим в работе только последнюю.
+concurrency:
+  group: build-apk
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
