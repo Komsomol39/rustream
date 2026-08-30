@@ -46,6 +46,7 @@ class DownloadRepository @Inject constructor(
 
     val downloads: StateFlow<Map<String, DownloadItem>> = engine.downloads
     val dhtNodes: StateFlow<Long> = engine.dhtNodes
+    val order: StateFlow<List<String>> = engine.order
 
     fun start() = engine.start()
 
@@ -239,6 +240,7 @@ class DownloadRepository @Inject constructor(
     fun pause(id: String)  = engine.pause(id)
     fun resume(id: String) = engine.resume(id)
     fun remove(id: String, deleteFiles: Boolean = false) = engine.remove(id, deleteFiles)
+    fun reorder(ids: List<String>) = engine.reorder(ids)
 
     companion object {
         private const val UA =

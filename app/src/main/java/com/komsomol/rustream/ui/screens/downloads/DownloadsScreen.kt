@@ -13,6 +13,19 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DragHandle
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.zIndex
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,10 +43,29 @@ fun DownloadsScreen(
     onOpen: (String) -> Unit = {},
     viewModel: DownloadsViewModel = hiltViewModel()
 ) {
-    val downloads by viewModel.downloads.collectAsState(initial = emptyList())
+    val list by viewModel.list.collectAsState()
     val dhtNodes by viewModel.dhtNodes.collectAsState(initial = 0L)
+    val selected by viewModel.selected.collectAsState()
+    val selectMode by viewModel.selectMode.collectAsState()
     var confirmRemove by remember { mutableStateOf<DownloadItem?>(null) }
+    var confirmRemoveSelected by remember { mutableStateOf(false) }
     var showAdd by remember { mutableStateOf(false) }
+
+    // Пока идёт перетаскивание, список берётся отсюда: сортировка из движка
+    // придёт только после отпускания, иначе карточка прыгала бы под пальцем
+    var dragIds by remember { mutableStateOf<List<String>?>(null) }
+    var dragId by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+
+    val baseIds = list.all.map { it.id }
+    val shownIds = dragIds ?: baseIds
+    val byId = list.all.associateBy { it.id }
+    // Черта: во время перетаскивания она стоит на месте, а положение карточки
+    // относительно неё и решает, ставить раздачу на паузу или снимать
+    val activeCount = if (dragIds == null) list.active.size
+                      else list.active.count { shownIds.contains(it.id) }
+
+    BackHandler(enabled = selectMode) { viewModel.clearSelection() }
 
     confirmRemove?.let { target ->
         var deleteFiles by remember(target.id) { mutableStateOf(false) }
@@ -71,8 +103,31 @@ fun DownloadsScreen(
         )
     }
 
+    if (confirmRemoveSelected) {
+        var deleteFiles by remember { mutableStateOf(false) }
+        AlertDialog(
+            onDismissRequest = { confirmRemoveSelected = false },
+            title = { Text("Удалить " + selected.size + " раздач?") },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { deleteFiles = !deleteFiles }) {
+                    Checkbox(checked = deleteFiles, onCheckedChange = { deleteFiles = it })
+                    Text("Удалить скачанные файлы с устройства")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.removeSelected(deleteFiles); confirmRemoveSelected = false
+                }) { Text("Удалить", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRemoveSelected = false }) { Text("Отмена") }
+            }
+        )
+    }
+
     Box(Modifier.fillMaxSize()) {
-        if (downloads.isEmpty()) {
+        if (list.isEmpty) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -87,24 +142,87 @@ fun DownloadsScreen(
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp)
-            ) {
-                item {
-                    Text("DHT: " + dhtNodes + " узлов",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                items(downloads, key = { it.id }) { item ->
-                    DownloadCard(
-                        item     = item,
-                        onClick  = { onOpen(item.id) },
-                        onPause  = { viewModel.pause(item) },
-                        onResume = { viewModel.resume(item) },
-                        onRemove = { confirmRemove = item }
+            Column(Modifier.fillMaxSize()) {
+                if (selectMode) {
+                    SelectionBar(
+                        count       = selected.size,
+                        onPause     = { viewModel.pauseSelected() },
+                        onResume    = { viewModel.resumeSelected() },
+                        onRemove    = { confirmRemoveSelected = true },
+                        onSelectAll = { viewModel.selectAll() },
+                        onCancel    = { viewModel.clearSelection() }
                     )
+                }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp)
+                ) {
+                    item {
+                        Text("DHT: " + dhtNodes + " узлов",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    itemsIndexed(shownIds, key = { _, id -> id }) { index, id ->
+                        // Черта рисуется перед первой неактивной раздачей
+                        if (index == activeCount) InactiveDivider()
+                        val item = byId[id]
+                        if (item != null) {
+                            DownloadCard(
+                                item      = item,
+                                dragging  = dragId == id,
+                                dragDelta = if (dragId == id) dragOffset else 0f,
+                                selected  = selected.contains(id),
+                                selectMode = selectMode,
+                                onClick   = {
+                                    if (selectMode) viewModel.toggleSelect(id) else onOpen(id)
+                                },
+                                onLongClick = { viewModel.toggleSelect(id) },
+                                onPause   = { viewModel.pause(item) },
+                                onResume  = { viewModel.resume(item) },
+                                onRemove  = { confirmRemove = item },
+                                onDragStart = {
+                                    dragIds = shownIds
+                                    dragId = id
+                                    dragOffset = 0f
+                                },
+                                onDrag = { delta, rowHeight ->
+                                    // Сдвиг накопился больше высоты строки —
+                                    // меняем соседей местами и оставляем остаток.
+                                    // Так не нужен разбор попаданий по координатам.
+                                    dragOffset += delta
+                                    var cur = dragIds
+                                    if (cur != null && rowHeight > 0f) {
+                                        var at = cur.indexOf(id)
+                                        while (at >= 0 && dragOffset > rowHeight && at < cur!!.size - 1) {
+                                            val m = cur!!.toMutableList()
+                                            m.add(at + 1, m.removeAt(at))
+                                            cur = m
+                                            at += 1
+                                            dragOffset -= rowHeight
+                                        }
+                                        while (at > 0 && dragOffset < -rowHeight) {
+                                            val m = cur!!.toMutableList()
+                                            m.add(at - 1, m.removeAt(at))
+                                            cur = m
+                                            at -= 1
+                                            dragOffset += rowHeight
+                                        }
+                                        dragIds = cur
+                                    }
+                                },
+                                onDragEnd = {
+                                    dragIds?.let { viewModel.applyOrder(it, activeCount) }
+                                    dragIds = null
+                                    dragId = null
+                                    dragOffset = 0f
+                                }
+                            )
+                        }
+                    }
+                    if (activeCount >= shownIds.size) {
+                        item { InactiveDivider() }
+                    }
                 }
             }
         }
@@ -217,18 +335,120 @@ private fun AddTorrentDialog(
     )
 }
 
+/** Черта, ниже которой раздачи стоят на паузе. Она же — цель перетаскивания. */
 @Composable
-fun DownloadCard(
-    item: DownloadItem,
-    onClick: () -> Unit = {},
+private fun InactiveDivider() {
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        HorizontalDivider(Modifier.weight(1f))
+        Text("НЕАКТИВНЫЕ",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 10.dp))
+        HorizontalDivider(Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun SelectionBar(
+    count: Int,
     onPause: () -> Unit,
     onResume: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    onSelectAll: () -> Unit,
+    onCancel: () -> Unit
 ) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Surface(color = MaterialTheme.colorScheme.secondaryContainer) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onCancel) {
+                Icon(Icons.Default.Close, contentDescription = "Отмена")
+            }
+            Text("Выбрано: " + count,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f))
+            IconButton(onClick = onPause) {
+                Icon(Icons.Default.Pause, contentDescription = "Остановить выбранные")
+            }
+            IconButton(onClick = onResume) {
+                Icon(Icons.Default.PlayArrow, contentDescription = "Продолжить выбранные")
+            }
+            IconButton(onClick = onSelectAll) {
+                Icon(Icons.Default.SelectAll, contentDescription = "Выбрать все")
+            }
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Default.Delete, contentDescription = "Удалить выбранные",
+                    tint = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalFoundationApi::class)
+fun DownloadCard(
+    item: DownloadItem,
+    dragging: Boolean = false,
+    dragDelta: Float = 0f,
+    selected: Boolean = false,
+    selectMode: Boolean = false,
+    onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onRemove: () -> Unit,
+    onDragStart: () -> Unit = {},
+    onDrag: (delta: Float, rowHeight: Float) -> Unit = { _, _ -> },
+    onDragEnd: () -> Unit = {}
+) {
+    // Высоту строки меряем по факту: карточки разной высоты, а перестановка
+    // считается именно в них
+    var rowHeight by remember { mutableFloatStateOf(0f) }
+    Card(
+        Modifier
+            .fillMaxWidth()
+            .onSizeChanged { rowHeight = it.height.toFloat() }
+            .zIndex(if (dragging) 1f else 0f)
+            .graphicsLayer {
+                translationY = dragDelta
+                if (dragging) { scaleX = 1.02f; scaleY = 1.02f }
+            }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick),
+        colors = if (selected)
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer)
+        else CardDefaults.cardColors()
+    ) {
         Column(Modifier.padding(12.dp)) {
             // Заголовок + кнопки
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                if (selectMode) {
+                    Checkbox(checked = selected, onCheckedChange = { onLongClick() })
+                    Spacer(Modifier.width(4.dp))
+                } else {
+                    Icon(
+                        Icons.Default.DragHandle,
+                        contentDescription = "Перетащить",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .pointerInput(item.id) {
+                                detectDragGestures(
+                                    onDragStart = { onDragStart() },
+                                    onDragEnd = { onDragEnd() },
+                                    onDragCancel = { onDragEnd() }
+                                ) { change, amount ->
+                                    change.consume()
+                                    onDrag(amount.y, rowHeight)
+                                }
+                            }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
                 Text(item.title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,

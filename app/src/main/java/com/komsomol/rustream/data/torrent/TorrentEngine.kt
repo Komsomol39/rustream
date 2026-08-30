@@ -57,6 +57,11 @@ class TorrentEngine @Inject constructor(
     // Список раздач на диске: без него всё терялось при перезапуске процесса
     private val store = TorrentStore(context)
 
+    // Порядок очереди: id по возрастанию приоритета. Он же определяет, какие
+    // раздачи получат активные слоты, когда их число ограничено настройкой.
+    private val _order = MutableStateFlow<List<String>>(emptyList())
+    val order: StateFlow<List<String>> = _order.asStateFlow()
+
     private val _downloads = MutableStateFlow<Map<String, DownloadItem>>(emptyMap())
     val downloads: StateFlow<Map<String, DownloadItem>> = _downloads.asStateFlow()
 
@@ -294,6 +299,8 @@ class TorrentEngine @Inject constructor(
         if (saved.isEmpty()) return
         Log.d(TAG, "Restoring " + saved.size + " torrents")
 
+        _order.value = saved.sortedBy { it.order }.map { it.id }
+
         // Сначала показываем список в UI, чтобы вкладка не была пустой
         // те секунды, пока сессия принимает раздачи.
         _downloads.update { map ->
@@ -417,6 +424,10 @@ class TorrentEngine @Inject constructor(
         }
     }
 
+    private fun enqueue(id: String) {
+        _order.update { if (it.contains(id)) it else it + id }
+    }
+
     fun addMagnet(
         item: DownloadItem,
         persist: Boolean = true,
@@ -426,7 +437,7 @@ class TorrentEngine @Inject constructor(
         val magnet = item.magnetUri ?: return
         val startState = if (keepPaused) DownloadState.PAUSED else DownloadState.FETCHING_META
         _downloads.update { it + (item.id to item.copy(state = startState, errorMessage = null)) }
-        if (persist) store.put(item.copy(state = DownloadState.FETCHING_META))
+        if (persist) { store.put(item.copy(state = DownloadState.FETCHING_META)); enqueue(item.id) }
         val hash = extractHash(magnet)
         if (hash != null) {
             synchronized(hashToId) { hashToId[hash] = item.id }
@@ -487,6 +498,7 @@ class TorrentEngine @Inject constructor(
                     // раздача поднимется из него мгновенно, без похода на трекер
                     store.saveTorrentFile(item.id, bytes)
                     store.put(item.copy(state = DownloadState.DOWNLOADING))
+                    enqueue(item.id)
                 }
                 session.download(ti, File(savePath))
                 if (keepPaused) pauseWhenReady(item.id)
@@ -502,6 +514,23 @@ class TorrentEngine @Inject constructor(
     fun addFailed(item: DownloadItem, message: String) {
         _downloads.update { it + (item.id to item.copy(state = DownloadState.ERROR, errorMessage = message)) }
         store.remove(item.id)
+    }
+
+    /**
+     * Новый порядок очереди.
+     *
+     * Помимо сортировки в списке это реальный приоритет libtorrent:
+     * queuePositionSet решает, кто займёт активные слоты, когда их число
+     * ограничено настройкой "одновременных загрузок".
+     */
+    fun reorder(ids: List<String>) {
+        _order.value = ids
+        store.setOrder(ids)
+        scope.launch(engineDispatcher) {
+            ids.forEachIndexed { i, id ->
+                try { findHandle(id)?.queuePositionSet(i) } catch (_: Exception) {}
+            }
+        }
     }
 
     fun pause(id: String) {
@@ -525,6 +554,7 @@ class TorrentEngine @Inject constructor(
     fun remove(id: String, deleteFiles: Boolean = false) {
         _downloads.update { it - id }
         store.remove(id)
+        _order.update { list -> list.filter { it != id } }
         scope.launch(engineDispatcher) {
             val h = findHandle(id)
             if (h != null) try {

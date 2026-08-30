@@ -40,7 +40,8 @@ class TorrentStore(context: Context) {
         val expectedBytes: Long,
         val addedAt: Long,
         val paused: Boolean,
-        val finished: Boolean
+        val finished: Boolean,
+        val order: Int = 0
     )
 
     fun torrentFile(id: String): File = File(dir, id + ".torrent")
@@ -101,7 +102,8 @@ class TorrentStore(context: Context) {
                 expectedBytes = o.optLong("expectedBytes", 0L),
                 addedAt       = o.optLong("addedAt", System.currentTimeMillis()),
                 paused        = o.optBoolean("paused", false),
-                finished      = o.optBoolean("finished", false)
+                finished      = o.optBoolean("finished", false),
+                order         = o.optInt("order", 0)
             )
         } catch (_: Exception) {
             null
@@ -122,6 +124,7 @@ class TorrentStore(context: Context) {
                 o.put("addedAt", s.addedAt)
                 o.put("paused", s.paused)
                 o.put("finished", s.finished)
+                o.put("order", s.order)
                 arr.put(o)
             }
             // Пишем во временный файл и переименовываем: если процесс умрёт
@@ -153,7 +156,9 @@ class TorrentStore(context: Context) {
                 expectedBytes = item.expectedBytes,
                 addedAt       = item.addedAt,
                 paused        = item.state == DownloadState.PAUSED,
-                finished      = item.state == DownloadState.FINISHED
+                finished      = item.state == DownloadState.FINISHED,
+                // Новая раздача встаёт в конец очереди
+                order         = loadUnlocked().maxOfOrNull { it.order }?.plus(1) ?: 0
             )
             writeAll(loadUnlocked().filter { it.id != item.id } + entry)
         }
@@ -173,6 +178,16 @@ class TorrentStore(context: Context) {
             val list = loadUnlocked()
             if (list.none { it.id == id }) return
             writeAll(list.map { if (it.id == id) it.copy(finished = true, paused = false) else it })
+        }
+    }
+
+    /** Порядок очереди: индекс в списке становится приоритетом раздачи. */
+    fun setOrder(ids: List<String>) {
+        synchronized(lock) {
+            val pos = ids.withIndex().associate { (i, id) -> id to i }
+            val list = loadUnlocked()
+            if (list.none { pos.containsKey(it.id) }) return
+            writeAll(list.map { s -> pos[s.id]?.let { s.copy(order = it) } ?: s })
         }
     }
 
