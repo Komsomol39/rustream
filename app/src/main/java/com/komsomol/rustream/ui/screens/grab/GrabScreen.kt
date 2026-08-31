@@ -34,7 +34,18 @@ fun GrabScreen(
     val uiState by viewModel.uiState.collectAsState()
     val query by viewModel.query.collectAsState()
     val downloads by viewModel.downloads.collectAsState()
+    var openError by remember { mutableStateOf<String?>(null) }
     val engineMsg by viewModel.engineMsg.collectAsState()
+
+    openError?.let { title ->
+        AlertDialog(
+            onDismissRequest = { openError = null },
+            title = { Text("Файл не найден") },
+            text = { Text("Не удалось найти файл «" + title + "» в папке загрузок. " +
+                          "Возможно, он был перемещён или удалён.") },
+            confirmButton = { TextButton(onClick = { openError = null }) { Text("Понятно") } }
+        )
+    }
     val formatQuery by viewModel.formatQuery.collectAsState()
 
     formatQuery?.let { q ->
@@ -105,7 +116,11 @@ fun GrabScreen(
                     GrabDownloadRow(d,
                         onDismiss = { viewModel.dismiss(d.id) },
                         onCancel  = { viewModel.cancel(d.id) },
-                        onOpen    = { d.filePath?.let { p -> onOpenReady(p, d.video) } })
+                        onOpen    = {
+                            viewModel.openReady(d,
+                                onFound   = { p -> onOpenReady(p, d.video) },
+                                onMissing = { openError = d.title })
+                        })
                 }
             }
         }
@@ -174,7 +189,9 @@ private fun GrabDownloadRow(
 ) {
     // Открывать можно только то, что действительно лежит на диске:
     // путь мы вытащили из вывода yt-dlp и он может не разобраться
-    val openable = d.state == GrabState.DONE && d.filePath != null
+    // Кликабельно всё готовое: путь ищется уже при нажатии, а если файла
+    // действительно нет — об этом честно сообщаем, а не молчим
+    val openable = d.state == GrabState.DONE
     Card(
         Modifier.fillMaxWidth().padding(vertical = 2.dp)
             .then(if (openable) Modifier.clickable(onClick = onOpen) else Modifier)
@@ -205,10 +222,8 @@ private fun GrabDownloadRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     GrabState.DONE -> Text(
-                        if (d.filePath != null)
-                            (if (d.video) "✓ Готово — нажмите, чтобы посмотреть"
-                             else "✓ Готово — нажмите, чтобы послушать")
-                        else "✓ Готово — смотри в библиотеке",
+                        if (d.video) "✓ Готово — нажмите, чтобы посмотреть"
+                        else "✓ Готово — нажмите, чтобы послушать",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.tertiary)
                     GrabState.ERROR -> Text("Ошибка: " + (d.message ?: ""),

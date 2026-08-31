@@ -534,6 +534,30 @@ class GrabRepository @Inject constructor(
         startDownload(fake, video)
     }
 
+    /**
+     * Путь готового файла. Сначала то, что удалось перехватить при загрузке;
+     * если там пусто — ищем по названию среди медиафайлов папки загрузок,
+     * в последнюю очередь берём самый свежий. Возвращает null, только если
+     * подходящего файла на диске действительно нет.
+     */
+    suspend fun resolveFile(d: GrabDownload): String? = withContext(Dispatchers.IO) {
+        d.filePath?.let { if (java.io.File(it).isFile) return@withContext it }
+        val exts = setOf("mp4","mkv","webm","mov","m4v","avi","ts","mp3","m4a","opus","ogg","flac","wav")
+        val files = try {
+            java.io.File(engine.savePath).walkTopDown()
+                .filter { it.isFile && it.extension.lowercase() in exts }.toList()
+        } catch (_: Exception) { emptyList() }
+        if (files.isEmpty()) return@withContext null
+
+        val key = d.title.lowercase().filter { it.isLetterOrDigit() }.take(24)
+        if (key.length >= 6) {
+            files.firstOrNull { f ->
+                f.nameWithoutExtension.lowercase().filter { it.isLetterOrDigit() }.contains(key)
+            }?.let { return@withContext it.absolutePath }
+        }
+        files.maxByOrNull { it.lastModified() }?.absolutePath
+    }
+
     fun dismiss(id: String) = _downloads.update { it - id }
 
     /** Отмена активной загрузки: убиваем процесс yt-dlp, чистим недокачанное, убираем карточку */

@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.zIndex
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,6 +60,11 @@ fun DownloadsScreen(
     var dragIds by remember { mutableStateOf<List<String>?>(null) }
     var dragId by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
+    // Реальные высоты строк по id. Черта втрое ниже карточки, и если считать
+    // перестановку по высоте перетаскиваемой карточки, при пересечении черты
+    // компенсация выходит больше фактического смещения — карточку выбрасывает
+    // обратно наверх.
+    val rowHeights = remember { mutableStateMapOf<String, Float>() }
 
     // Черта — полноценный элемент списка, а не рисунок между карточками.
     // Иначе за последнюю карточку было не перетащить: индекс не мог стать
@@ -168,10 +174,13 @@ fun DownloadsScreen(
                     itemsIndexed(shownIds, key = { _, id -> id }) { _, id ->
                         val item = byId[id]
                         if (id == DIVIDER_ID) {
-                            InactiveDivider()
+                            Box(Modifier.onSizeChanged {
+                                rowHeights[DIVIDER_ID] = it.height.toFloat()
+                            }) { InactiveDivider() }
                         } else if (item != null) {
                             DownloadCard(
                                 item      = item,
+                                onMeasured = { h -> rowHeights[id] = h },
                                 dragging  = dragId == id,
                                 dragDelta = if (dragId == id) dragOffset else 0f,
                                 selected  = selected.contains(id),
@@ -188,27 +197,33 @@ fun DownloadsScreen(
                                     dragId = id
                                     dragOffset = 0f
                                 },
-                                onDrag = { delta, rowHeight ->
+                                onDrag = { delta, _ ->
                                     // Сдвиг накопился больше высоты строки —
                                     // меняем соседей местами и оставляем остаток.
                                     // Так не нужен разбор попаданий по координатам.
                                     dragOffset += delta
                                     var cur = dragIds
-                                    if (cur != null && rowHeight > 0f) {
-                                        var at = cur.indexOf(id)
-                                        while (at >= 0 && dragOffset > rowHeight && at < cur!!.size - 1) {
+                                    if (cur != null) {
+                                        var at = cur!!.indexOf(id)
+                                        // Шаг перестановки — высота того соседа,
+                                        // через которого перепрыгиваем
+                                        while (at in 0 until cur!!.size - 1) {
+                                            val h = rowHeights[cur!![at + 1]] ?: break
+                                            if (h <= 0f || dragOffset <= h / 2) break
                                             val m = cur!!.toMutableList()
                                             m.add(at + 1, m.removeAt(at))
                                             cur = m
                                             at += 1
-                                            dragOffset -= rowHeight
+                                            dragOffset -= h
                                         }
-                                        while (at > 0 && dragOffset < -rowHeight) {
+                                        while (at > 0) {
+                                            val h = rowHeights[cur!![at - 1]] ?: break
+                                            if (h <= 0f || dragOffset >= -h / 2) break
                                             val m = cur!!.toMutableList()
                                             m.add(at - 1, m.removeAt(at))
                                             cur = m
                                             at -= 1
-                                            dragOffset += rowHeight
+                                            dragOffset += h
                                         }
                                         dragIds = cur
                                     }
@@ -391,6 +406,7 @@ private fun SelectionBar(
 @OptIn(ExperimentalFoundationApi::class)
 fun DownloadCard(
     item: DownloadItem,
+    onMeasured: (Float) -> Unit = {},
     dragging: Boolean = false,
     dragDelta: Float = 0f,
     selected: Boolean = false,
@@ -410,7 +426,10 @@ fun DownloadCard(
     Card(
         Modifier
             .fillMaxWidth()
-            .onSizeChanged { rowHeight = it.height.toFloat() }
+            .onSizeChanged {
+                rowHeight = it.height.toFloat()
+                onMeasured(rowHeight)
+            }
             .zIndex(if (dragging) 1f else 0f)
             .graphicsLayer {
                 translationY = dragDelta

@@ -76,6 +76,16 @@ class GrabViewModel @Inject constructor(
     fun downloadFormat(url: String, title: String, fmt: GrabFormat) =
         repo.startFormat(url, title, fmt)
 
+    /** Открыть готовую загрузку: путь ищется в момент нажатия. */
+    fun openReady(
+        d: com.komsomol.rustream.domain.model.GrabDownload,
+        onFound: (String) -> Unit,
+        onMissing: () -> Unit
+    ) = viewModelScope.launch {
+        val path = repo.resolveFile(d)
+        if (path != null) onFound(path) else onMissing()
+    }
+
     fun dismiss(id: String) = repo.dismiss(id)
     fun cancel(id: String)  = repo.cancel(id)
 }
