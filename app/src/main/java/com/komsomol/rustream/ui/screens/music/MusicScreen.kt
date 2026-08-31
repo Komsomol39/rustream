@@ -3,6 +3,9 @@ package com.komsomol.rustream.ui.screens.music
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -27,6 +30,39 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.komsomol.rustream.domain.model.ArtistGroup
 import com.komsomol.rustream.domain.model.Track
 
+/** Трек в результатах поиска: показываем исполнителя, чтобы было ясно, чей он. */
+@Composable
+private fun SearchTrackRow(
+    track: com.komsomol.rustream.domain.model.Track,
+    isCurrent: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (isCurrent) Icons.Default.VolumeUp else Icons.Default.MusicNote,
+            contentDescription = null,
+            tint = if (isCurrent) MaterialTheme.colorScheme.primary
+                   else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(track.title, style = MaterialTheme.typography.bodyLarge,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                color = if (isCurrent) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface)
+            Text(track.artist ?: "Неизвестный исполнитель",
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MusicScreen(
@@ -50,6 +86,9 @@ fun MusicScreen(
     val durationMs by viewModel.durationMs.collectAsState()
     val selectMode by viewModel.selectMode.collectAsState()
     val selected by viewModel.selected.collectAsState()
+    val query by viewModel.query.collectAsState()
+    val results by viewModel.searchResults.collectAsState()
+    val searching = query.isNotBlank()
 
     Column(Modifier.fillMaxSize()) {
         Row(
@@ -92,6 +131,25 @@ fun MusicScreen(
                 modifier = Modifier.padding(horizontal = 16.dp))
         }
 
+        if (!selectMode) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = viewModel::setQuery,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                singleLine = true,
+                placeholder = { Text("Поиск по трекам и исполнителям") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (query.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.setQuery("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Очистить")
+                        }
+                    }
+                }
+            )
+            Spacer(Modifier.height(6.dp))
+        }
+
         if (artists.isEmpty()) {
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -99,6 +157,26 @@ fun MusicScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(8.dp))
                     Text("Пока пусто", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        } else if (searching) {
+            if (results.isEmpty()) {
+                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                    Text("Ничего не найдено",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().weight(1f)) {
+                    items(results, key = { it.path }) { t ->
+                        // Плейлистом становится сам список результатов,
+                        // в том порядке, в каком он на экране
+                        SearchTrackRow(
+                            track = t,
+                            isCurrent = current?.path == t.path,
+                            onClick = { viewModel.playFrom(t, results) }
+                        )
+                    }
                 }
             }
         } else {

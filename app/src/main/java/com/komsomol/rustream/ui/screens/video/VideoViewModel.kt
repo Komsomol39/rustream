@@ -7,6 +7,8 @@ import com.komsomol.rustream.domain.model.VideoItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -49,7 +51,23 @@ class VideoViewModel @Inject constructor(
      * получить разбором путей — и в списке гарантированно не появится папка,
      * внутри которой видео нет.
      */
-    val browse = combine(repo.videos, repo.roots, _dir) { videos, roots, dir ->
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query.asStateFlow()
+    fun setQuery(q: String) { _query.value = q }
+
+    val browse = combine(repo.videos, repo.roots, _dir, _query) { videos, roots, dir, q ->
+        val needle = q.trim().lowercase()
+        if (needle.isNotEmpty()) {
+            // Поиск идёт по всему дереву и по всем корням сразу, включая
+            // внешние папки: текущая директория при этом не учитывается
+            val found = videos.filter {
+                it.title.lowercase().contains(needle) || it.fileName.lowercase().contains(needle)
+            }
+            return@combine VideoBrowse(
+                dir = dir, title = "Найдено", canGoUp = false,
+                folders = emptyList(), files = found, totalCount = found.size
+            )
+        }
         val effective = dir ?: roots.singleOrNull()
         if (effective == null) {
             // Корней несколько (или ни одного) — показываем их как папки

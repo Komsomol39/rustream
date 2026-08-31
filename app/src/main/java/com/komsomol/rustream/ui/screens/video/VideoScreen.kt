@@ -12,6 +12,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -35,6 +37,7 @@ import com.komsomol.rustream.player.PlayerActivity
 @Composable
 fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
     val browse by viewModel.browse.collectAsState()
+    val query by viewModel.query.collectAsState()
     val scanning by viewModel.scanning.collectAsState()
     val context = LocalContext.current
     var toDelete by remember { mutableStateOf<VideoItem?>(null) }
@@ -82,6 +85,23 @@ fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
                 Icon(Icons.Default.Refresh, contentDescription = "Обновить")
             }
         }
+
+        OutlinedTextField(
+            value = query,
+            onValueChange = viewModel::setQuery,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            singleLine = true,
+            placeholder = { Text("Поиск по всем видео") },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { viewModel.setQuery("") }) {
+                        Icon(Icons.Default.Close, contentDescription = "Очистить")
+                    }
+                }
+            }
+        )
+        Spacer(Modifier.height(6.dp))
 
         if (browse.folders.isEmpty() && browse.files.isEmpty()) {
             Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {

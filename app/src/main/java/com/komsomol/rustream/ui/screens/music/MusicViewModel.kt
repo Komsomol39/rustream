@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.komsomol.rustream.data.music.MusicRepository
 import com.komsomol.rustream.data.music.PlayerController
 import com.komsomol.rustream.domain.model.ArtistGroup
+import kotlinx.coroutines.flow.combine
 import com.komsomol.rustream.domain.model.Track
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,6 +65,31 @@ class MusicViewModel @Inject constructor(
     fun deleteTrack(path: String) = viewModelScope.launch { repo.deleteFile(path) }
 
     fun playFrom(t: Track, all: List<Track>) = player.play(t, all)
+
+    // ---- Поиск по всей библиотеке ----
+
+    private val _query = MutableStateFlow("")
+    val query: StateFlow<String> = _query.asStateFlow()
+
+    fun setQuery(q: String) { _query.value = q }
+
+    /**
+     * Ищем по всей библиотеке сразу, независимо от исполнителя: совпадение
+     * по названию, имени файла или исполнителю. Порядок результатов и будет
+     * плейлистом, если включить трек прямо отсюда.
+     */
+    val searchResults: StateFlow<List<Track>> =
+        combine(repo.artists, _query) { groups, q ->
+            val needle = q.trim().lowercase()
+            if (needle.isEmpty()) emptyList()
+            else groups.flatMap { it.tracks }
+                .filter { t ->
+                    t.title.lowercase().contains(needle) ||
+                    t.fileName.lowercase().contains(needle) ||
+                    (t.artist?.lowercase()?.contains(needle) == true)
+                }
+                .sortedBy { it.title.lowercase() }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val shuffle    = player.shuffle
     val repeatMode = player.repeatMode
 
