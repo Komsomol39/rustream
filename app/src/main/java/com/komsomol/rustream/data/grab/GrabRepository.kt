@@ -160,6 +160,18 @@ class GrabRepository @Inject constructor(
      */
     private val OUT_TEMPLATE = "/%(extractor_key)s/%(title).80s [%(id)s].%(ext)s"
 
+    /**
+     * Просим yt-dlp напечатать путь готового файла.
+     *
+     * Обычный --print включает --quiet и --simulate, что сломало бы и прогресс,
+     * и саму загрузку. Но с префиксом WHEN (здесь after_move) эта неявная
+     * подстановка не срабатывает: строка печатается уже после того, как файл
+     * встал на своё место.
+     */
+    private fun addPrintPath(req: YoutubeDLRequest) {
+        req.addOption("--print", "after_move:filepath")
+    }
+
     private fun addYtOptions(req: YoutubeDLRequest) {
         req.addOption("--no-check-certificates")
         req.addOption("--extractor-retries", "3")
@@ -177,6 +189,7 @@ class GrabRepository @Inject constructor(
 
                 val req = YoutubeDLRequest(result.url)
                 req.addOption("-o", engine.savePath + OUT_TEMPLATE)
+                addPrintPath(req)
                 req.addOption("--no-mtime")
                 // Альбом/плейлист Яндекса — качаем все треки; иначе одиночный элемент
                 val isYandexAlbum = result.url.contains("music.yandex.") &&
@@ -299,6 +312,7 @@ class GrabRepository @Inject constructor(
                 setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.DOWNLOADING))
                 val req = YoutubeDLRequest(url)
                 req.addOption("-o", engine.savePath + OUT_TEMPLATE)
+                addPrintPath(req)
                 req.addOption("--no-mtime")
                 req.addOption("--no-playlist")
                 addYtOptions(req)
@@ -350,9 +364,24 @@ class GrabRepository @Inject constructor(
         // Промежуточные потоки склейки (.f137.mp4) существовать уже не будут,
         // поэтому берём то, что реально лежит на диске
         val path = listOfNotNull(finalPath, lastPath).firstOrNull { java.io.File(it).exists() }
+            ?: newestMediaFile()
         setDl(GrabDownload(dlId, title, video, 1f, GrabState.DONE, filePath = path))
         notifyDone(title, video)
     }
+
+    /**
+     * Запасной вариант, если распознать путь из вывода не удалось: самый свежий
+     * медиафайл в папке загрузок. Ограничение по времени защищает от того,
+     * чтобы подсунуть давно лежащий файл, когда скачивание на деле сорвалось.
+     */
+    private fun newestMediaFile(): String? = try {
+        val exts = setOf("mp4","mkv","webm","mov","m4v","avi","ts","mp3","m4a","opus","ogg","flac","wav")
+        val cutoff = System.currentTimeMillis() - 15 * 60 * 1000L
+        java.io.File(engine.savePath).walkTopDown()
+            .filter { it.isFile && it.extension.lowercase() in exts && it.lastModified() >= cutoff }
+            .maxByOrNull { it.lastModified() }
+            ?.absolutePath
+    } catch (_: Exception) { null }
 
     /**
      * Достаёт путь файла из строки вывода yt-dlp. Форматы разные:
@@ -363,6 +392,9 @@ class GrabRepository @Inject constructor(
      */
     private fun parseDestination(line: String): String? {
         try {
+            // Ответ на --print after_move:filepath — просто путь отдельной строкой
+            val bare = line.trim()
+            if (bare.startsWith("/") && java.io.File(bare).isFile) return bare
             val marker = "Destination: "
             if (line.contains(marker)) {
                 return line.substringAfter(marker).trim().ifBlank { null }

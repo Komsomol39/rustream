@@ -38,6 +38,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.komsomol.rustream.domain.model.DownloadItem
 import com.komsomol.rustream.domain.model.DownloadState
 
+/** Псевдоэлемент списка: черта, отделяющая неактивные раздачи. */
+private const val DIVIDER_ID = "__divider__"
+
 @Composable
 fun DownloadsScreen(
     onOpen: (String) -> Unit = {},
@@ -57,13 +60,12 @@ fun DownloadsScreen(
     var dragId by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
 
-    val baseIds = list.all.map { it.id }
+    // Черта — полноценный элемент списка, а не рисунок между карточками.
+    // Иначе за последнюю карточку было не перетащить: индекс не мог стать
+    // больше числа активных, и раздача никогда не уходила на паузу.
+    val baseIds = list.active.map { it.id } + DIVIDER_ID + list.inactive.map { it.id }
     val shownIds = dragIds ?: baseIds
     val byId = list.all.associateBy { it.id }
-    // Черта: во время перетаскивания она стоит на месте, а положение карточки
-    // относительно неё и решает, ставить раздачу на паузу или снимать
-    val activeCount = if (dragIds == null) list.active.size
-                      else list.active.count { shownIds.contains(it.id) }
 
     BackHandler(enabled = selectMode) { viewModel.clearSelection() }
 
@@ -163,11 +165,11 @@ fun DownloadsScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    itemsIndexed(shownIds, key = { _, id -> id }) { index, id ->
-                        // Черта рисуется перед первой неактивной раздачей
-                        if (index == activeCount) InactiveDivider()
+                    itemsIndexed(shownIds, key = { _, id -> id }) { _, id ->
                         val item = byId[id]
-                        if (item != null) {
+                        if (id == DIVIDER_ID) {
+                            InactiveDivider()
+                        } else if (item != null) {
                             DownloadCard(
                                 item      = item,
                                 dragging  = dragId == id,
@@ -212,16 +214,13 @@ fun DownloadsScreen(
                                     }
                                 },
                                 onDragEnd = {
-                                    dragIds?.let { viewModel.applyOrder(it, activeCount) }
+                                    dragIds?.let { viewModel.applyOrder(it, DIVIDER_ID) }
                                     dragIds = null
                                     dragId = null
                                     dragOffset = 0f
                                 }
                             )
                         }
-                    }
-                    if (activeCount >= shownIds.size) {
-                        item { InactiveDivider() }
                     }
                 }
             }

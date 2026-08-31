@@ -69,12 +69,16 @@ class DownloadsViewModel @Inject constructor(
      * положение относительно черты: всё, что оказалось на позиции activeCount
      * и ниже, ставится на паузу, остальное снимается с неё.
      */
-    fun applyOrder(ids: List<String>, activeCount: Int) {
-        repo.reorder(ids)
+    fun applyOrder(ids: List<String>, dividerId: String) {
+        val cut = ids.indexOf(dividerId)
+        val real = ids.filter { it != dividerId }
+        repo.reorder(real)
+        if (cut < 0) return
         val map = repo.downloads.value
         ids.forEachIndexed { i, id ->
+            if (id == dividerId) return@forEachIndexed
             val item = map[id] ?: return@forEachIndexed
-            val shouldPause = i >= activeCount
+            val shouldPause = i > cut
             if (shouldPause && item.state != DownloadState.PAUSED) repo.pause(id)
             if (!shouldPause && item.state == DownloadState.PAUSED) repo.resume(id)
         }
