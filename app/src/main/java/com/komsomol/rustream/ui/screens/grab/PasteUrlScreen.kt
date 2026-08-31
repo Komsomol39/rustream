@@ -23,9 +23,21 @@ import androidx.compose.material.icons.filled.MusicNote
 @Composable
 fun PasteUrlScreen(
     onBack: () -> Unit,
+    onOpenReady: (path: String, video: Boolean) -> Unit = { _, _ -> },
     viewModel: GrabViewModel = hiltViewModel()
 ) {
     val downloads by viewModel.downloads.collectAsState()
+    var openError by remember { mutableStateOf<String?>(null) }
+
+    openError?.let { title ->
+        AlertDialog(
+            onDismissRequest = { openError = null },
+            title = { Text("Файл не найден") },
+            text = { Text("Не удалось найти файл «" + title + "» в папке загрузок. " +
+                          "Возможно, он был перемещён или удалён.") },
+            confirmButton = { TextButton(onClick = { openError = null }) { Text("Понятно") } }
+        )
+    }
     val formatQuery by viewModel.formatQuery.collectAsState()
     var url by remember { mutableStateOf("") }
     val clipboard = LocalClipboardManager.current
@@ -93,7 +105,18 @@ fun PasteUrlScreen(
         } else {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                 downloads.values.sortedBy { it.title }.forEach { d ->
-                    Card(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+                    Card(
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                            .then(
+                                if (d.state == GrabState.DONE)
+                                    Modifier.clickable {
+                                        viewModel.openReady(d,
+                                            onFound = { p -> onOpenReady(p, d.video) },
+                                            onMissing = { openError = d.title })
+                                    }
+                                else Modifier
+                            )
+                    ) {
                         Row(Modifier.padding(start = 12.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
                             verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -119,7 +142,9 @@ fun PasteUrlScreen(
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    GrabState.DONE -> Text("✓ Готово — смотри в библиотеке",
+                                    GrabState.DONE -> Text(
+                                        if (d.video) "✓ Готово — нажмите, чтобы посмотреть"
+                                        else "✓ Готово — нажмите, чтобы послушать",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.tertiary)
                                     GrabState.ERROR -> Text("Ошибка: " + (d.message ?: ""),

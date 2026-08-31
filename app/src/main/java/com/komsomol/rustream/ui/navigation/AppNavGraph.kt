@@ -21,6 +21,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import com.komsomol.rustream.player.PlayerActivity
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -50,6 +51,35 @@ sealed class Screen(val route: String, val label: String, val icon: ImageVector)
 val bottomNavItems = listOf(
     Screen.Search, Screen.Downloads, Screen.Video, Screen.Music, Screen.Settings
 )
+
+/**
+ * Открыть только что скачанный файл: переключаемся на нужную вкладку и сразу
+ * запускаем воспроизведение. Общая для экрана поиска и для "Скачать по ссылке" —
+ * раньше это было только в первом, и на втором нажатие ничего не делало.
+ */
+private fun openReadyFile(
+    navController: NavHostController,
+    ctx: android.content.Context,
+    path: String,
+    isVideo: Boolean
+) {
+    if (isVideo) {
+        navController.navigate(Screen.Video.route) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+        ctx.startActivity(
+            Intent(ctx, PlayerActivity::class.java)
+                .putExtra(PlayerActivity.EXTRA_PATH, path)
+        )
+    } else {
+        navController.navigate("music?open=" + URLEncoder.encode(path, "UTF-8")) {
+            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+        }
+    }
+}
 
 @Composable
 fun AppNavGraph() {
@@ -106,36 +136,18 @@ fun AppNavGraph() {
                     onBack = { navController.popBackStack() },
                     onOpenPaste = { navController.navigate("paste_url") },
                     onOpenReady = { path, isVideo ->
-                        if (isVideo) {
-                            // Уходим на вкладку Видео и сразу открываем плеер:
-                            // при выходе из плеера файл будет виден в списке
-                            navController.navigate(Screen.Video.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                            ctx.startActivity(
-                                Intent(ctx, PlayerActivity::class.java)
-                                    .putExtra(PlayerActivity.EXTRA_PATH, path)
-                            )
-                        } else {
-                            // Музыка: вкладка сама найдёт папку исполнителя
-                            navController.navigate(
-                                "music?open=" + URLEncoder.encode(path, "UTF-8")
-                            ) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                            }
-                        }
+                        openReadyFile(navController, ctx, path, isVideo)
                     }
                 )
             }
             composable("paste_url") {
-                PasteUrlScreen(onBack = { navController.popBackStack() })
+                val ctx = LocalContext.current
+                PasteUrlScreen(
+                    onBack = { navController.popBackStack() },
+                    onOpenReady = { path, isVideo ->
+                        openReadyFile(navController, ctx, path, isVideo)
+                    }
+                )
             }
             composable(Screen.Video.route)     { VideoScreen() }
             composable(

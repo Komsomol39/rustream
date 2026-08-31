@@ -634,13 +634,15 @@ class TorrentEngine @Inject constructor(
                     TorrentStatus.State.SEEDING               -> DownloadState.FINISHED
                     else                                      -> DownloadState.DOWNLOADING
                 }
-                // Пауза, поставленная пользователем, важнее опроса —
-                // иначе тикер перезатрёт её через секунду
-                if (item.state == DownloadState.PAUSED &&
-                    state == DownloadState.DOWNLOADING) return@forEach
+                // Пауза, поставленная пользователем, важнее опроса. Прежнее
+                // условие спасало только качающиеся раздачи: у завершённой
+                // libtorrent отдаёт SEEDING/FINISHED, и пауза слетала на
+                // ближайшем тике. Снять её может только resume().
+                val shown = if (item.state == DownloadState.PAUSED)
+                    DownloadState.PAUSED else state
                 _downloads.update { map ->
                     map + (id to item.copy(
-                        state            = state,
+                        state            = shown,
                         progress         = s.progress(),
                         downloadedBytes  = s.totalDone(),
                         totalBytes       = s.totalWanted(),
