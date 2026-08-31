@@ -64,10 +64,11 @@ private fun openReadyFile(
     isVideo: Boolean
 ) {
     if (isVideo) {
-        navController.navigate(Screen.Video.route) {
+        // Без restoreState: иначе вкладка восстановит прежнее состояние
+        // вместе со старым аргументом, и в папку файла мы не попадём
+        navController.navigate("video?open=" + URLEncoder.encode(path, "UTF-8")) {
             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
             launchSingleTop = true
-            restoreState = true
         }
         ctx.startActivity(
             Intent(ctx, PlayerActivity::class.java)
@@ -149,7 +150,19 @@ fun AppNavGraph() {
                     }
                 )
             }
-            composable(Screen.Video.route)     { VideoScreen() }
+            composable(
+                Screen.Video.route + "?open={open}",
+                arguments = listOf(navArgument("open") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                })
+            ) { entry ->
+                VideoScreen(
+                    openPath = entry.arguments?.getString("open")
+                        ?.let { URLDecoder.decode(it, "UTF-8") }
+                )
+            }
             composable(
                 Screen.Music.route + "?open={open}",
                 arguments = listOf(navArgument("open") {

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,7 +36,15 @@ import com.komsomol.rustream.domain.model.VideoItem
 import com.komsomol.rustream.player.PlayerActivity
 
 @Composable
-fun VideoScreen(viewModel: VideoViewModel = hiltViewModel()) {
+fun VideoScreen(
+    openPath: String? = null,
+    viewModel: VideoViewModel = hiltViewModel()
+) {
+    // Пришли сюда после просмотра только что скачанного файла —
+    // встаём в его папку, а не в корень
+    LaunchedEffect(openPath) {
+        if (!openPath.isNullOrBlank()) viewModel.openFolderOf(openPath)
+    }
     val browse by viewModel.browse.collectAsState()
     val query by viewModel.query.collectAsState()
     val scanning by viewModel.scanning.collectAsState()

@@ -112,6 +112,17 @@ class VideoViewModel @Inject constructor(
 
     fun open(folder: VideoFolder) { _dir.value = folder.path }
 
+    /**
+     * Встать в папку, где лежит файл. Нужно после просмотра только что
+     * скачанного видео: закрыв плеер, пользователь оказывается там же,
+     * куда файл сохранился, а не в корне.
+     */
+    fun openFolderOf(path: String) {
+        val parent = File(path).parent ?: return
+        _query.value = ""
+        _dir.value = parent
+    }
+
     fun goUp() {
         val cur = _dir.value ?: return
         val roots = repo.roots.value
