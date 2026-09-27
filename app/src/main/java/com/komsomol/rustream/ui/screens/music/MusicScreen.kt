@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -247,12 +249,22 @@ fun SharedMiniPlayer(
     onShuffle: () -> Unit, onRepeat: () -> Unit,
     onClose: () -> Unit
 ) {
+    val ctx = LocalContext.current
     Surface(tonalElevation = 4.dp) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(track.title, style = MaterialTheme.typography.bodyLarge,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f))
+                Column(Modifier.weight(1f)) {
+                    Text(track.title, style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    track.artist?.takeIf { it.isNotBlank() }?.let { a ->
+                        Text(a, style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                IconButton(onClick = { shareTrack(ctx, track) }) {
+                    Icon(Icons.Default.Share, contentDescription = "Отправить трек")
+                }
                 IconButton(onClick = onClose) {
                     Icon(Icons.Default.Close, contentDescription = "Закрыть плеер")
                 }
@@ -288,6 +300,50 @@ fun SharedMiniPlayer(
                 Text(fmt(durationMs), style = MaterialTheme.typography.labelSmall)
             }
         }
+    }
+}
+
+/**
+ * Отправить текущий трек (Telegram, почта и т.д.).
+ *
+ * Мессенджеры берут исполнителя и название из ID3-тегов самого файла, а не из
+ * полей Intent, поэтому в них уходит именно файл; EXTRA_SUBJECT и EXTRA_TITLE
+ * добавлены для тех приложений, которые всё же смотрят на них.
+ * Напрямую file:// отдавать нельзя — FileUriExposedException, только через
+ * FileProvider.
+ */
+private fun shareTrack(ctx: android.content.Context, track: Track) {
+    try {
+        val file = java.io.File(track.path)
+        if (!file.isFile) {
+            android.widget.Toast.makeText(ctx, "Файл не найден",
+                android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            ctx, ctx.packageName + ".fileprovider", file)
+        val artist = track.artist?.takeIf { it.isNotBlank() }
+        val label = if (artist != null) artist + " — " + track.title else track.title
+        val mime = when (file.extension.lowercase()) {
+            "mp3"  -> "audio/mpeg"
+            "m4a"  -> "audio/mp4"
+            "opus", "ogg" -> "audio/ogg"
+            "flac" -> "audio/flac"
+            "wav"  -> "audio/wav"
+            else   -> "audio/*"
+        }
+        val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = mime
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            putExtra(android.content.Intent.EXTRA_SUBJECT, label)
+            putExtra(android.content.Intent.EXTRA_TITLE, label)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        ctx.startActivity(android.content.Intent.createChooser(send, "Отправить трек"))
+    } catch (e: Exception) {
+        android.widget.Toast.makeText(ctx,
+            "Не удалось отправить: " + (e.message ?: "?"),
+            android.widget.Toast.LENGTH_SHORT).show()
     }
 }
 

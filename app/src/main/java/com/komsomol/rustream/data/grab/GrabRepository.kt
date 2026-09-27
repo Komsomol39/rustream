@@ -160,22 +160,14 @@ class GrabRepository @Inject constructor(
      */
     private val OUT_TEMPLATE = "/%(extractor_key)s/%(title).80s [%(id)s].%(ext)s"
 
-    /**
-     * Просим yt-dlp напечатать путь готового файла.
-     *
-     * Обычный --print включает --quiet и --simulate, что сломало бы и прогресс,
-     * и саму загрузку. Но с префиксом WHEN (здесь after_move) эта неявная
-     * подстановка не срабатывает: строка печатается уже после того, как файл
-     * встал на своё место.
-     */
-    private fun addPrintPath(req: YoutubeDLRequest) {
-        req.addOption("--print", "after_move:filepath")
-    }
-
     private fun addYtOptions(req: YoutubeDLRequest) {
         req.addOption("--no-check-certificates")
         req.addOption("--extractor-retries", "3")
-        req.addOption("--extractor-args", "youtube:formats=missing_pot")
+        // lang=ru — просим локализованные название и описание, когда автор их
+        // выложил; иначе останется оригинал. Аргументы одного экстрактора
+        // передаются одной строкой через ";", вторым --extractor-args они бы
+        // перетёрли друг друга.
+        req.addOption("--extractor-args", "youtube:formats=missing_pot;lang=ru")
         // Куки залогиненного аккаунта — снимают «Sign in to confirm you're not a bot»
         ytCookies.cookieFilePathOrNull()?.let { req.addOption("--cookies", it) }
     }
@@ -189,7 +181,6 @@ class GrabRepository @Inject constructor(
 
                 val req = YoutubeDLRequest(result.url)
                 req.addOption("-o", engine.savePath + OUT_TEMPLATE)
-                addPrintPath(req)
                 req.addOption("--no-mtime")
                 // Альбом/плейлист Яндекса — качаем все треки; иначе одиночный элемент
                 val isYandexAlbum = result.url.contains("music.yandex.") &&
@@ -215,6 +206,9 @@ class GrabRepository @Inject constructor(
                     req.addOption("-x")
                     req.addOption("--audio-format", "mp3")
                     req.addOption("--audio-quality", "0")
+                    // Без этого в mp3 нет ID3-тегов, и Telegram показывает
+                    // имя файла вместо исполнителя и названия
+                    req.addOption("--embed-metadata")
                 }
 
                 setDl(GrabDownload(dlId, result.title, video, 0f, GrabState.DOWNLOADING))
@@ -312,7 +306,6 @@ class GrabRepository @Inject constructor(
                 setDl(GrabDownload(dlId, title, fmt.video, 0f, GrabState.DOWNLOADING))
                 val req = YoutubeDLRequest(url)
                 req.addOption("-o", engine.savePath + OUT_TEMPLATE)
-                addPrintPath(req)
                 req.addOption("--no-mtime")
                 req.addOption("--no-playlist")
                 addYtOptions(req)
@@ -324,6 +317,9 @@ class GrabRepository @Inject constructor(
                     req.addOption("-x")
                     req.addOption("--audio-format", "mp3")
                     req.addOption("--audio-quality", "0")
+                    // Без этого в mp3 нет ID3-тегов, и Telegram показывает
+                    // имя файла вместо исполнителя и названия
+                    req.addOption("--embed-metadata")
                 }
                 runYtdl(req, dlId, title, fmt.video)
             } catch (e: Exception) {
@@ -339,9 +335,9 @@ class GrabRepository @Inject constructor(
     // 100% скачивания + строка про merge/ffmpeg -> состояние PROCESSING.
     private fun runYtdl(req: YoutubeDLRequest, dlId: String, title: String, video: Boolean) {
         // Путь готового файла вытаскиваем из строк вывода yt-dlp.
-        // Через --print надёжнее, но он тянет за собой --quiet и --simulate,
-        // а это сломало бы разбор прогресса; разбор строк ничего не меняет
-        // в поведении загрузки.
+        // --print here НЕ используется: он всегда включает --quiet, а это
+        // глушит строки прогресса, из которых берутся скорость и остаток.
+        // Если разобрать путь не вышло, он ищется при нажатии (resolveFile).
         var lastPath: String? = null   // [download] Destination
         var finalPath: String? = null  // после склейки/конвертации — важнее
         YoutubeDL.getInstance().execute(req, dlId) { progress, etaSec, line ->
@@ -392,7 +388,7 @@ class GrabRepository @Inject constructor(
      */
     private fun parseDestination(line: String): String? {
         try {
-            // Ответ на --print after_move:filepath — просто путь отдельной строкой
+            // Некоторые постпроцессоры печатают голый путь отдельной строкой
             val bare = line.trim()
             if (bare.startsWith("/") && java.io.File(bare).isFile) return bare
             val marker = "Destination: "
