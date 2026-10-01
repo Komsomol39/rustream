@@ -32,6 +32,11 @@ class PlayerActivity : ComponentActivity() {
     // Нужны потому, что при finish() ExoPlayer может успеть сброситься в 0.
     private var lastPos: Long = 0L
     private var lastDur: Long = 0L
+
+    // Мини-окно активно / звук продолжает играть за заблокированным экраном
+    private var pipActive = false
+    private var playingBehindLock = false
+    private var lockTicks = 0
     private val handler = Handler(Looper.getMainLooper())
     private val ticker = object : Runnable {
         override fun run() {
@@ -40,6 +45,12 @@ class PlayerActivity : ComponentActivity() {
                 val dur = it.duration
                 if (pos > 0) lastPos = pos
                 if (dur > 0) lastDur = dur
+            }
+            // Пока играем за заблокированным экраном, onPause/onStop больше
+            // не придут — сохраняем позицию сами, раз в 15 секунд
+            if (playingBehindLock) {
+                lockTicks++
+                if (lockTicks % 15 == 0) savePosition()
             }
             handler.postDelayed(this, 1000)
         }
@@ -57,7 +68,22 @@ class PlayerActivity : ComponentActivity() {
         val renderers = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
 
-        val p = ExoPlayer.Builder(this, renderers).build()
+        val p = ExoPlayer.Builder(this, renderers)
+            // Раз звук теперь может играть при заблокированном экране, плеер
+            // обязан уступать: входящий звонок или другой плеер ставят его
+            // на паузу, а не звучат поверх
+            .setAudioAttributes(
+                androidx.media3.common.AudioAttributes.Builder()
+                    .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                    .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build(),
+                true)
+            // Выдернули наушники — пауза, а не звук из динамика
+            .setHandleAudioBecomingNoisy(true)
+            // С погашенным экраном система усыпляет процессор; wake lock
+            // держится только пока идёт воспроизведение
+            .setWakeMode(androidx.media3.common.C.WAKE_MODE_LOCAL)
+            .build()
         player = p
 
         val view = PlayerView(this)
@@ -166,6 +192,7 @@ class PlayerActivity : ComponentActivity() {
         newConfig: android.content.res.Configuration
     ) {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        pipActive = isInPictureInPictureMode
         playerView?.useController = !isInPictureInPictureMode
         val vis = if (isInPictureInPictureMode) android.view.View.GONE
                   else android.view.View.VISIBLE
@@ -178,10 +205,34 @@ class PlayerActivity : ComponentActivity() {
         savePosition()
     }
 
+    override fun onStart() {
+        super.onStart()
+        playingBehindLock = false
+        lockTicks = 0
+    }
+
     override fun onStop() {
         super.onStop()
         savePosition()
+        if (shouldPlayBehindLock()) {
+            playingBehindLock = true
+            return
+        }
         player?.pause()
+    }
+
+    /**
+     * onStop приходит в двух разных случаях, и вести себя в них надо по-разному:
+     *  - мини-окно закрыли (смахнули) — экран при этом включён, ставим паузу;
+     *  - экран заблокировали, пока играло мини-окно — звук должен идти дальше.
+     * Отличает их только состояние экрана. Полноэкранный просмотр при
+     * блокировке по-прежнему встаёт на паузу.
+     */
+    private fun shouldPlayBehindLock(): Boolean {
+        if (player?.playWhenReady != true) return false
+        if (!pipActive && !isInPictureInPictureMode) return false
+        val pm = getSystemService(android.os.PowerManager::class.java)
+        return pm != null && !pm.isInteractive
     }
 
     override fun onDestroy() {
