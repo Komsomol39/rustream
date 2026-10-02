@@ -35,6 +35,7 @@ fun GrabScreen(
     val query by viewModel.query.collectAsState()
     val downloads by viewModel.downloads.collectAsState()
     var openError by remember { mutableStateOf<String?>(null) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val engineMsg by viewModel.engineMsg.collectAsState()
 
     openError?.let { title ->
@@ -106,7 +107,12 @@ fun GrabScreen(
             placeholder = { Text("YouTube, SoundCloud, PeerTube...") },
             trailingIcon = { IconButton(onClick = viewModel::search) {
                 Icon(Icons.Default.Search, "Поиск") } },
-            singleLine = true
+            singleLine = true,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
+                viewModel.search()
+                focusManager.clearFocus()
+            })
         )
 
         // Активные скачивания

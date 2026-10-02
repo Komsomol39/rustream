@@ -40,6 +40,7 @@ fun PasteUrlScreen(
     }
     val formatQuery by viewModel.formatQuery.collectAsState()
     var url by remember { mutableStateOf("") }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val clipboard = LocalClipboardManager.current
 
     Column(Modifier.fillMaxSize()) {
@@ -63,7 +64,15 @@ fun PasteUrlScreen(
                     clipboard.getText()?.text?.let { url = it }
                 }) { Icon(Icons.Default.ContentPaste, contentDescription = "Вставить") }
             },
-            singleLine = true
+            singleLine = true,
+            // Ввод делает то же, что кнопка «Показать варианты», при тех же условиях
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Go),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onGo = {
+                if (url.isNotBlank() && formatQuery == null) {
+                    viewModel.queryFormats(url)
+                    focusManager.clearFocus()
+                }
+            })
         )
 
         Text("Работает с YouTube, RuTube, TikTok, Instagram и сотнями других сайтов",

@@ -29,6 +29,7 @@ fun SearchScreen(
     val newpipeEnabled by viewModel.newpipeEnabled.collectAsState(initial = false)
 
     var downloadDialogItem by remember { mutableStateOf<SearchResult?>(null) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
     Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Spacer(Modifier.height(8.dp))
@@ -38,7 +39,14 @@ fun SearchScreen(
             placeholder = { Text("Поиск торрентов...") },
             trailingIcon = { IconButton(onClick = viewModel::search) {
                 Icon(Icons.Default.Search, "Поиск") } },
-            singleLine = true
+            singleLine = true,
+            // Клавиша ввода на клавиатуре запускает поиск — раньше действие
+            // не было назначено, и приходилось отдельно жать на лупу
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = {
+                viewModel.search()
+                focusManager.clearFocus()   // убираем клавиатуру с результатов
+            })
         )
         if (newpipeEnabled) {
             TextButton(onClick = onOpenGrab) {
